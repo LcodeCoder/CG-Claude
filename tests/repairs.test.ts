@@ -318,3 +318,31 @@ test('a custom directory declared in default user settings blocks modifying that
   ).rejects.toThrow('CLAUDE_CONFIG_DIR')
   expect(await data.read('.claude/settings.json')).toBe(original)
 })
+
+test('restoring an older field backup preserves the visible creation timeline and hides originals', async () => {
+  const original = 'export HTTPS_PROXY=http://localhost:7890\n'
+  await data.write('.zshrc', original)
+  await data.write('.claude/settings.json', '{"env":{"ANTHROPIC_API_KEY":"keep-private-key"}}')
+  const earlier = await engine.apply(
+    (await engine.preview(['shell-proxy'], preferences)).id,
+    preferences,
+  )
+  const earlierRecord = (await data.storage.manifests()).find((item) => item.id === earlier.id)!
+  earlierRecord.createdAt = '2026-10-09T00:00:00Z'
+  await data.storage.saveManifest(earlierRecord)
+  const later = await engine.apply(
+    (await engine.preview(['claude-privacy'], preferences)).id,
+    preferences,
+  )
+  const laterRecord = (await data.storage.manifests()).find((item) => item.id === later.id)!
+  laterRecord.createdAt = '2026-10-10T00:00:00Z'
+  await data.storage.saveManifest(laterRecord)
+  await engine.restore(earlier.id)
+  const list = await data.storage.backups()
+  expect(list.map((item) => item.id)).toEqual([later.id, earlier.id])
+  expect(list[1]).toMatchObject({ status: 'restored' })
+  expect(list[1]?.restoredAt).toBeTruthy()
+  expect(JSON.stringify(list)).not.toContain('keep-private-key')
+  expect(JSON.stringify(list)).not.toContain('entries')
+  expect(await data.read('.zshrc')).toBe(original)
+})

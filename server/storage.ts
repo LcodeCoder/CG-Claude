@@ -147,7 +147,9 @@ export class Storage {
     return this.read('backups.json', [])
   }
   async backups(): Promise<BackupSummary[]> {
-    return (await this.manifests()).map(({ entries: _entries, ...summary }) => summary)
+    return (await this.manifests())
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .map(({ entries: _entries, ...summary }) => summary)
   }
   async saveManifest(manifest: BackupManifest) {
     const manifests = await this.manifests()
