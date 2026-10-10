@@ -3,7 +3,11 @@ import {
   isEnabledEnvironmentFlag,
   isNonEmptyEnvironmentValue,
 } from '../shared/environment-values.js'
-import { matchesPrivacyPreference, privacyEnvironmentKeys } from '../shared/privacy.js'
+import {
+  matchesPrivacyPreference,
+  privacyCompatibilityNote,
+  privacyEnvironmentKeys,
+} from '../shared/privacy.js'
 import type { EnvironmentSources } from './environment-sources.js'
 
 const privacyNames = new Set<string>(privacyEnvironmentKeys)
@@ -82,8 +86,7 @@ export function privacyConfiguration(
           : '部分隐私开关尚未设置',
     evidence,
     fixIds: !review && !applied ? ['claude-privacy'] : [],
-    recommendation:
-      '非空的 DISABLE_TELEMETRY、DISABLE_ERROR_REPORTING 和 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 都会关闭对应流量，值为 0 也一样；DO_NOT_TRACK 则按常规布尔值处理。关闭遥测会影响功能旗标和 Remote Control；最少流量模式还会关闭自动更新等可选流量。它们不控制网页的模型训练选择，也不决定账号状态。修改后新建 Claude Code 会话并结合当前版本核对。',
+    recommendation: `非空的 DISABLE_TELEMETRY、DISABLE_ERROR_REPORTING 和 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC 都会关闭对应流量，值为 0 也一样；DO_NOT_TRACK 则按常规布尔值处理。${privacyCompatibilityNote} 它们不控制网页的模型训练选择，也不决定账号状态。修改后新建 Claude Code 会话核对。`,
     source: 'official',
     sourceUrl: 'https://code.claude.com/docs/en/env-vars',
   }

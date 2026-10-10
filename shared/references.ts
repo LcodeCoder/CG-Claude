@@ -36,6 +36,28 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'claude-remote-control',
+    title: 'Claude Code · Remote Control 的条件与排查',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/remote-control',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway:
+      'Remote Control 需要支持的订阅、claude.ai 登录与官方 API 地址；隐私开关影响因版本和设备要求而异。',
+    application: '帮助用户核对版本、认证、网关、隐私开关与组织策略，不自动改变这些选择。',
+    boundary:
+      '2.1.283 起仅 DISABLE_TELEMETRY / DO_NOT_TRACK 通常允许付费订阅使用；最少流量、DISABLE_GROWTHBOOK、可信设备要求等可能阻止。以实际会话为准。',
+    checkIds: [
+      'claude-cli',
+      'claude-privacy',
+      'claude-endpoint',
+      'runtime-endpoint',
+      'auth-sources',
+    ],
+    manualItemIds: ['auth-method'],
+  },
+  {
     id: 'claude-identity',
     title: 'Claude · 身份与企业验证说明',
     publisher: 'Anthropic',
@@ -288,7 +310,7 @@ export const references: ReferenceEntry[] = [
     topic: 'privacy',
     checkedAt,
     takeaway: '区分使用指标、错误报告、反馈和账号的数据训练选择。',
-    application: '提供可预览的隐私开关，说明功能旗标与 Remote Control 可能受影响。',
+    application: '提供可预览的隐私开关，按 Remote Control 专项文档解释版本与订阅差异。',
     boundary: '隐私开关不代表账号状态，也不会代替网页端的数据隐私选择。',
     checkIds: ['claude-privacy'],
     projectCheckIds: ['project-privacy'],

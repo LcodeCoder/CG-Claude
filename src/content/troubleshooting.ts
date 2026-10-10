@@ -113,6 +113,24 @@ export const troubleshootingGuides: Guide[] = [
     manual: 'account-notice',
   },
   {
+    id: 'remote-control',
+    title: 'Remote Control 不可用',
+    codes: 'remote-control · eligibility · feature-flag',
+    meaning: '可用性同时取决于版本、订阅登录、API 地址、隐私开关和组织策略。',
+    steps: [
+      '在 /status 核对版本与认证。Remote Control 支持 Pro、Max、Team、Enterprise 的 claude.ai 登录；API Key、自定义 API 网关与云平台不支持。',
+      '2.1.283 起，仅 DISABLE_TELEMETRY / DO_NOT_TRACK 通常允许付费订阅使用。最少流量开关、DISABLE_GROWTHBOOK 或可信设备要求仍可能阻止；按自己的隐私需求选择。',
+      '核对完整提示、Team / Enterprise 管理设置与可信设备要求。保留网关或隐私选项时，可继续本机会话。',
+    ],
+    checks: [
+      { id: 'claude-cli', label: '查看客户端版本' },
+      { id: 'auth-sources', label: '查看认证来源' },
+      { id: 'claude-privacy', label: '查看隐私开关' },
+    ],
+    source: 'claude-remote-control',
+    manual: 'auth-method',
+  },
+  {
     id: 'certificate',
     title: '证书或 TLS 握手错误',
     codes: 'certificate · TLS',

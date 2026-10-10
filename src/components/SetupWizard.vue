@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { privacyCompatibilityNote } from '../../shared/privacy'
 import { ref, reactive, computed, watch } from 'vue'
 import {
   ArrowLeft,
@@ -283,7 +284,7 @@ const title = computed(() =>
         >
         <div class="wizard-note">
           <TriangleAlert :size="18" />
-          <p>关闭使用指标会同时关闭功能旗标，Remote Control 可能不可用。已有的隐私设置会保留。</p>
+          <p>{{ privacyCompatibilityNote }} 已有的隐私设置会保留。</p>
         </div>
       </div>
       <div v-else-if="step === 3" class="wizard-section">

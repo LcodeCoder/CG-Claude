@@ -1,3 +1,4 @@
+import { privacyCompatibilityNote } from '../shared/privacy.js'
 import { randomUUID } from 'node:crypto'
 import type { FixId, Preferences, RepairPlan, BackupSummary } from '../shared/types.js'
 import { fixLabels } from '../shared/types.js'
@@ -71,9 +72,7 @@ export class RepairEngine {
       ],
     }
     if (selected.includes('claude-privacy'))
-      preview.notes.push(
-        '关闭使用指标会同时关闭功能旗标，Remote Control 可能不可用。已有的全部非必要流量设置会保留。',
-      )
+      preview.notes.push(`${privacyCompatibilityNote} 已有的全部非必要流量设置会保留。`)
     for (const file of files) {
       const kind = configTargets.find((target) => target.relative === file.relative)!.kind
       const applies =

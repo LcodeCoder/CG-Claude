@@ -1,3 +1,4 @@
+import { privacyCompatibilityNote } from '../shared/privacy.js'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import type {
@@ -232,7 +233,7 @@ export class SetupWorkflows {
         '每个节点首次执行失败后最多重试 3 次，仍未成功就跳过，继续下一个节点。',
         '每次写入前保存原始备份。密钥、Hooks、权限与其他未选字段会保留。',
         '终端环境变量需要重新打开终端才会生效。系统代理、TUN、DNS 和系统时区仍需在对应软件中配置。',
-        '关闭使用指标会同时关闭功能旗标，Remote Control 可能不可用。已有隐私设置保留。',
+        `${privacyCompatibilityNote} 已有隐私设置保留。`,
       ],
     }
     for (const id of orderedFixes) {

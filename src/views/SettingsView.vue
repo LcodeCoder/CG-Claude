@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { privacyCompatibilityNote } from '../../shared/privacy'
 import { Check, Info, Laptop, LoaderCircle, LockKeyhole, Network } from '@lucide/vue'
 import type { Preferences } from '../../shared/types'
 const draft = defineModel<Preferences>({ required: true })
@@ -111,10 +112,7 @@ const emit = defineEmits<{ save: [preferences: Preferences] }>()
           ><small>另外设置 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC。</small></span
         ></label
       >
-      <p class="privacy-impact">
-        <Info :size="15" />关闭使用指标或全部非必要流量会关闭功能旗标，Remote Control
-        可能不可用。已有设置保留。
-      </p>
+      <p class="privacy-impact"><Info :size="15" />{{ privacyCompatibilityNote }} 已有设置保留。</p>
     </div>
     <div class="settings-footer">
       <span>{{ changed ? '有尚未保存的偏好' : '偏好已同步到本机' }}</span

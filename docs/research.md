@@ -56,3 +56,9 @@
 - `https://privacy.claude.com/en/articles/12109829-how-do-i-change-my-model-improvement-privacy-settings`：消费计划的模型改进选择也涉及这些账号的 Claude Code 会话。它与本机使用指标设置不同；官方仍说明安全与政策处理情形。
 
 文献数增至 35，人工复核关联使用稳定 ID。加入账号提示帮助和官方复核路径，不把关闭遥测、改变代理或完成身份验证表述为不会被限制的保证。
+
+## Remote Control 版本差异复核
+
+2026-10-11 再次核对 [Remote Control 专项文档](https://code.claude.com/docs/en/remote-control)、[官方更新记录](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) 与数据使用说明。2.1.283 起，付费订阅仅设置 DISABLE_TELEMETRY 或 DO_NOT_TRACK 通常保留 Remote Control；CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC、DISABLE_GROWTHBOOK、可信设备要求等仍可能阻止。认证、API 地址和组织策略也有独立要求。
+
+文献库增加专项说明，总数 36。设置、向导、诊断与预览使用同一兼容性文案；使用说明增加第九类错误帮助。工具不自动移除隐私选择或网关来启用远程控制。规则版本为 2026-10-11.5，旧报告仍保留生成时的解释。
