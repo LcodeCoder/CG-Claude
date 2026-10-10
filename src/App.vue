@@ -2,47 +2,35 @@
 import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import {
   ShieldCheck,
-  ScanLine,
   FolderCog,
-  History,
-  ArchiveRestore,
-  ListChecks,
   Settings2,
   ArrowUpRight,
-  Activity,
   Laptop,
   Play,
   Download,
   ChevronRight,
   CircleCheck,
-  CircleHelp,
   TriangleAlert,
-  Wrench,
   LockKeyhole,
   RefreshCw,
   FileCode2,
-  Search,
   Check,
   X,
   BookOpen,
   Info,
   LoaderCircle,
   RotateCcw,
-  SlidersHorizontal,
-  ArrowLeft,
   WifiOff,
   WandSparkles,
   Workflow,
   LibraryBig,
 } from '@lucide/vue'
-import { categoryLabels, defaultPreferences, fixLabels } from '../shared/types'
-import type { Category, FixId, Preferences, BackupSummary, ScanReport } from '../shared/types'
+import { defaultPreferences } from '../shared/types'
+import type { Preferences, BackupSummary, ScanReport } from '../shared/types'
 import { useGuard } from './composables/useGuard'
 import packageMetadata from '../package.json'
 import GuardDialog from './components/GuardDialog.vue'
 import BrandMark from './components/BrandMark.vue'
-import CheckRow from './components/CheckRow.vue'
-import NetworkPath from './components/NetworkPath.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import type { ReferenceTarget } from '../shared/references'
 import ReferencesView from './views/ReferencesView.vue'
@@ -53,18 +41,12 @@ import ProjectsView from './views/ProjectsView.vue'
 import BackupsView from './views/BackupsView.vue'
 import SettingsView from './views/SettingsView.vue'
 import AboutView from './views/AboutView.vue'
-import { formatDate } from './lib/format'
+import EnvironmentView from './views/EnvironmentView.vue'
+import { focusResult } from './lib/navigation'
+import { createResultFilters } from './lib/environment-results'
+import { primaryNavigation, workspacePages } from './content/navigation'
+import type { WorkspacePage } from './content/navigation'
 
-type Page =
-  | 'overview'
-  | 'configs'
-  | 'history'
-  | 'backups'
-  | 'checklist'
-  | 'projects'
-  | 'settings'
-  | 'about'
-  | 'references'
 const guard = useGuard()
 const {
   boot,
@@ -87,7 +69,8 @@ const {
   snapshotPlan,
   projectReport,
 } = guard
-const page = ref<Page>('overview')
+const page = ref<WorkspacePage>('overview')
+const appVersion = packageMetadata.version
 watch(page, () => window.scrollTo({ top: 0, behavior: 'instant' }), { flush: 'post' })
 const referenceTarget = ref<ReferenceTarget>()
 const projectFocusId = ref('')
@@ -122,18 +105,11 @@ async function openCheck(id: string) {
     guard.notify('先运行一次检测，再查看对应检查项的结果。')
     return
   }
-  showAllResults()
-  expanded.value = id
+  resultFilters.value = { category: 'all', status: 'all', query: '', expanded: id }
   await nextTick()
   await focusResult(document.getElementById('check-' + id))
 }
-const category = ref<Category | 'all'>('all')
-type ResultFilter = 'all' | 'issues' | 'manual' | 'pass'
-const statusFilter = ref<ResultFilter>('all')
-const resultsPanel = ref<HTMLElement>()
-const appVersion = packageMetadata.version
-const query = ref('')
-const expanded = ref('')
+const resultFilters = ref(createResultFilters())
 const scanOpen = ref(false)
 const setupOpen = ref(false)
 const setupResume = ref(false)
@@ -175,77 +151,8 @@ async function executeSnapshotRestore() {
 const restoreTarget = ref<BackupSummary>()
 const draft = ref<Preferences>({ ...defaultPreferences })
 const lastAction = ref('')
-const nav = [
-  { id: 'overview' as const, label: '环境检测', icon: ScanLine },
-  { id: 'configs' as const, label: '本机配置', icon: FolderCog },
-  { id: 'projects' as const, label: '项目扫描', icon: FileCode2 },
-  { id: 'history' as const, label: '检测记录', icon: History },
-  { id: 'backups' as const, label: '备份恢复', icon: ArchiveRestore },
-  { id: 'checklist' as const, label: '人工复核', icon: ListChecks },
-]
-const titles: Record<Page, string> = {
-  overview: '环境检测',
-  configs: '本机配置',
-  history: '检测记录',
-  backups: '备份恢复',
-  checklist: '人工复核',
-  projects: '项目扫描',
-  settings: '检测偏好',
-  about: '使用说明与来源',
-  references: '参考文献',
-}
-const groups = computed(() =>
-  Object.entries(categoryLabels)
-    .map(([id, label]) => ({
-      id: id as Category,
-      label,
-      checks:
-        report.value?.checks.filter((check) => {
-          const matches =
-            check.category === id && (category.value === 'all' || category.value === id)
-          const text =
-            !query.value ||
-            (check.title + check.summary + check.description)
-              .toLowerCase()
-              .includes(query.value.toLowerCase())
-          const status =
-            statusFilter.value === 'all' ||
-            (statusFilter.value === 'issues' && ['warn', 'fail'].includes(check.status)) ||
-            (statusFilter.value === 'manual' && ['manual', 'skipped'].includes(check.status)) ||
-            (statusFilter.value === 'pass' && check.status === 'pass')
-          return matches && text && status
-        }) ?? [],
-    }))
-    .filter((group) => group.checks.length),
-)
-const resultNavigation = computed(() => {
-  if (!report.value) return ''
-  const labels = { all: '检测项', pass: '检查通过', issues: '需要关注', manual: '待确认 / 未检测' }
-  const count = groups.value.reduce((total, group) => total + group.checks.length, 0)
-  const opened = groups.value
-    .flatMap((group) => group.checks)
-    .find((check) => check.id === expanded.value)
-  return `当前显示 ${count} 项${labels[statusFilter.value]}${opened ? `，已展开${opened.title}` : ''}`
-})
 const issueCount = computed(() =>
   report.value ? report.value.counts.warn + report.value.counts.fail : 0,
-)
-const pendingCount = computed(() =>
-  report.value ? report.value.counts.manual + report.value.counts.skipped : 0,
-)
-const percentage = computed(() =>
-  Math.round((progress.value.completed / Math.max(progress.value.total, 1)) * 100),
-)
-const isHistorical = computed(() =>
-  Boolean(report.value && boot.value?.reports[0] && report.value.id !== boot.value.reports[0].id),
-)
-const reportPreferencesChanged = computed(
-  () =>
-    Boolean(report.value && boot.value) &&
-    JSON.stringify(report.value?.preferences) !== JSON.stringify(boot.value?.preferences),
-)
-const reportedUsageMode = computed(
-  () => report.value?.preferences.usageMode ?? boot.value?.preferences.usageMode ?? 'official',
 )
 const activeBackups = computed(
   () => boot.value?.backups.filter((backup) => backup.status === 'applied').length ?? 0,
@@ -257,13 +164,6 @@ const preferenceChanged = computed(
 const exportBase = computed(() =>
   report.value ? `/api/reports/${report.value.id}/export?redact=1` : '',
 )
-const stateHeading = computed(() =>
-  !report.value
-    ? '先做一次检查，了解当前环境'
-    : issueCount.value
-      ? `有 ${issueCount.value} 项配置值得关注`
-      : '已检查的配置符合当前偏好',
-)
 watch(
   () => boot.value?.preferences,
   (value) => {
@@ -272,52 +172,13 @@ watch(
   { immediate: true },
 )
 watch(report, (value) => {
-  expanded.value = value?.checks.find((check) => ['warn', 'fail'].includes(check.status))?.id || ''
-  category.value = 'all'
-  statusFilter.value = value && value.counts.warn + value.counts.fail > 0 ? 'issues' : 'all'
-  query.value = ''
+  resultFilters.value = createResultFilters(value)
 })
 onMounted(async () => {
   await guard.initialize()
   await guard.importLegacyReviews()
 })
 
-function selectAll() {
-  selected.value =
-    selected.value.length === availableFixes.value.length ? [] : [...availableFixes.value]
-}
-async function openResults(filter: Exclude<ResultFilter, 'all'>) {
-  if (!report.value) return
-  page.value = 'overview'
-  category.value = 'all'
-  query.value = ''
-  statusFilter.value = filter
-  const firstCheck = groups.value[0]?.checks[0]
-  expanded.value = firstCheck?.id ?? ''
-  await nextTick()
-  const target = firstCheck ? document.getElementById('check-' + firstCheck.id) : resultsPanel.value
-  await focusResult(target)
-}
-async function focusResult(target: HTMLElement | null | undefined) {
-  if (!target) return
-  const sidebar = document.querySelector<HTMLElement>('.sidebar')
-  const navigationOffset =
-    sidebar && window.getComputedStyle(sidebar).position === 'sticky'
-      ? sidebar.getBoundingClientRect().height
-      : 0
-  target.style.scrollMarginTop = `${Math.ceil(navigationOffset) + 24}px`
-  const focusTarget = target.querySelector<HTMLButtonElement>('.check-summary') ?? target
-  focusTarget.focus({ preventScroll: true })
-  target.scrollIntoView({
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
-    block: 'start',
-  })
-}
-function showAllResults() {
-  statusFilter.value = 'all'
-  category.value = 'all'
-  query.value = ''
-}
 async function scanLocalConfigs() {
   page.value = 'overview'
   await guard.scan(false)
@@ -355,9 +216,6 @@ async function openHistoricalCheck(value: ScanReport, id: string) {
   await openCheck(id)
 }
 
-function selectFix(id: FixId) {
-  guard.toggleFix(id)
-}
 async function copyPath(value: string) {
   try {
     await navigator.clipboard.writeText(value)
@@ -382,7 +240,7 @@ const commandForPlatform = computed(() =>
       </div>
       <nav aria-label="主导航" class="main-nav">
         <button
-          v-for="item in nav"
+          v-for="item in primaryNavigation"
           :key="item.id"
           :class="{ active: page === item.id }"
           :aria-current="page === item.id ? 'page' : undefined"
@@ -423,7 +281,9 @@ const commandForPlatform = computed(() =>
     <main class="main-content">
       <header class="topbar">
         <div class="breadcrumbs">
-          <span>工作空间</span><ChevronRight :size="13" /><strong>{{ titles[page] }}</strong>
+          <span>工作空间</span><ChevronRight :size="13" /><strong>{{
+            workspacePages[page].title
+          }}</strong>
         </div>
         <div class="topbar-info">
           <span v-if="boot?.runtime === 'electron'" class="desktop-tag">Electron 桌面版</span>
@@ -438,28 +298,8 @@ const commandForPlatform = computed(() =>
       <div class="page-content">
         <div class="page-heading">
           <div>
-            <h1>{{ titles[page] }}</h1>
-            <p>
-              {{
-                page === 'overview'
-                  ? '检查本机配置，让每一次修改都有据可查。'
-                  : page === 'configs'
-                    ? '从真实配置文件开始，预览需要修改的部分。'
-                    : page === 'history'
-                      ? '保留最近 30 次检测，对照环境的变化。'
-                      : page === 'backups'
-                        ? '每次修复前保存原始配置，随时回到修改之前。'
-                        : page === 'checklist'
-                          ? '把工具无法可靠自动判断的项目，逐项确认。'
-                          : page === 'projects'
-                            ? '扫描本地项目配置、权限、代理覆盖与 Git 提交，不执行项目脚本。'
-                            : page === 'settings'
-                              ? '按照你的实际网络与使用方式检查，减少误报。'
-                              : page === 'references'
-                                ? '查看建议的出处、采用方式与判断边界。'
-                                : '了解检测范围、修复方式与参考来源。'
-              }}
-            </p>
+            <h1>{{ workspacePages[page].title }}</h1>
+            <p>{{ workspacePages[page].description }}</p>
           </div>
           <div class="heading-actions">
             <button
@@ -527,7 +367,10 @@ const commandForPlatform = computed(() =>
           </button>
         </div>
 
-        <div v-if="report?.verification && page === 'overview'" class="verification-strip">
+        <div
+          v-if="report?.verification && page === 'overview' && !scanning"
+          class="verification-strip"
+        >
           <ShieldCheck :size="16" /><span
             >已连续检测 {{ report.verification.passes }} 遍 ·
             {{
@@ -555,284 +398,33 @@ const commandForPlatform = computed(() =>
           </button>
         </div>
 
-        <template v-else-if="page === 'overview'">
-          <div v-if="boot?.demo" class="notice info-notice">
-            <Info :size="16" /><span
-              >正在检测隔离测试目录。这里的配置可用于验证修复流程，你的日常配置不会被修改。</span
-            >
-          </div>
-          <div v-if="isHistorical" class="notice info-notice">
-            <History :size="16" /><span
-              >正在查看 {{ formatDate(report!.completedAt) }} 的历史检测。</span
-            ><button class="text-link" @click="viewReport(boot!.reports[0]!)">
-              <ArrowLeft :size="13" />返回最新结果
-            </button>
-          </div>
-          <div v-if="reportPreferencesChanged" class="notice info-notice">
-            <CircleHelp :size="16" /><span
-              >检测偏好已变化，当前结果仍使用检测时的偏好。重新检测后才能预览修复。</span
-            >
-            <button class="text-link" :disabled="busy" @click="scanOpen = true">重新检测</button>
-          </div>
-          <div v-if="reportConfigurationChanged && !isHistorical" class="notice info-notice">
-            <FolderCog :size="16" /><span>{{
-              report?.configurationFingerprint
-                ? '用户配置文件已在检测后变化。当前记录仍可查看，重新检测后才能预览诊断修复。'
-                : '这份旧记录没有配置基线。重新检测后才能预览诊断修复。'
-            }}</span>
-            <button class="text-link" :disabled="busy" @click="scanOpen = true">重新检测</button>
-          </div>
-          <div v-if="lastAction" class="notice success-notice">
-            <CircleCheck :size="16" /><span>{{ lastAction }}</span
-            ><button class="icon-button" aria-label="关闭修复提醒" @click="lastAction = ''">
-              <X :size="14" />
-            </button>
-          </div>
-          <section class="environment-overview">
-            <div class="overview-intro">
-              <div class="overview-symbol"><Activity :size="25" :stroke-width="1.6" /></div>
-              <div>
-                <h2>{{ scanning ? '正在逐项检查你的环境' : stateHeading }}</h2>
-                <p v-if="report && !scanning">
-                  最近检测 {{ formatDate(report.completedAt, true)
-                  }}<span class="inline-divider" />{{
-                    report.networkEnabled ? '含公网检测' : '本机配置检测'
-                  }}<span class="inline-divider" />{{ boot?.machine.hostname }}
-                </p>
-                <p v-else-if="scanning">{{ progress.current }}</p>
-                <p v-else>本机配置先检查，网络出口按需开启。</p>
-              </div>
-              <span class="overview-mode"
-                ><span />{{
-                  reportedUsageMode === 'official'
-                    ? '官方默认 API'
-                    : reportedUsageMode === 'custom'
-                      ? '自定义 API'
-                      : reportedUsageMode === 'bedrock'
-                        ? 'Amazon Bedrock'
-                        : 'Google Vertex'
-                }}</span
-              >
-            </div>
-            <div
-              v-if="scanning"
-              class="scan-progress"
-              role="progressbar"
-              :aria-valuenow="percentage"
-              aria-valuemin="0"
-              aria-valuemax="100"
-              :aria-label="progress.current"
-            >
-              <span :style="{ width: percentage + '%' }" /><small
-                >{{ progress.completed }} / {{ progress.total }} 项</small
-              >
-            </div>
-            <div class="overview-counts" aria-label="检测结果快捷入口">
-              <button
-                class="count-link"
-                :class="{ active: report && statusFilter === 'pass' }"
-                :disabled="!report"
-                :aria-label="`查看 ${report?.counts.pass ?? 0} 项检查通过的详情`"
-                :aria-pressed="Boolean(report && statusFilter === 'pass')"
-                aria-controls="results-panel"
-                @click="openResults('pass')"
-              >
-                <CircleCheck :size="18" /><strong>{{ report?.counts.pass ?? '—' }}</strong
-                ><span>检查通过</span><ChevronRight class="count-link-arrow" :size="14" />
-              </button>
-              <button
-                class="count-link issue-count"
-                :class="{ active: report && statusFilter === 'issues' }"
-                :disabled="!report"
-                :aria-label="`查看 ${issueCount} 项需要关注的详情`"
-                :aria-pressed="Boolean(report && statusFilter === 'issues')"
-                aria-controls="results-panel"
-                @click="openResults('issues')"
-              >
-                <TriangleAlert :size="18" /><strong>{{ report ? issueCount : '—' }}</strong
-                ><span>需要关注</span><ChevronRight class="count-link-arrow" :size="14" />
-              </button>
-              <button
-                class="count-link pending-count"
-                :class="{ active: report && statusFilter === 'manual' }"
-                :disabled="!report"
-                :aria-label="`查看 ${pendingCount} 项待确认或未检测的详情`"
-                :aria-pressed="Boolean(report && statusFilter === 'manual')"
-                aria-controls="results-panel"
-                @click="openResults('manual')"
-              >
-                <CircleHelp :size="18" /><strong>{{ report ? pendingCount : '—' }}</strong
-                ><span>待确认 / 未检测</span><ChevronRight class="count-link-arrow" :size="14" />
-              </button>
-              <div class="count-note">
-                <LockKeyhole :size="16" /><span
-                  >以实际检测结果为准<br /><small>环境检查不推算账号状态</small></span
-                >
-              </div>
-            </div>
-          </section>
-          <NetworkPath :report="report" :machine="boot?.machine" :scanning="scanning" />
-          <div class="results-layout">
-            <section id="results-panel" ref="resultsPanel" class="results-panel" tabindex="-1">
-              <div class="results-heading">
-                <div>
-                  <h2>
-                    检测详情 <span v-if="report">{{ report.checks.length }}</span>
-                  </h2>
-                  <p>查看证据，再决定如何处理。</p>
-                </div>
-                <button class="icon-button" aria-label="设置检测偏好" @click="page = 'settings'">
-                  <SlidersHorizontal :size="17" />
-                </button>
-              </div>
-              <p class="sr-only" role="status" aria-live="polite">{{ resultNavigation }}</p>
-              <div class="result-filters">
-                <div class="filter-tabs" aria-label="按结果筛选">
-                  <button
-                    v-for="filter in [
-                      { id: 'all', label: '全部' },
-                      { id: 'issues', label: '需关注' },
-                      { id: 'manual', label: '待确认' },
-                      { id: 'pass', label: '已通过' },
-                    ] as const"
-                    :key="filter.id"
-                    :class="{ active: statusFilter === filter.id }"
-                    :aria-pressed="statusFilter === filter.id"
-                    @click="statusFilter = filter.id"
-                  >
-                    {{ filter.label
-                    }}<span v-if="filter.id === 'issues' && report">{{ issueCount }}</span>
-                  </button>
-                </div>
-                <label class="search-box"
-                  ><Search :size="14" /><input
-                    v-model="query"
-                    aria-label="搜索检测项"
-                    placeholder="搜索检测项"
-                /></label>
-              </div>
-              <div class="category-filters" aria-label="按类别筛选">
-                <button :class="{ active: category === 'all' }" @click="category = 'all'">
-                  所有类别</button
-                ><button
-                  v-for="(label, id) in categoryLabels"
-                  :key="id"
-                  :class="{ active: category === id }"
-                  @click="category = id"
-                >
-                  {{ label }}
-                </button>
-              </div>
-              <div v-if="!report" class="result-empty">
-                <ScanLine :size="35" />
-                <h3>还没有检测结果</h3>
-                <p>点击「开始检测」，检查实际本机配置。<br />默认不进行外部网络查询。</p>
-                <button class="button secondary" @click="scanOpen = true">开始第一次检测</button>
-              </div>
-              <div v-else-if="!groups.length" class="result-empty small">
-                <Search :size="26" />
-                <h3>
-                  {{
-                    !query && category === 'all' && statusFilter !== 'all'
-                      ? {
-                          issues: '当前没有需要关注的检测项',
-                          manual: '当前没有待确认或未检测的项目',
-                          pass: '当前没有已通过的检测项',
-                        }[statusFilter]
-                      : '没有符合条件的检测项'
-                  }}
-                </h3>
-                <button class="text-link" @click="showAllResults">显示全部结果</button>
-              </div>
-              <div v-for="group in groups" v-else :key="group.id" class="check-group">
-                <div class="group-heading">
-                  <h3>{{ group.label }}</h3>
-                  <span>{{ group.checks.length }} 项</span>
-                </div>
-                <CheckRow
-                  v-for="check in group.checks"
-                  :key="check.id"
-                  :check="check"
-                  :expanded="expanded === check.id"
-                  :selected="selected"
-                  :disabled="busy || !canRepair"
-                  :platform="boot?.machine.platform"
-                  @toggle="expanded = expanded === check.id ? '' : check.id"
-                  @fix="selectFix"
-                  @references="openReferences(check.id)"
-                  @copy-error="guard.notify('无法自动复制，请手动选择命令。', 'error')"
-                />
-              </div>
-              <div v-if="report" class="results-footer">
-                <ShieldCheck :size="13" />配置来自本机读取；密钥与 URL 凭据已隐藏。
-              </div>
-            </section>
-            <aside class="repair-sidebar">
-              <section class="repair-panel">
-                <div class="repair-panel-heading">
-                  <span class="repair-icon"><Wrench :size="18" /></span>
-                  <h2>配置修复</h2>
-                  <span class="small-count">{{ availableFixes.length }}</span>
-                </div>
-                <p>选择需要修改的配置，<br />先预览，再执行。</p>
-                <div v-if="availableFixes.length" class="repair-options">
-                  <label v-for="id in availableFixes" :key="id"
-                    ><input
-                      type="checkbox"
-                      :checked="selected.includes(id)"
-                      :disabled="busy"
-                      @change="selectFix(id)"
-                    /><span>{{ fixLabels[id] }}</span></label
-                  ><button class="text-link select-all" :disabled="busy" @click="selectAll">
-                    {{ selected.length === availableFixes.length ? '取消全选' : '选择全部' }}
-                  </button>
-                </div>
-                <div v-else class="repair-empty">
-                  <CircleCheck :size="23" /><span>{{
-                    isHistorical
-                      ? '请返回最新结果后选择修复'
-                      : reportPreferencesChanged || reportConfigurationChanged
-                        ? '重新检测后显示可修复项目'
-                        : report
-                          ? '没有可自动修复的项目'
-                          : '检测后显示可修复项目'
-                  }}</span>
-                </div>
-                <button
-                  class="button primary full-width"
-                  :disabled="!selected.length || busy"
-                  @click="guard.preview"
-                >
-                  <LoaderCircle v-if="working" class="spin" :size="15" /><Wrench
-                    v-else
-                    :size="15"
-                  />预览修复<span v-if="selected.length">({{ selected.length }})</span>
-                </button>
-                <div class="repair-assurance">
-                  <ArchiveRestore :size="14" /><span>修复前备份，支持恢复</span>
-                </div>
-              </section>
-              <section class="manual-tip">
-                <span class="manual-tip-icon"><CircleHelp :size="19" /></span>
-                <h3>有些项目，需要你确认</h3>
-                <p>DNS 实际出口、登录设备和服务地区，需要结合外部结果与账号设置复核。</p>
-                <button class="text-link" @click="page = 'checklist'">
-                  打开人工复核<ArrowUpRight :size="14" />
-                </button>
-                <button class="text-link help-entry" @click="openHelp">
-                  按错误类型排查<ArrowUpRight :size="14" />
-                </button>
-              </section>
-              <a
-                class="source-link"
-                href="https://x.com/AYi_AInotes/status/2106639522586829094"
-                target="_blank"
-                rel="noopener noreferrer"
-                ><BookOpen :size="14" /><span>查看参考文章</span><ArrowUpRight :size="13"
-              /></a>
-            </aside>
-          </div>
-        </template>
+        <EnvironmentView
+          v-else-if="page === 'overview'"
+          v-model:filters="resultFilters"
+          v-model:selected="selected"
+          v-model:last-action="lastAction"
+          :report="report"
+          :latest-report="boot?.reports[0]"
+          :machine="boot?.machine"
+          :preferences="boot?.preferences"
+          :demo="Boolean(boot?.demo)"
+          :busy="busy"
+          :scanning="scanning"
+          :working="working"
+          :progress="progress"
+          :report-configuration-changed="reportConfigurationChanged"
+          :can-repair="canRepair"
+          :available-fixes="availableFixes"
+          @scan="scanOpen = true"
+          @latest="viewReport(boot!.reports[0]!)"
+          @settings="page = 'settings'"
+          @manual="page = 'checklist'"
+          @help="openHelp"
+          @preview="guard.preview"
+          @fix="guard.toggleFix"
+          @references="openReferences"
+          @copy-error="guard.notify('无法自动复制，请手动选择命令。', 'error')"
+        />
 
         <ConfigurationsView
           v-else-if="page === 'configs'"
