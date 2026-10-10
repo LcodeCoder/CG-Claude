@@ -5,4 +5,5 @@ import App from './App.vue'
 import './styles/tokens.css'
 import './style.css'
 import './styles/references.css'
+import './styles/manual-review.css'
 createApp(App).mount('#app')

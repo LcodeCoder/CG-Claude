@@ -1,0 +1,79 @@
+.manual-row h3,
+.manual-row.done h3 {
+  color: var(--ink);
+  font-size: 16px;
+}
+.manual-row p {
+  color: var(--muted);
+  font-size: 14px;
+}
+.manual-row.done {
+  background: var(--paper);
+}
+.manual-row .manual-content {
+  min-width: 0;
+}
+.manual-row .manual-actions {
+  flex: 0 0 auto;
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+}
+.manual-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 9px 11px;
+  background: var(--canvas);
+  border-radius: 6px;
+}
+.manual-note svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.manual-date {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--green);
+}
+.review-note-field {
+  display: grid;
+  gap: 10px;
+  color: var(--ink);
+  font-size: 15px;
+}
+.review-note-field textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  line-height: 1.8;
+  color: var(--ink);
+  background: var(--paper);
+  resize: vertical;
+}
+.review-note-hint {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+}
+.review-note-count {
+  display: block;
+  text-align: right;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 6px;
+}
+@media (max-width: 680px) {
+  .manual-row .manual-actions {
+    margin-left: 35px;
+    grid-template-columns: auto auto;
+    align-items: center;
+    max-width: none;
+  }
+}

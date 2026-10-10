@@ -167,6 +167,7 @@ export interface Bootstrap {
   workflows: SetupJob[]
   snapshots: SnapshotSummary[]
   projectRoot: string
+  manualReviews: ManualReview[]
 }
 export const repairRequestSchema = z.object({ fixIds: z.array(z.enum(fixIds)).min(1).max(7) })
 export const manualItems = [
@@ -264,7 +265,41 @@ export const manualItems = [
     url: 'https://support.claude.com/en/articles/12386328-request-a-refund-for-a-paid-claude-plan',
     category: '账号',
   },
+  {
+    id: 'service-status',
+    title: '遇到连接问题时先核对服务状态',
+    description: '查看官方状态页中与你使用的产品对应的事件和时间，区分服务故障与本机配置问题。',
+    url: 'https://status.claude.com/',
+    category: '服务',
+  },
+  {
+    id: 'auth-method',
+    title: '确认客户端实际采用的认证方式',
+    description:
+      '在 Claude Code 的 /status 查看 Login method、Login 或 Profile，核对是否采用了预期的订阅、API 或云平台来源。',
+    url: 'https://code.claude.com/docs/en/authentication',
+    category: '客户端',
+  },
 ] as const
+
+export const manualReviewRequestSchema = z.object({
+  id: z.enum(manualItems.map((item) => item.id)),
+  checked: z.boolean(),
+  note: z.string().max(600).default(''),
+})
+export type ManualReviewRequest = z.infer<typeof manualReviewRequestSchema>
+export const manualReviewSchema = z.object({
+  id: z.string().min(1).max(80),
+  checked: z.boolean(),
+  checkedAt: z.string().datetime().optional(),
+  updatedAt: z.string().datetime(),
+  note: z.string().max(600),
+  origin: z.enum(['manual', 'legacy']).default('manual'),
+})
+export type ManualReview = z.infer<typeof manualReviewSchema>
+export const manualReviewImportSchema = z.object({
+  ids: z.array(z.enum(manualItems.map((item) => item.id))).max(manualItems.length),
+})
 
 export const setupRequestSchema = z.object({
   preferences: preferencesSchema,

@@ -12,6 +12,8 @@ import {
   scanRequestSchema,
   setupRequestSchema,
   projectRequestSchema,
+  manualReviewRequestSchema,
+  manualReviewImportSchema,
 } from '../shared/types.js'
 import type { ScanReport } from '../shared/types.js'
 import { createContext, machineInfo } from './context.js'
@@ -152,6 +154,7 @@ export async function createAppServer(options: ServerOptions = {}) {
           readAllConfigs(ctx),
           storage.reports(),
           storage.backups(),
+          storage.manualReviews(),
         ])
         for (const result of results) if (result.status === 'rejected') throw result.reason
         const values = results.map((result) =>
@@ -169,7 +172,22 @@ export async function createAppServer(options: ServerOptions = {}) {
           workflows: workflows.list(),
           snapshots: await snapshots.list(),
           projectRoot: ctx.demo ? ctx.home : process.cwd(),
+          manualReviews: values[4],
         })
+        return
+      }
+      if (req.method === 'PUT' && url.pathname === '/api/manual-reviews') {
+        const request = manualReviewRequestSchema.parse(await body(req))
+        send(res, 200, await mutation(() => storage.saveManualReview(request)))
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/manual-reviews/import') {
+        const request = manualReviewImportSchema.parse(await body(req))
+        send(res, 200, await mutation(() => storage.importManualReviews(request.ids)))
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/manual-reviews/reset') {
+        send(res, 200, await mutation(() => storage.resetManualReviews()))
         return
       }
       if (req.method === 'PUT' && url.pathname === '/api/preferences') {

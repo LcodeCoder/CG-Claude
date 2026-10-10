@@ -22,7 +22,6 @@ import {
   RefreshCw,
   FileCode2,
   Search,
-  Check,
   X,
   BookOpen,
   Terminal,
@@ -38,7 +37,7 @@ import {
   Workflow,
   LibraryBig,
 } from '@lucide/vue'
-import { categoryLabels, defaultPreferences, fixLabels, manualItems } from '../shared/types'
+import { categoryLabels, defaultPreferences, fixLabels } from '../shared/types'
 import type { Category, FixId, Preferences, BackupSummary, ScanReport } from '../shared/types'
 import { useGuard } from './composables/useGuard'
 import packageMetadata from '../package.json'
@@ -48,6 +47,7 @@ import CheckRow from './components/CheckRow.vue'
 import NetworkPath from './components/NetworkPath.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import ReferencesView from './views/ReferencesView.vue'
+import ManualReviewView from './views/ManualReviewView.vue'
 
 type Page =
   | 'overview'
@@ -146,7 +146,6 @@ async function executeSnapshotRestore() {
 }
 const restoreTarget = ref<BackupSummary>()
 const draft = reactive<Preferences>({ ...defaultPreferences })
-const savedChecklist = ref<string[]>([])
 const lastAction = ref('')
 const nav = [
   { id: 'overview' as const, label: '环境检测', icon: ScanLine },
@@ -251,15 +250,10 @@ watch(report, (value) => {
   query.value = ''
 })
 onMounted(async () => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem('claude-guard-checklist') || '[]') as unknown
-    if (Array.isArray(parsed))
-      savedChecklist.value = parsed.filter(
-        (id) => typeof id === 'string' && manualItems.some((item) => item.id === id),
-      )
-  } catch {}
   await guard.initialize()
+  await guard.importLegacyReviews()
 })
+
 function formatDate(value: string, full = false) {
   return new Intl.DateTimeFormat(
     'zh-CN',
@@ -344,22 +338,7 @@ function viewReport(value: ScanReport) {
   selected.value = []
   page.value = 'overview'
 }
-function resetChecklist() {
-  savedChecklist.value = []
-  try {
-    localStorage.removeItem('claude-guard-checklist')
-  } catch {}
-}
-function toggleChecklist(id: string) {
-  savedChecklist.value = savedChecklist.value.includes(id)
-    ? savedChecklist.value.filter((item) => item !== id)
-    : [...savedChecklist.value, id]
-  try {
-    localStorage.setItem('claude-guard-checklist', JSON.stringify(savedChecklist.value))
-  } catch {
-    guard.notify('浏览器不允许保存复核记录；本次勾选仍保留。', 'error')
-  }
-}
+
 function selectFix(id: FixId) {
   guard.toggleFix(id)
 }
@@ -1111,43 +1090,13 @@ const commandForPlatform = computed(() =>
           </section>
         </template>
 
-        <template v-else-if="page === 'checklist'">
-          <div class="compact-summary">
-            <span class="summary-icon amber"><ListChecks :size="23" /></span>
-            <div>
-              <strong>已确认 {{ savedChecklist.length }} / {{ manualItems.length }} 项</strong>
-              <p>勾选代表你已人工确认，记录仅保存在当前浏览器。</p>
-            </div>
-            <button class="text-link" @click="resetChecklist">重置勾选</button>
-          </div>
-          <section class="data-panel checklist-panel">
-            <article
-              v-for="item in manualItems"
-              :key="item.id"
-              class="manual-row"
-              :class="{ done: savedChecklist.includes(item.id) }"
-            >
-              <label class="manual-checkbox"
-                ><input
-                  type="checkbox"
-                  :checked="savedChecklist.includes(item.id)"
-                  :aria-label="'已确认：' + item.title"
-                  @change="toggleChecklist(item.id)" /><span><Check :size="14" /></span
-              ></label>
-              <div>
-                <span class="manual-category">{{ item.category }}</span>
-                <h3>{{ item.title }}</h3>
-                <p>{{ item.description }}</p>
-              </div>
-              <a :href="item.url" class="button subtle" target="_blank" rel="noopener noreferrer"
-                >打开检查<ArrowUpRight :size="14"
-              /></a>
-            </article>
-          </section>
-          <div class="footnote">
-            <Info :size="14" />外部测试网站会看到你访问它时的公网 IP；请按需打开。
-          </div>
-        </template>
+        <ManualReviewView
+          v-else-if="page === 'checklist'"
+          :reviews="boot?.manualReviews ?? []"
+          :busy="busy"
+          :save="guard.saveManualReview"
+          :reset="guard.resetManualReviews"
+        />
 
         <template v-else-if="page === 'settings'">
           <form

@@ -1,8 +1,21 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { preferencesSchema, defaultPreferences } from '../shared/types.js'
-import type { Preferences, ScanReport, BackupSummary, SetupJob } from '../shared/types.js'
+import { z } from 'zod'
+import {
+  preferencesSchema,
+  defaultPreferences,
+  manualItems,
+  manualReviewSchema,
+} from '../shared/types.js'
+import type {
+  Preferences,
+  ScanReport,
+  BackupSummary,
+  SetupJob,
+  ManualReview,
+  ManualReviewRequest,
+} from '../shared/types.js'
 import type { Context } from './context.js'
 import type { SnapshotRecord } from './snapshots.js'
 
@@ -59,6 +72,48 @@ export class Storage {
   }
   async savePreferences(prefs: Preferences) {
     await this.write('preferences.json', prefs)
+  }
+  async manualReviews(): Promise<ManualReview[]> {
+    const saved = z.array(manualReviewSchema).parse(await this.read('manual-reviews.json', []))
+    return saved.filter((review) => manualItems.some((item) => item.id === review.id))
+  }
+  async saveManualReview(request: ManualReviewRequest): Promise<ManualReview[]> {
+    const reviews = await this.manualReviews()
+    const previous = reviews.find((review) => review.id === request.id)
+    const now = new Date().toISOString()
+    const updated: ManualReview = {
+      id: request.id,
+      checked: request.checked,
+      checkedAt: request.checked ? (previous?.checkedAt ?? now) : undefined,
+      updatedAt: now,
+      note: request.note.trim(),
+      origin: 'manual',
+    }
+    const result = [...reviews.filter((review) => review.id !== request.id), updated]
+    await this.write('manual-reviews.json', result)
+    return result
+  }
+  async importManualReviews(ids: string[]): Promise<ManualReview[]> {
+    const reviews = await this.manualReviews()
+    const additions = [...new Set(ids)].filter((id) => !reviews.some((review) => review.id === id))
+    if (!additions.length) return reviews
+    const now = new Date().toISOString()
+    const result: ManualReview[] = [
+      ...reviews,
+      ...additions.map((id) => ({
+        id,
+        checked: true,
+        updatedAt: now,
+        note: '',
+        origin: 'legacy' as const,
+      })),
+    ]
+    await this.write('manual-reviews.json', result)
+    return result
+  }
+  async resetManualReviews(): Promise<ManualReview[]> {
+    await this.write('manual-reviews.json', [])
+    return []
   }
   async reports(): Promise<ScanReport[]> {
     return this.read('reports.json', [])

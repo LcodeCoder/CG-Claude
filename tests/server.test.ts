@@ -134,3 +134,82 @@ test('protects snapshot and project mutations with the same operation token', as
   expect((await post('/api/projects/scan', { path: data.home }, '')).status).toBe(403)
   expect((await post('/api/scans', { passes: 4 })).status).toBe(400)
 })
+
+function reviewRequest(value: unknown, auth = token) {
+  return fetch(base + '/api/manual-reviews', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-CG-Token': auth },
+    body: JSON.stringify(value),
+  })
+}
+
+test('manual reviews persist across service restart and a new localhost port', async () => {
+  const response = await reviewRequest({ id: 'dns', checked: true, note: '已人工核对解析出口' })
+  expect(response.status).toBe(200)
+  const saved = (await response.json())[0]
+  expect(saved.checkedAt).toBeTruthy()
+  await app.close()
+  app = await createAppServer({ ctx: data.ctx, port: 0 })
+  base = `http://127.0.0.1:${await app.listen()}`
+  const boot = await (await fetch(base + '/api/bootstrap')).json()
+  token = boot.token
+  expect(boot.manualReviews).toEqual([saved])
+  expect(boot.manualReviews[0].note).toBe('已人工核对解析出口')
+})
+
+test('note edits preserve confirmation time and unchecking clears it', async () => {
+  const first = await (
+    await reviewRequest({ id: 'auth-method', checked: true, note: '初次确认' })
+  ).json()
+  const second = await (
+    await reviewRequest({ id: 'auth-method', checked: true, note: ' 更新备注 ' })
+  ).json()
+  expect(second[0].checkedAt).toBe(first[0].checkedAt)
+  expect(second[0].note).toBe('更新备注')
+  const third = await (
+    await reviewRequest({ id: 'auth-method', checked: false, note: '准备重新检查' })
+  ).json()
+  expect(third[0].checkedAt).toBeUndefined()
+  expect(third[0].checked).toBe(false)
+})
+
+test('legacy imports are idempotent and preserve current explicit review choices', async () => {
+  await reviewRequest({ id: 'dns', checked: false, note: '需要重新核对' })
+  const imported = await post('/api/manual-reviews/import', { ids: ['dns', 'webrtc', 'webrtc'] })
+  const value = await imported.json()
+  expect(value).toHaveLength(2)
+  expect(value.find((review: { id: string }) => review.id === 'dns')).toMatchObject({
+    checked: false,
+    note: '需要重新核对',
+    origin: 'manual',
+  })
+  expect(value.find((review: { id: string }) => review.id === 'webrtc')).toMatchObject({
+    checked: true,
+    origin: 'legacy',
+  })
+  expect(value.find((review: { id: string }) => review.id === 'webrtc').checkedAt).toBeUndefined()
+  const repeated = await (
+    await post('/api/manual-reviews/import', { ids: ['dns', 'webrtc'] })
+  ).json()
+  expect(repeated).toEqual(value)
+})
+
+test('manual review endpoints validate IDs notes and the local token', async () => {
+  expect((await reviewRequest({ id: 'unknown-review', checked: true })).status).toBe(400)
+  expect((await reviewRequest({ id: 'dns', checked: true, note: 'x'.repeat(601) })).status).toBe(
+    400,
+  )
+  expect((await reviewRequest({ id: 'dns', checked: 'yes' })).status).toBe(400)
+  expect((await reviewRequest({ id: 'dns', checked: true }, '')).status).toBe(403)
+  expect((await post('/api/manual-reviews/import', { ids: ['unknown-review'] })).status).toBe(400)
+  expect((await post('/api/manual-reviews/reset', {}, '')).status).toBe(403)
+  expect(await data.storage.manualReviews()).toEqual([])
+})
+
+test('manual review reset clears only that record file', async () => {
+  await reviewRequest({ id: 'dns', checked: true, note: '测试备注' })
+  await data.storage.savePreferences({ ...defaultPreferences, routeMode: 'tun' })
+  expect((await post('/api/manual-reviews/reset', {})).status).toBe(200)
+  expect(await data.storage.manualReviews()).toEqual([])
+  expect((await data.storage.preferences()).routeMode).toBe('tun')
+})

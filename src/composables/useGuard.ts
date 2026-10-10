@@ -11,6 +11,8 @@ import type {
   SetupRequest,
   SnapshotPreview,
   ProjectReport,
+  ManualReview,
+  ManualReviewRequest,
 } from '../../shared/types'
 import { DIAGNOSTIC_CHECK_COUNT } from '../../shared/types'
 import { browserSnapshot } from './browser'
@@ -120,6 +122,47 @@ export function useGuard() {
       error.value = (failure as Error).message || '本机服务未连接，请检查启动窗口'
     } finally {
       loading.value = false
+    }
+  }
+  async function updateManualReviews(
+    path: string,
+    method: 'POST' | 'PUT',
+    body: unknown,
+  ): Promise<boolean> {
+    if (busy.value) return false
+    working.value = true
+    try {
+      const reviews = await api<ManualReview[]>(path, { method, body: JSON.stringify(body) })
+      if (boot.value) boot.value = { ...boot.value, manualReviews: reviews }
+      return true
+    } catch (failure) {
+      notify((failure as Error).message, 'error')
+      return false
+    } finally {
+      working.value = false
+    }
+  }
+  async function saveManualReview(request: ManualReviewRequest): Promise<boolean> {
+    const saved = await updateManualReviews('/manual-reviews', 'PUT', request)
+    if (saved) notify('复核记录已保存在本机。')
+    return saved
+  }
+  async function resetManualReviews(): Promise<boolean> {
+    const saved = await updateManualReviews('/manual-reviews/reset', 'POST', {})
+    if (saved) notify('已重置本机人工复核记录。')
+    return saved
+  }
+  async function importLegacyReviews() {
+    if (!connected.value) return
+    try {
+      const legacy = localStorage.getItem('claude-guard-checklist')
+      if (!legacy) return
+      const value: unknown = JSON.parse(legacy)
+      if (!Array.isArray(value) || !value.every((id) => typeof id === 'string')) return
+      const saved = await updateManualReviews('/manual-reviews/import', 'POST', { ids: value })
+      if (saved) localStorage.removeItem('claude-guard-checklist')
+    } catch {
+      // Keep old storage intact if it cannot be read or migrated.
     }
   }
   async function scan(network = false, passes = 3) {
@@ -374,6 +417,9 @@ export function useGuard() {
     snapshotPlan,
     projectReport,
     captureSnapshot,
+    saveManualReview,
+    resetManualReviews,
+    importLegacyReviews,
     previewSnapshot,
     restoreSnapshot,
     scanProject,
