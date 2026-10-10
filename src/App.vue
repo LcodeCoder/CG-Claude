@@ -96,6 +96,15 @@ function openReferences(checkId?: string) {
   page.value = 'references'
   window.scrollTo({ top: 0 })
 }
+function openSource(id: string) {
+  referenceTarget.value = { scope: 'source', id }
+  page.value = 'references'
+}
+async function openHelp() {
+  page.value = 'about'
+  await nextTick()
+  await focusResult(document.getElementById('troubleshooting'))
+}
 function openProjectReferences(id: string) {
   referenceTarget.value = { scope: 'project', id }
   page.value = 'references'
@@ -108,6 +117,11 @@ async function openProjectFinding(id: string) {
 }
 async function openCheck(id: string) {
   page.value = 'overview'
+  if (!report.value?.checks.some((check) => check.id === id)) {
+    scanOpen.value = true
+    guard.notify('先运行一次检测，再查看对应检查项的结果。')
+    return
+  }
   showAllResults()
   expanded.value = id
   await nextTick()
@@ -805,6 +819,9 @@ const commandForPlatform = computed(() =>
                 <button class="text-link" @click="page = 'checklist'">
                   打开人工复核<ArrowUpRight :size="14" />
                 </button>
+                <button class="text-link help-entry" @click="openHelp">
+                  按错误类型排查<ArrowUpRight :size="14" />
+                </button>
               </section>
               <a
                 class="source-link"
@@ -888,6 +905,9 @@ const commandForPlatform = computed(() =>
           v-else-if="page === 'about'"
           :version="appVersion"
           @references="openReferences()"
+          @check="openCheck"
+          @source="openSource"
+          @manual="page = 'checklist'"
         />
 
         <ReferencesView

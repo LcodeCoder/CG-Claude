@@ -28,6 +28,8 @@ watch(
 )
 const selectedTitle = computed(() => {
   if (!props.target) return ''
+  if (props.target.scope === 'source')
+    return references.find((entry) => entry.id === props.target?.id)?.title ?? props.target.id
   const items = props.target.scope === 'project' ? props.projectFindings : props.checks
   return items?.find((item) => item.id === props.target?.id)?.title ?? props.target.id
 })

@@ -75,3 +75,5 @@ flowchart LR
 项目固定文件清单与元数据/内容读取在 `server/project-files.ts`。内容上限与文件描述符检查在 `server/file-reading.ts`；用户配置和项目配置共用这条读取路径。文献的环境检查 ID 与项目检查 ID 分开保存，双向跳转按范围定位。
 
 配置事务记录原文件 mode 和实际写入后的 `afterMode`。Windows 的权限映射可能改变 POSIX 数值，因此还原必须使用观测到的写后权限核对冲突。旧备份缺少 `afterMode` 时继续使用原 mode；不要通过跳过权限检查解决平台差异。
+
+错误排查内容在 `src/content/troubleshooting.ts`，交互组件在 `src/components/TroubleshootingGuide.vue`。内容只引用稳定检查 ID 和文献源 ID，由 App 接收事件并导航。帮助页不执行账号请求；没有检测报告时先打开检测选项。

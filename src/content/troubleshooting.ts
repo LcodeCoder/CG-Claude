@@ -1,0 +1,130 @@
+import type { DiagnosticCheckId } from '../../shared/diagnostic-checks'
+
+type Guide = {
+  id: string
+  title: string
+  codes: string
+  meaning: string
+  steps: string[]
+  checks: { id: DiagnosticCheckId; label: string }[]
+  source: string
+  manual?: boolean
+}
+/** Curated help stays offline; it never submits credentials or reproduces API requests. */
+export const troubleshootingGuides: Guide[] = [
+  {
+    id: 'connection',
+    title: '连接超时或断开',
+    codes: 'timeout · ECONNRESET · DNS',
+    meaning: '先核对客户端使用的连接路径，再结合服务状态排查。',
+    steps: [
+      '检查代理协议、变量优先顺序和 NO_PROXY；保存后重启 Claude Code，用 /status 核对。',
+      '按需开启公网检测，对照当前浏览器与终端出口；DNS 实际出口在人工复核中确认。',
+      '记录出错时间与具体错误。长请求的连接失败，也可能涉及网络的空闲连接处理。',
+    ],
+    checks: [
+      { id: 'proxy-compatibility', label: '检查代理兼容性' },
+      { id: 'route-consistency', label: '查看两侧出口' },
+    ],
+    source: 'api-errors',
+    manual: true,
+  },
+  {
+    id: 'authentication',
+    title: '认证失败',
+    codes: '401 · authentication_error',
+    meaning: 'API 凭据可能无效、已撤销或已过期；云平台还需核对其自身认证。',
+    steps: [
+      '在 Claude Code /status 确认当前认证来源。',
+      '核对 API Key、Bearer、apiKeyHelper 与订阅登录是否符合实际服务方式。',
+      '通过官方客户端与账号入口重新确认凭据，保留错误中的 request ID 供支持人员定位。',
+    ],
+    checks: [{ id: 'auth-sources', label: '查看认证来源' }],
+    source: 'api-errors',
+  },
+  {
+    id: 'permission',
+    title: '资源权限被拒绝',
+    codes: '403 · permission_error',
+    meaning: 'Claude API 的这个错误表示当前凭据无权访问相应资源。',
+    steps: [
+      '核对组织、工作区和资源权限。',
+      '确认实际服务方式与地区要求；网关或云平台应同时查看其自己的错误说明。',
+      '结合完整 error.type 与官方账号页面复核，单次状态码不能确定账号限制原因。',
+    ],
+    checks: [{ id: 'auth-sources', label: '查看认证来源' }],
+    source: 'api-errors',
+    manual: true,
+  },
+  {
+    id: 'rate-limit',
+    title: '请求过多或额度已达上限',
+    codes: '429 · rate_limit_error',
+    meaning: '429 可能涉及请求速率、月度额度或 Claude Code 工作区的支出限制。',
+    steps: [
+      '若响应带 retry-after，按该时间等待再尝试。',
+      '在对应服务的用量页面核对额度与限制；达到支出上限时，重复重试可能持续失败。',
+      '订阅与 API 用量分别核对，按照完整提示选择下一步。',
+    ],
+    checks: [{ id: 'auth-sources', label: '确认正在使用的认证' }],
+    source: 'api-errors',
+    manual: true,
+  },
+  {
+    id: 'billing',
+    title: 'API 账单提示',
+    codes: '402 · billing_error',
+    meaning: 'Claude API 的这个错误涉及账单或支付信息。',
+    steps: [
+      '先确认正在使用 API、订阅还是云平台服务。',
+      '在该服务的官方账单入口复核提示，云平台同时查看其市场账单。',
+      'CG Claude 可辅助核对认证来源，账单状态需要你在官方页面确认。',
+    ],
+    checks: [{ id: 'auth-sources', label: '查看认证来源' }],
+    source: 'api-errors',
+    manual: true,
+  },
+  {
+    id: 'service',
+    title: '服务繁忙或内部错误',
+    codes: '500 · api_error / 529 · overloaded_error',
+    meaning: 'Claude API 的这些错误可能来自服务内部异常或临时过载。',
+    steps: [
+      '打开官方状态页，核对对应产品与出错时间。',
+      '对临时错误逐步延长等待时间，再尝试。',
+      '持续失败时，保存 request ID 和错误时间，通过官方支持入口复核。',
+    ],
+    checks: [],
+    source: 'claude-status',
+  },
+  {
+    id: 'certificate',
+    title: '证书或 TLS 握手错误',
+    codes: 'certificate · TLS',
+    meaning: '核对信任链、额外 CA 和客户端证书路径。',
+    steps: [
+      '检查 NODE_EXTRA_CA_CERTS 与 mTLS 证书、私钥是否按实际企业环境配置。',
+      '保留证书验证。可信 CA 可在本机连接设置中配置，再由实际客户端核对加载结果。',
+      '工具只检查文件元数据；证书内容和有效期需要在客户端或证书工具中确认。',
+    ],
+    checks: [
+      { id: 'ca-configuration', label: '检查 CA 与客户端证书' },
+      { id: 'tls-verification', label: '检查 TLS 验证设置' },
+    ],
+    source: 'claude-network',
+  },
+]
+export const environmentTerms = [
+  {
+    term: 'TUN',
+    definition: '虚拟网络接口。是否接管完整流量，还取决于路由、权限和代理客户端配置。',
+  },
+  { term: 'DNS', definition: '把域名解析为地址的服务。本机解析器地址与实际网络出口需要分别核对。' },
+  { term: 'NO_PROXY', definition: '让指定主机绕过代理的规则；* 表示全部绕过。' },
+  { term: 'CA', definition: '用于验证服务端证书的受信任证书机构。额外 CA 通常用于企业网络。' },
+  { term: 'MCP', definition: '连接外部工具或数据源的协议。来源、凭据和权限需要逐项核对。' },
+  {
+    term: '配置快照',
+    definition: '保存固定配置位置的完整内容、权限、缺失状态与检测偏好，用于还原。',
+  },
+]

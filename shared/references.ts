@@ -17,7 +17,7 @@ export interface ReferenceEntry {
   checkIds: DiagnosticCheckId[]
   projectCheckIds?: string[]
 }
-export type ReferenceTarget = { scope: 'environment' | 'project'; id: string }
+export type ReferenceTarget = { scope: 'environment' | 'project' | 'source'; id: string }
 export const referenceKindLabels: Record<ReferenceKind, string> = {
   official: '官方文档',
   maintainer: '项目文档',
@@ -492,8 +492,10 @@ export function referencesForProjectFinding(id: string): ReferenceEntry[] {
 export function matchesReferenceTarget(entry: ReferenceEntry, target?: ReferenceTarget): boolean {
   return (
     !target ||
-    (target.scope === 'environment'
-      ? entry.checkIds.some((id) => id === target.id)
-      : Boolean(entry.projectCheckIds?.includes(target.id)))
+    (target.scope === 'source'
+      ? entry.id === target.id
+      : target.scope === 'environment'
+        ? entry.checkIds.some((id) => id === target.id)
+        : Boolean(entry.projectCheckIds?.includes(target.id)))
   )
 }

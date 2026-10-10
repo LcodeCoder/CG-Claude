@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { ArrowUpRight, LockKeyhole, Terminal } from '@lucide/vue'
 import BrandMark from '../components/BrandMark.vue'
+import TroubleshootingGuide from '../components/TroubleshootingGuide.vue'
 defineProps<{ version: string }>()
-const emit = defineEmits<{ references: [] }>()
+const emit = defineEmits<{
+  references: []
+  check: [id: string]
+  source: [id: string]
+  manual: []
+}>()
 </script>
 <template>
   <section class="about-intro data-panel">
@@ -33,6 +39,11 @@ const emit = defineEmits<{ references: [] }>()
       <p>DNS 泄漏、账号支付与平台限制不会根据本机信息猜测。需要人工核对的结果会明确标记。</p>
     </section>
   </div>
+  <TroubleshootingGuide
+    @check="emit('check', $event)"
+    @source="emit('source', $event)"
+    @manual="emit('manual')"
+  />
   <section class="data-panel sources-panel">
     <div class="panel-heading">
       <h2>参考文献</h2>
