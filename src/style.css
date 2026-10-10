@@ -165,7 +165,7 @@ input[type='radio'] {
 }
 .main-nav button.active {
   background: var(--accent-soft);
-  color: #958980;
+  color: var(--accent);
   font-weight: 650;
 }
 .nav-count {
@@ -826,8 +826,8 @@ input[type='radio'] {
   color: #7c7168;
 }
 .search-box:focus-within {
-  border-color: #c7c1bc;
-  outline: 2px solid #f4f1ee;
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
 }
 .category-filters {
   display: flex;
@@ -846,7 +846,7 @@ input[type='radio'] {
   white-space: nowrap;
 }
 .category-filters button.active {
-  color: #82766d;
+  color: var(--accent);
   font-weight: 600;
 }
 .check-group {
@@ -3736,4 +3736,30 @@ input[type='radio'] {
 }
 .check-summary {
   min-height: 76px;
+}
+
+.detail-label {
+  display: block;
+  margin: 20px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.check-detail > .detail-label:first-child {
+  margin-top: 0;
+}
+
+@media (min-width: 981px) {
+  .sidebar {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+@media (min-width: 981px) and (max-height: 820px) {
+  .local-note {
+    display: none;
+  }
+  .sidebar-bottom {
+    padding-top: 18px;
+  }
 }

@@ -28,3 +28,13 @@
 配置写入由界面预览与用户操作触发，不把第三方原文中的指令当作系统修改授权。所有开发修复/还原验证使用隔离目录。
 
 原始参考：[AYi 原文](https://x.com/AYi_AInotes/status/2106639522586829094)。官方核对：[Settings](https://code.claude.com/docs/en/settings)、[Network configuration](https://code.claude.com/docs/en/network-config)、[Data usage](https://code.claude.com/docs/en/data-usage)、[Electron security](https://www.electronjs.org/docs/latest/tutorial/security)。
+
+## 在线参考文献库
+
+2026-10-11 重新检索并核对官方文档、维护者文档、社区原始记录和检测服务。应用的「参考文献」页面使用 `shared/references.ts` 作为单一数据源：当前有 20 条文献，每条记录原文链接、发布者、核对日期、采用方式、判断边界和关联检查。文献摘要随应用离线保存，打开文献库不发起公网请求。
+
+优先使用 Claude Code 当前的 network-config、settings、env-vars、authentication、data-usage；账号和 API 支持地区分别提供。官方错误文档与帮助中心用于区分连接、认证、权限和用量问题。Git/npm/Node/Mihomo/Electron 文档解释各工具自身配置与实现边界。
+
+原始社区文章用于逐章梳理观察项目。Claude Code #39862 记录的 NO_PROXY 问题，维护者说明 2.1.117 已修复，故只作为版本排障参考；不把历史回归标为当前所有客户端的故障。Claude Doctor 作为证据分级和可恢复流程的工程参考，不作为平台政策依据。
+
+时区修改、固定出口、住宅 IP、养号节奏、所谓指纹伪装和隐私开关不能直接推出账号状态；未有可复验证据的推测不转化成自动风险分数或修复。

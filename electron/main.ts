@@ -2,12 +2,14 @@ import { app, BrowserWindow, dialog, Menu, shell, ipcMain } from 'electron'
 import path from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { createAppServer } from '../server/index.js'
+import { references } from '../shared/references.js'
 
 let window: BrowserWindow | undefined
 let service: Awaited<ReturnType<typeof createAppServer>> | undefined
 let origin = ''
 let exiting = false
 const externalHosts = new Set([
+  ...references.map((entry) => new URL(entry.url).hostname),
   'x.com',
   'code.claude.com',
   'www.anthropic.com',

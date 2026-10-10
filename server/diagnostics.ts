@@ -639,7 +639,7 @@ export async function runDiagnostics(
     })),
     fixIds: !configError && !privacyApplied ? ['claude-privacy'] : [],
     recommendation:
-      '关闭 DISABLE_TELEMETRY 或全部非必要流量会同时关闭功能旗标，Remote Control 可能不可用。此设置是隐私偏好，不决定账号状态。',
+      '设置 DISABLE_TELEMETRY=1 或关闭全部非必要流量会同时关闭功能旗标，Remote Control 可能不可用。此设置是隐私偏好，不决定账号状态。',
     source: 'official',
     sourceUrl: officialPrivacy,
   })

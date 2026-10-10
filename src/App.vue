@@ -24,7 +24,6 @@ import {
   Search,
   Check,
   X,
-  ExternalLink,
   BookOpen,
   Terminal,
   CircleDot,
@@ -37,6 +36,7 @@ import {
   Network,
   WandSparkles,
   Workflow,
+  LibraryBig,
 } from '@lucide/vue'
 import { categoryLabels, defaultPreferences, fixLabels, manualItems } from '../shared/types'
 import type { Category, FixId, Preferences, BackupSummary, ScanReport } from '../shared/types'
@@ -47,9 +47,18 @@ import BrandMark from './components/BrandMark.vue'
 import CheckRow from './components/CheckRow.vue'
 import NetworkPath from './components/NetworkPath.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import ReferencesView from './views/ReferencesView.vue'
 
 type Page =
-  'overview' | 'configs' | 'history' | 'backups' | 'checklist' | 'projects' | 'settings' | 'about'
+  | 'overview'
+  | 'configs'
+  | 'history'
+  | 'backups'
+  | 'checklist'
+  | 'projects'
+  | 'settings'
+  | 'about'
+  | 'references'
 const guard = useGuard()
 const {
   boot,
@@ -72,6 +81,19 @@ const {
   projectReport,
 } = guard
 const page = ref<Page>('overview')
+const referenceCheckId = ref<string>()
+function openReferences(checkId?: string) {
+  referenceCheckId.value = checkId
+  page.value = 'references'
+  window.scrollTo({ top: 0 })
+}
+async function openCheck(id: string) {
+  page.value = 'overview'
+  showAllResults()
+  expanded.value = id
+  await nextTick()
+  await focusResult(document.getElementById('check-' + id))
+}
 const category = ref<Category | 'all'>('all')
 type ResultFilter = 'all' | 'issues' | 'manual' | 'pass'
 const statusFilter = ref<ResultFilter>('all')
@@ -143,6 +165,7 @@ const titles: Record<Page, string> = {
   projects: '项目扫描',
   settings: '检测偏好',
   about: '使用说明与来源',
+  references: '参考文献',
 }
 const groups = computed(() =>
   Object.entries(categoryLabels)
@@ -269,6 +292,9 @@ async function openResults(filter: Exclude<ResultFilter, 'all'>) {
   expanded.value = firstCheck?.id ?? ''
   await nextTick()
   const target = firstCheck ? document.getElementById('check-' + firstCheck.id) : resultsPanel.value
+  await focusResult(target)
+}
+async function focusResult(target: HTMLElement | null | undefined) {
   if (!target) return
   const sidebar = document.querySelector<HTMLElement>('.sidebar')
   const navigationOffset =
@@ -388,6 +414,9 @@ const commandForPlatform = computed(() =>
           ><button :class="{ active: page === 'about' }" @click="page = 'about'">
             <BookOpen :size="17" />使用说明
           </button>
+          <button :class="{ active: page === 'references' }" @click="openReferences()">
+            <LibraryBig :size="17" />参考文献
+          </button>
         </nav>
         <div class="sidebar-footer">
           <span class="tiny-shield"><ShieldCheck :size="12" />本机服务</span
@@ -431,7 +460,9 @@ const commandForPlatform = computed(() =>
                             ? '扫描本地项目配置、权限、代理覆盖与 Git 提交，不执行项目脚本。'
                             : page === 'settings'
                               ? '按照你的实际网络与使用方式检查，减少误报。'
-                              : '了解检测范围、修复方式与参考来源。'
+                              : page === 'references'
+                                ? '查看建议的出处、采用方式与判断边界。'
+                                : '了解检测范围、修复方式与参考来源。'
               }}
             </p>
           </div>
@@ -516,7 +547,10 @@ const commandForPlatform = computed(() =>
           <LoaderCircle class="spin" :size="28" /><strong>正在连接本机服务</strong>
           <p>读取系统信息与配置文件位置</p>
         </div>
-        <div v-else-if="error" class="empty-view error-view">
+        <div
+          v-else-if="error && !['about', 'references'].includes(page)"
+          class="empty-view error-view"
+        >
           <WifiOff :size="36" />
           <h2>{{ connected ? '本机服务返回错误' : '本机服务尚未连接' }}</h2>
           <p>{{ error }}</p>
@@ -722,6 +756,7 @@ const commandForPlatform = computed(() =>
                   :platform="boot?.machine.platform"
                   @toggle="expanded = expanded === check.id ? '' : check.id"
                   @fix="selectFix"
+                  @references="openReferences(check.id)"
                   @copy-error="guard.notify('无法自动复制，请手动选择命令。', 'error')"
                 />
               </div>
@@ -1275,42 +1310,23 @@ const commandForPlatform = computed(() =>
           </div>
           <section class="data-panel sources-panel">
             <div class="panel-heading">
-              <h2>参考来源</h2>
-              <span class="quiet-text">社区实践与官方配置分开对照</span>
+              <h2>参考文献</h2>
+              <button class="text-link" @click="openReferences()">
+                查看完整文献库<ArrowUpRight :size="14" />
+              </button>
             </div>
-            <a
-              href="https://x.com/AYi_AInotes/status/2106639522586829094"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><span class="source-type">社区文章</span><span>AYi · Claude 环境检查与使用指南</span
-              ><ExternalLink :size="15" /></a
-            ><a
-              href="https://code.claude.com/docs/en/settings"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><span class="source-type official">官方文档</span><span>Claude Code · Settings</span
-              ><ExternalLink :size="15" /></a
-            ><a
-              href="https://code.claude.com/docs/en/network-config"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><span class="source-type official">官方文档</span
-              ><span>Claude Code · Network configuration</span><ExternalLink :size="15" /></a
-            ><a
-              href="https://code.claude.com/docs/en/data-usage"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><span class="source-type official">官方文档</span
-              ><span>Claude Code · Data usage</span><ExternalLink :size="15" /></a
-            ><a
-              href="https://www.anthropic.com/supported-countries"
-              target="_blank"
-              rel="noopener noreferrer"
-              ><span class="source-type official">官方政策</span
-              ><span>Anthropic · Supported countries</span><ExternalLink :size="15"
-            /></a>
+            <p class="quiet-text">
+              官方说明、项目文档、社区记录与外部检测分别标注。每条文献包含核对日期、采用方式和判断边界。
+            </p>
           </section>
         </template>
+        <ReferencesView
+          v-else-if="page === 'references'"
+          :check-id="referenceCheckId"
+          :checks="report?.checks"
+          @clear="referenceCheckId = undefined"
+          @check="openCheck"
+        />
         <footer class="page-footer">
           <span><ShieldCheck :size="12" />CG Claude · 本地环境工具</span
           ><button @click="page = 'about'">检测范围与说明<ArrowUpRight :size="12" /></button>

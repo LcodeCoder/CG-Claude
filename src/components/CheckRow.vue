@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ChevronDown, Copy, ExternalLink, Wrench, Check } from '@lucide/vue'
+import { ChevronDown, Copy, ExternalLink, Wrench, Check, BookOpen } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import type { CheckResult, FixId } from '../../shared/types'
 import { fixLabels } from '../../shared/types'
+import { referencesForCheck } from '../../shared/references'
 import StatusBadge from './StatusBadge.vue'
 const props = defineProps<{
   check: CheckResult
@@ -11,8 +12,9 @@ const props = defineProps<{
   disabled: boolean
   platform?: string
 }>()
-const emit = defineEmits<{ toggle: []; fix: [id: FixId]; copyError: [] }>()
+const emit = defineEmits<{ toggle: []; fix: [id: FixId]; copyError: []; references: [] }>()
 const copied = ref(false)
+const sources = computed(() => referencesForCheck(props.check.id))
 const commands: Record<string, string> = {
   timezone:
     'readlink /etc/localtime\nnode -e "console.log(Intl.DateTimeFormat().resolvedOptions().timeZone)"',
@@ -64,13 +66,16 @@ async function copy() {
       <StatusBadge :status="props.check.status" /><ChevronDown class="chevron" :size="15" />
     </button>
     <div v-if="props.expanded" :id="'detail-' + props.check.id" class="check-detail">
+      <span class="detail-label">这项检查什么</span>
       <p class="check-description">{{ props.check.description }}</p>
+      <span v-if="props.check.evidence.length" class="detail-label">本次检测证据</span>
       <dl v-if="props.check.evidence.length" class="evidence-table">
         <div v-for="evidence in props.check.evidence" :key="evidence.label + evidence.value">
           <dt>{{ evidence.label }}</dt>
           <dd>{{ evidence.value }}</dd>
         </div>
       </dl>
+      <span class="detail-label">建议的下一步</span>
       <p class="recommendation">{{ props.check.recommendation }}</p>
       <div v-if="command" class="command-block">
         <code>{{ command }}</code
@@ -93,8 +98,11 @@ async function copy() {
             />{{ fixLabels[id] }}</label
           >
         </div>
+        <button v-if="sources.length" class="text-link" @click="emit('references')">
+          <BookOpen :size="14" />依据与边界 · {{ sources.length }} 条来源
+        </button>
         <a
-          v-if="props.check.sourceUrl"
+          v-else-if="props.check.sourceUrl"
           :href="props.check.sourceUrl"
           target="_blank"
           rel="noopener noreferrer"
