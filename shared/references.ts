@@ -36,6 +36,22 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'vds-route-verification',
+    title: 'Claude Code VDS Proxy · 路由验证方法',
+    publisher: 'by-sonic · 社区项目',
+    url: 'https://github.com/by-sonic/claude-code-vds-proxy',
+    kind: 'community',
+    topic: 'network',
+    checkedAt,
+    takeaway:
+      '结合客户端状态、目标主机、出口观测与代理连接日志核对路由；设置了代理不能证明具体请求已走该路径。',
+    application: '在连接排查中提示结合出错时间查看本人代理日志，解释出口一致性检查的局限。',
+    boundary:
+      '只采用排查方法，不运行项目脚本、不部署服务器或改写 hosts。浏览器、MCP 与云平台端点需各自核对，路由证据不能证明账号状态。',
+    checkIds: ['runtime-proxy', 'proxy-compatibility', 'route-consistency'],
+    manualItemIds: ['fixed-route'],
+  },
+  {
     id: 'claude-foundry',
     title: 'Claude Code · Microsoft Foundry 配置与认证',
     publisher: 'Anthropic',

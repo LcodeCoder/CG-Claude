@@ -25,6 +25,11 @@ const emit = defineEmits<{
   manual: [id: string]
   copy: [text: string]
 }>()
+const latestReview =
+  references
+    .map((entry) => entry.checkedAt)
+    .sort()
+    .at(-1) ?? '尚未核对'
 const query = ref('')
 const kind = ref<ReferenceKind | 'all'>('all')
 const topic = ref<ReferenceTopic | 'all'>('all')
@@ -78,7 +83,9 @@ function clearFilters() {
         优先采用当前官方说明，社区实践用于补充排查线索。查看采用方式与判断边界，再决定是否适合你的环境。
       </p>
     </div>
-    <span class="reference-updated">最近核对<br /><strong>2026-10-11</strong></span>
+    <span class="reference-updated"
+      >最近核对<br /><strong>{{ latestReview }}</strong></span
+    >
   </section>
   <div class="reference-toolbar" role="search" aria-label="文献检索工具">
     <label class="search-field"

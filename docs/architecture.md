@@ -104,3 +104,7 @@ flowchart LR
 `shared/usage-modes.ts` 统一定义服务 ID、显示名称与保留说明，供偏好校验、设置页、配置向导和报告使用。增加服务时更新这个注册表，避免多个页面使用不同名字。
 
 `shared/authentication.ts` 只记录认证、提供商和上下文字段的名称，不存储值。服务端的 shell 识别与认证检查共同使用它；新增身份字段必须同时验证配置预览和报告脱敏。Foundry 的资源名称只做字面形态检查，动态表达式仍待确认。宿主管理声明不能证明实际会话已经使用该路由，需要在客户端核对。
+
+## 检测与事务弹窗
+
+App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog、SnapshotRestoreDialog、RestoreBackupDialog 负责各自的展示。弹窗只通过类型明确的事件请求操作，文件写入、任务互斥和冲突校验仍由 useGuard 与服务端承担。共同的模态行为由 GuardDialog 管理。修改文案或预览排版时可以只阅读对应组件，避免在 App 中查找多段事务模板。

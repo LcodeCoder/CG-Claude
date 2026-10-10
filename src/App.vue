@@ -2,7 +2,6 @@
 import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import {
   ShieldCheck,
-  FolderCog,
   Settings2,
   ArrowUpRight,
   Laptop,
@@ -13,13 +12,9 @@ import {
   TriangleAlert,
   LockKeyhole,
   RefreshCw,
-  FileCode2,
-  Check,
   X,
   BookOpen,
-  Info,
   LoaderCircle,
-  RotateCcw,
   WifiOff,
   WandSparkles,
   Workflow,
@@ -29,7 +24,10 @@ import { defaultPreferences } from '../shared/types'
 import type { Preferences, BackupSummary, ScanReport } from '../shared/types'
 import { useGuard } from './composables/useGuard'
 import packageMetadata from '../package.json'
-import GuardDialog from './components/GuardDialog.vue'
+import ScanOptionsDialog from './components/ScanOptionsDialog.vue'
+import SnapshotRestoreDialog from './components/SnapshotRestoreDialog.vue'
+import RepairPreviewDialog from './components/RepairPreviewDialog.vue'
+import RestoreBackupDialog from './components/RestoreBackupDialog.vue'
 import BrandMark from './components/BrandMark.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import type { ReferenceTarget } from '../shared/references'
@@ -554,147 +552,32 @@ const commandForPlatform = computed(() =>
       @report="setupReport"
     />
 
-    <GuardDialog
+    <ScanOptionsDialog
       :open="scanOpen"
-      title="开始环境检测"
-      description="默认检查本机配置。公网检测需要访问外部服务。"
-      :locked="busy"
+      :busy="busy"
+      v-model:network="networkEnabled"
+      v-model:passes="scanPasses"
       @close="scanOpen = false"
-      ><div class="scan-scope">
-        <span class="scan-scope-icon"><FolderCog :size="24" /></span>
-        <div>
-          <strong>本机配置检测</strong>
-          <p>系统时区、代理、shell、npm、git、Claude Code 配置及浏览器设置。</p>
-        </div>
-        <span class="included-tag">默认开启</span>
-      </div>
-      <label class="network-option" :class="{ selected: networkEnabled }"
-        ><input v-model="networkEnabled" type="checkbox" /><span
-          ><strong>包括公网出口与 WebRTC 检测</strong
-          ><small
-            >访问 ipinfo.io、api.ipify.org 与 Google STUN。外部服务会看到你的公网
-            IP；配置和密钥留在本机。</small
-          ></span
-        ></label
-      >
-      <label class="scan-repeat-option"
-        >连续检测次数<select v-model.number="scanPasses">
-          <option :value="1">1 遍</option>
-          <option :value="2">2 遍</option>
-          <option :value="3">3 遍（核对稳定性）</option>
-        </select></label
-      >
-      <div class="dialog-note"><LockKeyhole :size="15" />检测只读取配置，不执行修改。</div>
-      <template #footer
-        ><button class="button secondary" @click="scanOpen = false">取消</button
-        ><button class="button primary" @click="startScan">
-          <Play :size="13" fill="currentColor" />开始检测
-        </button></template
-      ></GuardDialog
-    >
-    <GuardDialog
-      :open="!!snapshotPlan"
-      title="一键还原配置快照"
-      :description="`将还原 ${snapshotPlan?.files.length ?? 0} 个配置文件，并恢复快照中的检测偏好。`"
-      wide
-      :locked="working"
+      @start="startScan"
+    />
+    <SnapshotRestoreDialog
+      :record="snapshotPlan"
+      :working="working"
       @close="snapshotPlan = undefined"
-      ><div class="wizard-note">
-        <TriangleAlert :size="18" />
-        <p>
-          文件会完整恢复到快照时的内容。还原前先保存当前状态；预览后文件如有变化，本次还原会停止。
-        </p>
-      </div>
-      <div v-for="file in snapshotPlan?.files" :key="file.path" class="file-preview">
-        <div class="preview-file-title">
-          <FileCode2 :size="16" /><code>{{ file.path }}</code>
-        </div>
-        <p class="snapshot-file-note">
-          {{ file.changes[0]?.before }} → {{ file.changes[0]?.after }}
-        </p>
-      </div>
-      <p v-if="!snapshotPlan?.files.length" class="wizard-hint">配置文件内容与快照一致。</p>
-      <p class="wizard-hint">
-        检测偏好：{{ snapshotPlan?.preferencesChanged ? '会恢复为快照中的选择' : '与快照一致' }}
-      </p>
-      <ul class="setup-notes">
-        <li v-for="note in snapshotPlan?.notes" :key="note">{{ note }}</li>
-      </ul>
-      <template #footer
-        ><button class="button secondary" :disabled="working" @click="snapshotPlan = undefined">
-          取消</button
-        ><button class="button primary" :disabled="working" @click="executeSnapshotRestore">
-          <LoaderCircle v-if="working" class="spin" :size="16" /><RotateCcw
-            v-else
-            :size="16"
-          />保存当前状态并还原
-        </button></template
-      ></GuardDialog
-    >
-
-    <GuardDialog
-      :open="!!plan"
-      title="预览配置修复"
-      :description="`将修改 ${plan?.files.length ?? 0} 个文件，执行前自动保存原始备份。`"
-      wide
-      :locked="working"
+      @execute="executeSnapshotRestore"
+    />
+    <RepairPreviewDialog
+      :record="plan"
+      :working="working"
       @close="plan = undefined"
-      ><div v-for="file in plan?.files" :key="file.path" class="file-preview">
-        <div class="preview-file-title">
-          <FileCode2 :size="16" /><code>{{ file.path }}</code
-          ><span v-if="!file.exists">将创建</span><small>{{ file.changes.length }} 项修改</small>
-        </div>
-        <div
-          v-for="(change, index) in file.changes"
-          :key="change.key + index"
-          class="change-preview"
-        >
-          <strong>{{ change.key }}</strong>
-          <div class="diff-before">
-            <span>−</span><code>{{ change.before }}</code>
-          </div>
-          <div class="diff-after">
-            <span>+</span><code>{{ change.after }}</code>
-          </div>
-        </div>
-      </div>
-      <div class="preview-notes">
-        <p v-for="note in plan?.notes" :key="note"><Info :size="14" />{{ note }}</p>
-      </div>
-      <template #footer
-        ><span class="preview-footer-note"
-          ><LockKeyhole :size="13" />原始备份包含本机配置，仅保存在本机</span
-        ><button class="button secondary" :disabled="working" @click="plan = undefined">取消</button
-        ><button class="button primary" :disabled="working" @click="executeRepair">
-          <LoaderCircle v-if="working" class="spin" :size="15" /><Check v-else :size="15" />{{
-            working ? '正在修复' : '备份并执行修复'
-          }}
-        </button></template
-      ></GuardDialog
-    >
-    <GuardDialog
-      :open="!!restoreTarget"
-      title="恢复原始配置"
-      description="将恢复这次修复前的文件。当前文件若已变化，工具会停止恢复。"
-      :locked="working"
+      @execute="executeRepair"
+    />
+    <RestoreBackupDialog
+      :record="restoreTarget"
+      :working="working"
       @close="restoreTarget = undefined"
-      ><div class="restore-file-list">
-        <div v-for="file in restoreTarget?.files" :key="file">
-          <FileCode2 :size="16" /><code>{{ file }}</code>
-        </div>
-      </div>
-      <div class="dialog-note"><Info :size="15" />恢复后请重新启动终端，使环境变量重新加载。</div>
-      <template #footer
-        ><button class="button secondary" :disabled="working" @click="restoreTarget = undefined">
-          取消</button
-        ><button class="button primary" :disabled="working" @click="executeRestore">
-          <LoaderCircle v-if="working" class="spin" :size="15" /><RotateCcw
-            v-else
-            :size="15"
-          />恢复原配置
-        </button></template
-      ></GuardDialog
-    >
+      @execute="executeRestore"
+    />
     <Transition name="toast"
       ><div
         v-if="toast"

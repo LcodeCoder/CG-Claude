@@ -8,7 +8,7 @@ import {
   TOTAL_CHECKS,
 } from '../server/diagnostics'
 import { endpointValue, safeValue } from '../server/safety'
-import { redactReport, markdownReport } from '../server/report'
+import { redactReport, markdownReport, reportExportName } from '../server/report'
 import { fixture } from './fixtures'
 let data: Awaited<ReturnType<typeof fixture>>
 beforeEach(async () => {
@@ -222,4 +222,69 @@ test('detects an inline-commented npm TLS override and offers a repair', async (
   const check = report.checks.find((item) => item.id === 'tls-verification')!
   expect(check.status).toBe('fail')
   expect(check.fixIds).toEqual(['npm-tls'])
+})
+
+test('export hides embedded IPv6, scoped and mapped addresses and IPv4 endpoint ports without mutating evidence', async () => {
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  const original =
+    'proxy=http://192.0.2.9:7890; DNS=[2001:db8::1]:853; link=fe80::1%en0; mapped=::ffff:198.51.100.7; exit=203.0.113.9.'
+  report.checks[0]!.evidence.push({ label: '网络路径', value: original })
+  report.checks[0]!.evidence.push({
+    label: '程序版本',
+    value: 'Claude Code 2.1.200; runtime 22.12.0; invalid 999.999.1.1',
+  })
+  const redacted = redactReport(report)
+  const visible = JSON.stringify(redacted)
+  expect(visible).not.toMatch(/192\.0\.2\.9|2001:db8|fe80::1|198\.51\.100\.7|203\.0\.113\.9/)
+  expect(visible).toContain('[IPv6 已隐藏]')
+  expect(visible).toContain('[IP 已隐藏]:7890')
+  expect(visible).toContain('Claude Code 2.1.200; runtime 22.12.0; invalid 999.999.1.1')
+  expect(report.checks[0]!.evidence.at(-2)?.value).toBe(original)
+})
+
+test('Markdown export makes recorded scope and preferences clear and lists issues before evidence', async () => {
+  const report = await runDiagnostics(
+    data.ctx,
+    { ...defaultPreferences, usageMode: 'foundry', routeMode: 'tun', privacy: 'minimal' },
+    { network: false },
+  )
+  report.ruleset = 'RECORDED_RULESET'
+  report.checks[0]!.status = 'warn'
+  report.checks[0]!.summary = 'REVIEW_THIS_RESULT'
+  const text = markdownReport(redactReport(report))
+  expect(text).toContain('检测范围：本机配置（未开启公网检测）')
+  expect(text).toContain('检测规则：RECORDED_RULESET')
+  expect(text).toContain('服务方式：Microsoft Foundry')
+  expect(text).toContain('网络模式：TUN 全流量接管')
+  expect(text).toContain('隐私偏好：关闭全部非必要流量')
+  expect(text.indexOf('## 优先关注')).toBeLessThan(text.indexOf('## 检测证据与建议'))
+  expect(text).toContain('REVIEW_THIS_RESULT')
+})
+
+test('legacy Markdown exports keep an absent ruleset absent instead of using current rules', async () => {
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  delete report.ruleset
+  expect(markdownReport(redactReport(report))).toContain('检测规则：旧记录未保存规则版本')
+})
+
+test('export dates use the recorded timezone across midnight and keep the raw timestamp available', async () => {
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  report.completedAt = '2026-10-10T19:04:50.456Z'
+  report.machine.timezone = 'Asia/Shanghai'
+  expect(reportExportName(report, 'md')).toBe('cg-claude-2026-10-11-030450.md')
+  expect(markdownReport(report)).toContain('2026-10-11 03:04:50（Asia/Shanghai）')
+  expect(markdownReport(report)).toContain('原始时间：2026-10-10T19:04:50.456Z')
+  report.machine.timezone = 'America/Los_Angeles'
+  expect(reportExportName(report, 'json')).toBe('cg-claude-2026-10-10-120450.json')
+})
+
+test('legacy invalid report clocks fall back safely without constructing untrusted response headers', async () => {
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  report.completedAt = '2026-10-10T19:04:50.456Z'
+  report.machine.timezone = 'unknown/zone'
+  expect(reportExportName(report, 'md')).toBe('cg-claude-2026-10-10-190450.md')
+  expect(markdownReport(report)).toContain('2026-10-10 19:04:50（UTC）')
+  report.completedAt = 'invalid\r\nheader'
+  expect(reportExportName(report, 'json')).toBe('cg-claude-report.json')
+  expect(markdownReport(report)).toContain('时间记录不可用')
 })

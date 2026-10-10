@@ -106,3 +106,22 @@ test('restores UTF-8 BOM, Chinese comments and CRLF as exact original bytes', as
   await snapshots.restore((await snapshots.preview(snapshot.id)).id)
   expect(await fs.readFile(target)).toEqual(original)
 })
+
+test('restoring an old snapshot keeps newer captures first in the visible timeline', async () => {
+  await data.write('.npmrc', 'registry=https://original.example/\n')
+  const before = await snapshots.capture()
+  const beforeRecord = (await data.storage.snapshots()).find((item) => item.id === before.id)!
+  beforeRecord.createdAt = '2026-10-09T00:00:00Z'
+  await data.storage.saveSnapshot(beforeRecord)
+  await data.write('.npmrc', 'registry=https://later.example/\n')
+  const later = await snapshots.capture()
+  const laterRecord = (await data.storage.snapshots()).find((item) => item.id === later.id)!
+  laterRecord.createdAt = '2026-10-10T00:00:00Z'
+  await data.storage.saveSnapshot(laterRecord)
+  await snapshots.restore((await snapshots.preview(before.id)).id)
+  const list = await snapshots.list()
+  expect(list[0]?.purpose).toBe('before-restore')
+  expect(list[1]?.id).toBe(later.id)
+  expect(list[2]?.id).toBe(before.id)
+  expect(list[2]?.restoredAt).toBeTruthy()
+})

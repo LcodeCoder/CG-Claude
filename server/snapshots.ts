@@ -26,9 +26,10 @@ export class SnapshotEngine {
     private storage: Storage,
   ) {}
   async list(): Promise<SnapshotSummary[]> {
-    return (await this.storage.snapshots()).map(
-      ({ entries: _entries, preferences: _preferences, ...summary }) => summary,
-    )
+    // Updating an old restore record must not move it ahead of a newer capture.
+    return (await this.storage.snapshots())
+      .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
+      .map(({ entries: _entries, preferences: _preferences, ...summary }) => summary)
   }
   async capture(
     purpose: SnapshotSummary['purpose'] = 'manual',

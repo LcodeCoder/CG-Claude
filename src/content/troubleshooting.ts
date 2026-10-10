@@ -34,6 +34,7 @@ export const troubleshootingGuides: Guide[] = [
     steps: [
       '检查代理协议、变量优先顺序和 NO_PROXY；保存后重启 Claude Code，用 /status 核对。',
       '按需开启公网检测，对照当前浏览器与终端出口；DNS 实际出口在人工复核中确认。',
+      '查看本人代理软件的连接日志，核对出错时间与目标主机；两侧公网 IP 一致仍不能证明具体 Claude 请求的路径。',
       '记录出错时间与具体错误。长请求的连接失败，也可能涉及网络的空闲连接处理。',
     ],
     checks: [

@@ -23,7 +23,7 @@ import { readAllConfigs, configurationFingerprint } from './safety.js'
 import { Storage } from './storage.js'
 import { RepairEngine } from './repairs.js'
 import { runRepeatedDiagnostics, TOTAL_CHECKS } from './diagnostics.js'
-import { markdownReport, redactReport } from './report.js'
+import { markdownReport, redactReport, reportExportName } from './report.js'
 import { SetupWorkflows } from './workflows.js'
 import { acquireServiceLock } from './lock.js'
 import { SnapshotEngine } from './snapshots.js'
@@ -400,7 +400,7 @@ export async function createAppServer(options: ServerOptions = {}) {
           'Content-Type': markdown
             ? 'text/markdown; charset=utf-8'
             : 'application/json; charset=utf-8',
-          'Content-Disposition': `attachment; filename="claude-guard-${report.completedAt.slice(0, 10)}.${markdown ? 'md' : 'json'}"`,
+          'Content-Disposition': `attachment; filename="${reportExportName(report, markdown ? 'md' : 'json')}"`,
           'Cache-Control': 'no-store',
         })
         res.end(markdown ? markdownReport(report) : JSON.stringify(report, null, 2))
