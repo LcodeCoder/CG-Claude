@@ -36,6 +36,34 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'node-windows-commands',
+    title: 'Node.js · Windows 批处理程序的启动方式',
+    publisher: 'Node.js',
+    url: 'https://nodejs.org/api/child_process.html#spawning-bat-and-cmd-files-on-windows',
+    kind: 'official',
+    topic: 'engineering',
+    checkedAt,
+    takeaway:
+      'Windows 的 .bat / .cmd 需要命令解释器启动，不能像原生可执行程序一样直接使用 execFile。',
+    application:
+      'npm 代理和 Claude 版本探测在原生启动失败时尝试固定 .cmd 指令；用户参数不拼入 shell。',
+    boundary: '仅处理三个固定只读指令的启动失败；已执行后失败或超时不重跑，不能据此确认账号状态。',
+    checkIds: ['claude-cli', 'npm-effective-proxy'],
+  },
+  {
+    id: 'windows-command-search',
+    title: 'Microsoft · 命令搜索中的当前目录',
+    publisher: 'Microsoft',
+    url: 'https://learn.microsoft.com/en-us/windows/win32/api/processenv/nf-processenv-needcurrentdirectoryforexepathw',
+    kind: 'official',
+    topic: 'engineering',
+    checkedAt,
+    takeaway: 'NoDefaultCurrentDirectoryInExePath 可影响 cmd.exe 是否隐式搜索当前目录中的程序。',
+    application: 'Windows 只读探测子进程设置该选项，避免批处理回退隐式优先寻找当前项目的同名脚本。',
+    boundary: '这是本工具的进程启动策略；显式写入 PATH 的当前目录仍可能被搜索，不修改用户 PATH。',
+    checkIds: ['claude-cli', 'npm-effective-proxy'],
+  },
+  {
     id: 'claude-sandbox',
     title: 'Claude Code · 命令沙箱与隔离边界',
     publisher: 'Anthropic',

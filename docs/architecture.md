@@ -24,6 +24,7 @@ flowchart LR
 | 一键配置向导和节点状态                     | `src/components/SetupWizard.vue`、`server/workflows.ts`                                     |
 | 稳定检查 ID、检测规则版本                  | `shared/diagnostic-checks.ts`                                                               |
 | 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
+| 固定系统指令与 Windows .cmd 回退           | `server/commands.ts`                                                                        |
 | 进程、Claude 用户设置与静态 shell 来源     | `server/environment-sources.ts`                                                             |
 | MCP 结构、字面凭据与变量引用               | `server/mcp-diagnostics.ts`、`server/projects.ts`                                           |
 | 代理、认证、证书及隐私规则                 | `server/configuration-diagnostics.ts`、`server/privacy-diagnostics.ts`、`shared/privacy.ts` |
@@ -91,3 +92,7 @@ flowchart LR
 一键配置的每个文件基线使用 `configurationState`，同时记录内容散列、权限、可编辑状态和读取错误。预览结束、创建任务、保存快照和执行节点前都要匹配基线。修复事务的 `applyWithState` 返回写入时已知的状态，包含 Windows 实际应用的权限；流程据此更新基线，不重新读取当前文件并把外部修改当成已授权结果。普通 API 仍只返回脱敏的备份摘要。
 
 项目命令沙箱检查在 `server/sandbox-diagnostics.ts`，接收已解析的单份设置声明，输出有限证据；不读取额外文件或执行命令。新增字段须先核对版本与配置范围，不使用未知值来推断有效隔离。项目列表与文献入口复用 `src/lib/project-results.ts` 的标签函数，区分共享项目设置与项目本地设置。
+
+## 系统指令的边界
+
+系统探测默认使用 `execFile` 与独立参数数组。Windows 仅在原生程序启动返回 ENOENT / EINVAL 时，允许三个固定只读指令回退到 `cmd.exe /d /s /c`：Claude 版本和 npm 的两种代理查询。项目路径、用户字段与额外参数不能进入该回退；指令已执行后失败或超时不会重跑。子进程继承隔离 HOME / USERPROFILE 与超时预算，并设置 `NoDefaultCurrentDirectoryInExePath` 防止批处理隐式优先搜索当前目录。

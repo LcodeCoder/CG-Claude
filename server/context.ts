@@ -1,10 +1,8 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import os from 'node:os'
 import path from 'node:path'
 import type { Machine } from '../shared/types.js'
+import { runSystemCommand } from './commands.js'
 
-const execFileAsync = promisify(execFile)
 export interface CommandResult {
   ok: boolean
   stdout: string
@@ -26,25 +24,7 @@ export function createContext(overrides: Partial<Context> = {}): Context {
     platform: process.platform,
     env: { ...process.env },
     demo: process.env.CG_DEMO === '1',
-    run: async (command, args, timeout = 5000) => {
-      try {
-        const result = await execFileAsync(command, args, {
-          timeout,
-          maxBuffer: 1024 * 1024,
-          windowsHide: true,
-          env: { ...ctx.env, HOME: ctx.home, USERPROFILE: ctx.home },
-          encoding: 'utf8',
-        })
-        return { ok: true, stdout: result.stdout.trim(), stderr: result.stderr.trim() }
-      } catch (error) {
-        const failure = error as { stdout?: string; stderr?: string; code?: string }
-        return {
-          ok: false,
-          stdout: failure.stdout?.trim() ?? '',
-          stderr: failure.code === 'ENOENT' ? '未安装此命令' : '命令未完成或没有权限',
-        }
-      }
-    },
+    run: (command, args, timeout) => runSystemCommand(ctx, command, args, timeout),
     ...overrides,
   }
   return ctx

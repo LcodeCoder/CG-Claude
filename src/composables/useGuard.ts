@@ -448,7 +448,10 @@ export function useGuard() {
         failed || state.status === 'interrupted' ? 'error' : 'success',
       )
     } catch (failure) {
-      notify((failure as Error).message + ' 配置仍在本机执行，重新连接后可查看进度。', 'error')
+      notify(
+        (failure as Error).message + ' 流程由本机服务执行，重新连接后请核对实际进度。',
+        'error',
+      )
     }
   }
   function toggleFix(id: FixId) {
