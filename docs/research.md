@@ -92,3 +92,9 @@
 持续搜索中文防封指南、GitHub 社区记录和官方帮助中心，新增采用 [Claude Code 用户 FAQ](https://support.claude.com/en/articles/14554922-claude-code-user-faq) 的登录排查部分：遇到 `organization disabled`，先确认 API Key 是否改变实际认证路径；登录后 403 还需核对工作区是否启用和企业代理。保留服务方式与凭据，不把错误等同于账号封禁。文献累计 45 条。
 
 搜索仍能找到旧企业代理页面中“不支持 NO_PROXY”的缓存内容；当前 [网络配置文档](https://code.claude.com/docs/en/network-config) 已描述其支持方式，因此沿用当前官方规则。社区防封指南的时区指纹与住宅 IP 结论仍缺少与账号结果的可验证映射，保留研究边界，不加入确定性评分。
+
+## 最后一轮认证与组织提示核对
+
+2026-10-11 04:42（Asia/Shanghai）继续检索官方安装、认证与账号复核说明，并对照当前 [认证文档](https://code.claude.com/docs/en/iam) 的交互确认规则：声明 `ANTHROPIC_API_KEY` 不证明当前会话实际采用它，交互模式的选择可在 `/config` 的 Use custom API key 中核对；非交互 `-p` 的规则不同。因此帮助与参考文献明确区分声明、确认与实际会话。工具仍不读取登录凭据、自动删除密钥或调用付费接口。
+
+[官方警告与申诉说明](https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals) 区分个人账号处理与单个组织 on hold。账号提示帮助加入组织旁 Request a review 的复核路径，以及需要本人登录的边界。没有把组织暂停映射成本机配置异常。沿用已有资料条目，累计 45 条，避免重复引用。

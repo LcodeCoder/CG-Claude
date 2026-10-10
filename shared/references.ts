@@ -343,7 +343,8 @@ export const references: ReferenceEntry[] = [
     checkedAt: '2026-10-11',
     takeaway: 'ANTHROPIC_API_KEY 可能让请求使用 API 计费，与已登录的订阅不是同一种认证。',
     application: '认证来源只展示变量名，提示用户在客户端核对实际登录与计费方式。',
-    boundary: '变量存在不等于账号异常，也不验证密钥、额度或付费请求。',
+    boundary:
+      '变量存在不证明当前正在使用它；交互模式还受 API Key 授权确认影响，非交互 -p 模式按实际客户端规则选择。本工具不验证密钥、额度或付费请求。',
     checkIds: ['auth-sources'],
   },
   {
@@ -497,8 +498,8 @@ export const references: ReferenceEntry[] = [
     kind: 'official',
     topic: 'account',
     checkedAt,
-    takeaway: '说明账户限制的官方复核入口，以及受限后的数据导出选项。',
-    application: '账号异常时提供官方申诉入口与人工核对路径。',
+    takeaway: '说明账号申诉、受限后的数据导出，以及特定组织暂停时的 Request a review 入口。',
+    application: '账号或组织提示帮助区分个人与组织处理，并提供本人登录后使用的官方复核路径。',
     boundary: '本工具的环境检测无法判断平台内部的限制原因。',
     checkIds: [],
   },

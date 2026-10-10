@@ -51,7 +51,8 @@ export const troubleshootingGuides: Guide[] = [
     meaning: '认证错误可能来自凭据问题，也可能是当前会话使用了另一种认证路径。',
     steps: [
       '在 Claude Code /status 确认当前认证来源。',
-      '核对 API Key、Bearer、apiKeyHelper 与订阅登录是否符合实际服务方式。',
+      '核对 API Key、Bearer、apiKeyHelper 与订阅登录是否符合实际服务方式；变量存在只代表已声明。',
+      '交互模式的 API Key 选择还受授权确认影响，可在 /config 查看 Use custom API key；非交互 -p 模式有不同选择规则，用 /status 与实际调用核对。',
       '若登录后提示 400 organization disabled，先核对 ANTHROPIC_API_KEY 是否让会话改用 API 路径；需要保留的 API 或网关凭据不要直接删除。',
       '通过官方客户端与账号入口重新确认凭据，保留错误中的 request ID 供支持人员定位。',
     ],
@@ -121,7 +122,8 @@ export const troubleshootingGuides: Guide[] = [
     steps: [
       '在官网登录页核对完整提示、时间与账号；网络错误和账号通知需要分别处理。',
       '若提示身份或企业验证，由本人在官方流程中完成；CG Claude 不收集这类资料。',
-      '认为处理有误时，使用官方支持或申诉入口，附上完整提示与时间。',
+      '如果官方页面列出某个组织 on hold，使用该组织旁的 Request a review 请求复核；组织暂停不等于个人账号也被暂停。',
+      '认为处理有误时，使用官方支持或申诉入口，附上完整提示与时间；申诉入口需要本人登录。',
     ],
     checks: [],
     source: 'claude-appeals',
