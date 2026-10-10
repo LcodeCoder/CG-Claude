@@ -98,3 +98,7 @@
 2026-10-11 04:42（Asia/Shanghai）继续检索官方安装、认证与账号复核说明，并对照当前 [认证文档](https://code.claude.com/docs/en/iam) 的交互确认规则：声明 `ANTHROPIC_API_KEY` 不证明当前会话实际采用它，交互模式的选择可在 `/config` 的 Use custom API key 中核对；非交互 `-p` 的规则不同。因此帮助与参考文献明确区分声明、确认与实际会话。工具仍不读取登录凭据、自动删除密钥或调用付费接口。
 
 [官方警告与申诉说明](https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals) 区分个人账号处理与单个组织 on hold。账号提示帮助加入组织旁 Request a review 的复核路径，以及需要本人登录的边界。没有把组织暂停映射成本机配置异常。沿用已有资料条目，累计 45 条，避免重复引用。
+
+最后核对 [官方网络配置](https://code.claude.com/docs/en/network-config) 的证书确认规则：`/status` 的 Additional CA cert(s) 只显示 `NODE_EXTRA_CA_CERTS` 路径，不确认加载成功，实际加载需核对本机 debug 成功或失败记录。证书检查摘要改为“已列出证书配置”，覆盖只有 `CLAUDE_CODE_CERT_STORE` 声明、没有证书文件的情况，避免误报为文件可读。证书排查帮助同步补充该边界。
+
+继续检索防封类社区插件与网络错误记录，没有将按 403 自动拦截、住宅代理宣传或账号切换包装器纳入自动修复。现有逐项证据、服务方式保留与本人官方复核仍是采用方式；后续线索也按相同依据筛选。

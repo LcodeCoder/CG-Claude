@@ -348,9 +348,9 @@ export async function certificateConfiguration(input: EnvironmentSources): Promi
       : incomplete.length
         ? '部分证书设置无法读取'
         : configured
-          ? '已配置文件可读；证书有效性仍需客户端验证'
+          ? '已列出证书配置；实际加载与有效性仍需客户端验证'
           : '未发现自定义证书配置，使用客户端默认信任设置'
   check.recommendation =
-    '企业代理应使用可信 CA 和正确的客户端证书。文件可读不代表 PEM 格式、有效期或证书与私钥匹配；在 Claude Code 的 /status 和本机 debug 日志确认加载情况。操作系统信任存储的支持还取决于 Claude Code 的安装方式和运行时版本。'
+    '企业代理应使用可信 CA 和正确的客户端证书。文件可读不代表 PEM 格式、有效期或证书与私钥匹配；在 Claude Code 的 /status 和本机 debug 日志确认加载情况；/status 的额外 CA 一栏只显示路径，不证明文件已加载，需核对 debug 中的加载成功或失败记录。操作系统信任存储的支持还取决于 Claude Code 的安装方式和运行时版本。'
   return check
 }

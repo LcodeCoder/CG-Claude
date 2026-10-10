@@ -155,6 +155,7 @@ export const troubleshootingGuides: Guide[] = [
     steps: [
       '检查 NODE_EXTRA_CA_CERTS 与 mTLS 证书、私钥是否按实际企业环境配置。',
       '保留证书验证。可信 CA 可在本机连接设置中配置，再由实际客户端核对加载结果。',
+      '/status 的额外 CA 一栏只显示配置路径，不能证明已加载；在本机 debug 日志核对加载成功或失败原因，分享前隐藏路径与凭据。',
       '工具只检查文件元数据；证书内容和有效期需要在客户端或证书工具中确认。',
     ],
     checks: [
