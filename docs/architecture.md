@@ -85,3 +85,5 @@ flowchart LR
 主导航和页面说明在 `src/content/navigation.ts` 注册。新增页面先补齐标题、说明和稳定 ID，再接入视图；不要在主模板继续叠加文案条件分支。
 
 文献关联分别使用 `checkIds`、`projectCheckIds` 和带类型的 `manualItemIds`；来源单条、检查、项目与人工复核四种筛选范围明确区分。人工复核事项注册在 `shared/types.ts`，其稳定 ID 用于保存记录和双向定位。
+
+配置与项目文本共用 `server/file-reading.ts`：读取同一文件描述符、约束实际字节数、校验读取期间变化，然后严格解码 UTF-8。BOM 不被丢弃，便于原字节还原。非法 UTF-8 和 NUL 字节产生不含原内容的 `FileReadError`；本机配置不可编辑、项目结果显示读取错误、快照列入排除项。不要通过宽松解码或猜测编码继续写入。

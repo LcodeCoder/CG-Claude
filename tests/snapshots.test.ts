@@ -80,3 +80,29 @@ test.skipIf(process.platform === 'win32')(
     expect((await fs.stat(path.join(data.home, '.npmrc'))).mode & 0o777).toBe(0o640)
   },
 )
+
+test('excludes invalid encoding from snapshots and leaves those bytes untouched during restore', async () => {
+  const target = path.join(data.home, '.npmrc')
+  const original = Buffer.from([0xff, 0xfe, 0x61, 0x00])
+  await fs.writeFile(target, original)
+  await data.write('.gitconfig', '[user]\n  name = Original\n')
+  const snapshot = await snapshots.capture()
+  expect(snapshot.excludedFiles).toContain('~/.npmrc')
+  expect(
+    (await data.storage.snapshots())[0]?.entries.some((entry) => entry.relative === '.npmrc'),
+  ).toBe(false)
+  await data.write('.gitconfig', '[user]\n  name = Changed\n')
+  await snapshots.restore((await snapshots.preview(snapshot.id)).id)
+  expect(await fs.readFile(target)).toEqual(original)
+  expect(await data.read('.gitconfig')).toContain('Original')
+})
+
+test('restores UTF-8 BOM, Chinese comments and CRLF as exact original bytes', async () => {
+  const target = path.join(data.home, '.npmrc')
+  const original = Buffer.from('\ufeff# 中文配置\r\nregistry=https://registry.example/\r\n')
+  await fs.writeFile(target, original)
+  const snapshot = await snapshots.capture()
+  await data.write('.npmrc', 'registry=https://changed.example/\n')
+  await snapshots.restore((await snapshots.preview(snapshot.id)).id)
+  expect(await fs.readFile(target)).toEqual(original)
+})

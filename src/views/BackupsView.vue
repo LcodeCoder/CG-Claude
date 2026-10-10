@@ -58,9 +58,13 @@ function formatFixes(ids: BackupSummary['fixIds']) {
           {{ formatDate(snapshot.createdAt, true) }} · {{ snapshot.files.length }} 个配置位置 ·
           {{ snapshot.status === 'restored' ? '已还原' : '可还原' }}
         </p>
-        <small v-if="snapshot.excludedFiles.length"
-          >{{ snapshot.excludedFiles.length }} 个不可读文件未包含在快照中</small
-        >
+        <details v-if="snapshot.excludedFiles.length" class="snapshot-exclusions">
+          <summary>{{ snapshot.excludedFiles.length }} 个文件未包含 · 查看详情</summary>
+          <p>这些配置当时无法安全读取，还原时会保留其当前状态。请手动核对。</p>
+          <div class="backup-paths">
+            <code v-for="file in snapshot.excludedFiles" :key="file">{{ file }}</code>
+          </div>
+        </details>
       </div>
       <button
         class="button secondary"

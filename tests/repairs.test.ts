@@ -230,3 +230,15 @@ test('restores npm TLS verification while retaining registry, credentials and in
   await engine.restore(backup.id)
   expect(await data.read('.npmrc')).toBe(original)
 })
+
+test('refuses invalid encoding before preparing repairs and leaves the file bytes unchanged', async () => {
+  const target = path.join(data.home, '.zshrc')
+  const original = Buffer.concat([
+    Buffer.from('export HTTPS_PROXY=http://localhost:7890\n# '),
+    Buffer.from([0xc3, 0x28]),
+  ])
+  await fs.writeFile(target, original)
+  await expect(engine.preview(['shell-proxy'], preferences)).rejects.toThrow('UTF-8')
+  expect(await data.storage.backups()).toHaveLength(0)
+  expect(await fs.readFile(target)).toEqual(original)
+})

@@ -1,6 +1,18 @@
 import { constants, promises as fs } from 'node:fs'
+import { TextDecoder } from 'node:util'
 
 export class FileReadError extends Error {}
+
+/** Preserve UTF-8 bytes, including a BOM; never replace invalid input with characters. */
+function decodeText(bytes: Buffer): string {
+  if (bytes.includes(0))
+    throw new FileReadError('配置含 NUL 字节，可能为 UTF-16 或非文本，请手动核对编码')
+  try {
+    return new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes)
+  } catch {
+    throw new FileReadError('配置不是有效的 UTF-8 文本，请手动核对编码')
+  }
+}
 
 /** Bound actual bytes, read one file descriptor, and reject observed changes. */
 export async function readBoundedText(
@@ -34,7 +46,7 @@ export async function readBoundedText(
     )
       throw new FileReadError('文件在读取期间变化，请重新检测')
     return {
-      text: Buffer.concat(chunks, total).toString('utf8'),
+      text: decodeText(Buffer.concat(chunks, total)),
       mode: Number(before.mode & 0o777n),
     }
   } finally {

@@ -10,6 +10,7 @@ import type {
   SetupPreview,
   SetupRequest,
   SnapshotPreview,
+  SnapshotSummary,
   ProjectReport,
   ManualReview,
   ManualReviewRequest,
@@ -323,9 +324,13 @@ export function useGuard() {
     if (busy.value) return
     working.value = true
     try {
-      await api('/snapshots', { method: 'POST', body: '{}' })
+      const snapshot = await api<SnapshotSummary>('/snapshots', { method: 'POST', body: '{}' })
       await refresh()
-      notify('当前配置与检测偏好已保存为完整快照。')
+      notify(
+        snapshot.excludedFiles.length
+          ? `快照已保存；${snapshot.excludedFiles.length} 个文件未包含，可在快照详情中查看。`
+          : '当前配置与检测偏好已保存为完整快照。',
+      )
     } catch (failure) {
       notify((failure as Error).message, 'error')
     } finally {
