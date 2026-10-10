@@ -62,3 +62,11 @@
 2026-10-11 再次核对 [Remote Control 专项文档](https://code.claude.com/docs/en/remote-control)、[官方更新记录](https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md) 与数据使用说明。2.1.283 起，付费订阅仅设置 DISABLE_TELEMETRY 或 DO_NOT_TRACK 通常保留 Remote Control；CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC、DISABLE_GROWTHBOOK、可信设备要求等仍可能阻止。认证、API 地址和组织策略也有独立要求。
 
 文献库增加专项说明，总数 36。设置、向导、诊断与预览使用同一兼容性文案；使用说明增加第九类错误帮助。工具不自动移除隐私选择或网关来启用远程控制。规则版本为 2026-10-11.5，旧报告仍保留生成时的解释。
+
+## 项目沙箱与政策更新复核
+
+依据 [官方沙箱说明](https://code.claude.com/docs/en/sandboxing)，项目扫描增加独立的命令沙箱声明检查。区分未声明、结构错误、显式关闭、放宽隔离、沙箱外命令例外和限制两类回退的声明；只保留已核对字段的布尔状态与例外数量，不返回命令、域名、路径或未知值。实际平台、依赖和其他配置层仍需在 `/sandbox` 确认；组织强制沙箱还可能忽略项目中的部分放宽声明。
+
+加入 [2026 使用政策更新公告](https://www.anthropic.com/news/2026-usage-policy-update)，明确公布日 2026-10-08、生效日 2026-11-12；当前核对日 2026-10-11 新版本尚未生效。文献总数 38。政策出处供人工阅读，本机检测不计算政策合规或账号结果。
+
+本轮检索同时遇到旧版代理说明和社区的指纹、代理归因主张。旧页面不能覆盖当前网络配置文档；仅凭用户报告也不能建立配置与封禁的确定因果关系。新增能力只采用能在当前原文核对的本地检查。

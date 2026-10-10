@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { projectFindingLabel } from '../lib/project-results'
 import { computed, nextTick, ref, watch } from 'vue'
 import { BookOpen, FileCode2, LoaderCircle, Search, X } from '@lucide/vue'
 import { statusLabels } from '../../shared/types'
@@ -54,7 +55,7 @@ const filtered = computed(
       (finding) =>
         matchesGroup(finding) &&
         [
-          finding.title,
+          projectFindingLabel(finding),
           finding.summary,
           finding.recommendation,
           ...finding.evidence.flatMap((item) => [item.label, item.value]),
@@ -94,7 +95,7 @@ function clearFilters() {
       </button>
     </div>
     <p>
-      检查项目设置覆盖、权限、Hooks、MCP、代理、TLS、依赖清单和本地 Git
+      检查项目设置覆盖、权限、命令沙箱、Hooks、MCP、代理、TLS、依赖清单和本地 Git
       提交。只读取固定位置，凭据值会隐藏；不执行项目命令。
     </p>
   </form>
@@ -144,7 +145,7 @@ function clearFilters() {
     >
       <span class="project-status" :class="finding.status">{{ statusLabels[finding.status] }}</span>
       <div>
-        <h3>{{ finding.title }}</h3>
+        <h3>{{ projectFindingLabel(finding) }}</h3>
         <p>{{ finding.summary }}</p>
         <details
           v-if="finding.evidence.length"

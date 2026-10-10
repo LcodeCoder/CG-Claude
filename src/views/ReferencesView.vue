@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { projectFindingLabel } from '../lib/project-results'
 import { computed, ref, watch } from 'vue'
 import { BookOpen, ExternalLink, Search, X, ArrowUpRight } from '@lucide/vue'
 import {
@@ -38,8 +39,11 @@ const selectedTitle = computed(() => {
     return references.find((entry) => entry.id === props.target?.id)?.title ?? props.target.id
   if (props.target.scope === 'manual')
     return manualItems.find((item) => item.id === props.target?.id)?.title ?? props.target.id
-  const items = props.target.scope === 'project' ? props.projectFindings : props.checks
-  return items?.find((item) => item.id === props.target?.id)?.title ?? props.target.id
+  if (props.target.scope === 'project') {
+    const finding = props.projectFindings?.find((item) => item.id === props.target?.id)
+    return finding ? projectFindingLabel(finding) : props.target.id
+  }
+  return props.checks?.find((item) => item.id === props.target?.id)?.title ?? props.target.id
 })
 const filtered = computed(() =>
   references.filter(
@@ -178,7 +182,7 @@ function relatedChecks(ids: string[]) {
           class="text-link"
           @click="emit('project', finding.id)"
         >
-          {{ finding.title }}<ArrowUpRight :size="12" />
+          {{ projectFindingLabel(finding) }}<ArrowUpRight :size="12" />
         </button>
       </div>
       <div v-if="entry.manualItemIds?.length" class="reference-checks">

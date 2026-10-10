@@ -36,6 +36,36 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'claude-sandbox',
+    title: 'Claude Code · 命令沙箱与隔离边界',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/sandboxing',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: '命令沙箱的文件系统、网络边界和沙箱外例外分别控制；部分兼容选项会放宽隔离。',
+    application: '项目扫描核对显式开关、回退声明和命令例外数量，只展示字段含义，不执行命令。',
+    boundary:
+      '仅静态核对项目声明。用户、组织、命令行、版本、平台与依赖决定实际生效；未声明不等于关闭，也不据此推算账号状态。',
+    checkIds: [],
+    projectCheckIds: ['.claude/settings.json-sandbox', '.claude/settings.local.json-sandbox'],
+  },
+  {
+    id: 'anthropic-policy-2026',
+    title: 'Anthropic · 2026 使用政策更新（11 月 12 日生效）',
+    publisher: 'Anthropic',
+    url: 'https://www.anthropic.com/news/2026-usage-policy-update',
+    kind: 'official',
+    topic: 'account',
+    checkedAt,
+    takeaway: '2026 年 10 月 8 日公布的年度政策更新，公告注明 2026 年 11 月 12 日生效。',
+    application: '在账号复核的参考资料中准确区分公布日与生效日，提示查看适用政策原文。',
+    boundary:
+      '截至本次 2026 年 10 月 11 日核对，公告中的新版本尚未生效。本机配置不能判定政策合规或账号处理原因。',
+    checkIds: [],
+    manualItemIds: ['account-notice', 'regions'],
+  },
+  {
     id: 'claude-remote-control',
     title: 'Claude Code · Remote Control 的条件与排查',
     publisher: 'Anthropic',

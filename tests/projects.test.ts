@@ -312,3 +312,24 @@ test('empty credentials in a project settings env do not produce a storage warni
       ?.status,
   ).toBe('pass')
 })
+
+test('scans sandbox declarations in both project scopes without executing or exposing commands', async () => {
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({ sandbox: { enabled: false, excludedCommands: ['must-not-run-secret'] } }),
+  )
+  await data.write(
+    '.claude/settings.local.json',
+    JSON.stringify({
+      sandbox: { enabled: true, failIfUnavailable: true, allowUnsandboxedCommands: false },
+    }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === '.claude/settings.json-sandbox')?.status).toBe(
+    'warn',
+  )
+  expect(
+    report.findings.find((item) => item.id === '.claude/settings.local.json-sandbox')?.status,
+  ).toBe('pass')
+  expect(JSON.stringify(report)).not.toContain('must-not-run-secret')
+})

@@ -11,6 +11,7 @@ import {
 } from '../shared/environment-values.js'
 import { projectFiles, readProjectFiles } from './project-files.js'
 import { credentialField, inspectMcp } from './mcp-diagnostics.js'
+import { sandboxFinding } from './sandbox-diagnostics.js'
 
 export async function scanProject(ctx: Context, supplied: string): Promise<ProjectReport> {
   const input = supplied.trim().replace(/^~(?=$|[\/\\])/, ctx.home)
@@ -69,6 +70,7 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
         unresolvedKeys.length ? 'JSON 可读取，部分 env 不是字符串' : 'JSON 和 env 结构可读取',
         '全局、项目、本地、命令行与受管理策略可能存在优先级，仍需核对最终生效值。',
       )
+      findings.push(sandboxFinding(relative, config.sandbox))
       const permissions = config.permissions
       const invalidPermissions =
         permissions !== undefined &&
