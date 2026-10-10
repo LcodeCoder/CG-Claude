@@ -199,7 +199,7 @@ export class RepairEngine {
       })),
     }
     await this.storage.saveManifest(manifest)
-    const written: PlannedFile[] = []
+    const written: { entry: PlannedFile; afterMode: number }[] = []
     try {
       for (const entry of plan.entries) {
         // Recheck immediately before each write, as other applications may edit configuration.
@@ -210,8 +210,9 @@ export class RepairEngine {
           current.mode !== entry.mode
         )
           throw new Error(`~/${entry.relative} 已被其他程序修改`)
-        await writeConfig(this.ctx, entry.relative, entry.after, entry.mode)
-        written.push(entry)
+        const afterMode = await writeConfig(this.ctx, entry.relative, entry.after, entry.mode)
+        manifest.entries.find((file) => file.relative === entry.relative)!.afterMode = afterMode
+        written.push({ entry, afterMode })
       }
       manifest.status = 'applied'
       await this.storage.saveManifest(manifest)
@@ -220,13 +221,13 @@ export class RepairEngine {
       return summary
     } catch (error) {
       const rollbackFailures: string[] = []
-      for (const entry of written.reverse()) {
+      for (const { entry, afterMode } of written.reverse()) {
         try {
           const current = await readConfig(this.ctx, entry.relative)
           if (
             !current.editable ||
             hash(current.content) !== hash(entry.after) ||
-            current.mode !== entry.mode
+            current.mode !== afterMode
           )
             throw new Error('内容又发生变化')
           await writeConfig(this.ctx, entry.relative, entry.before, entry.mode)
@@ -251,7 +252,7 @@ export class RepairEngine {
       if (
         !current.editable ||
         hash(current.content) !== entry.afterHash ||
-        current.mode !== entry.mode
+        current.mode !== (entry.afterMode ?? entry.mode)
       )
         throw new Error(
           `~/${entry.relative} 在修复后被修改，恢复会覆盖新内容，已停止。请手动对照备份。`,
@@ -264,7 +265,7 @@ export class RepairEngine {
         if (
           !current.editable ||
           hash(current.content) !== entry.afterHash ||
-          current.mode !== entry.mode
+          current.mode !== (entry.afterMode ?? entry.mode)
         )
           throw new Error(`~/${entry.relative} 已变化`)
         await writeConfig(this.ctx, entry.relative, entry.original, entry.mode)
@@ -286,7 +287,7 @@ export class RepairEngine {
             current.mode !== entry.mode
           )
             throw new Error('文件再次改变')
-          await writeConfig(this.ctx, entry.relative, applied, entry.mode)
+          await writeConfig(this.ctx, entry.relative, applied, entry.afterMode ?? entry.mode)
         } catch {
           failed.push('~/' + entry.relative)
         }

@@ -25,6 +25,8 @@ export interface BackupFile {
   mode: number
   beforeHash: string
   afterHash: string
+  /** Observed permissions after the write; older backups used mode for both states. */
+  afterMode?: number
 }
 export interface BackupManifest extends BackupSummary {
   entries: BackupFile[]

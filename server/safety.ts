@@ -98,13 +98,13 @@ export async function writeConfig(
   relative: string,
   content: string | null,
   mode = 0o600,
-): Promise<void> {
+): Promise<number> {
   const target = await assertSafePath(ctx, relative)
   if (content === null) {
     await fs.unlink(target).catch((error) => {
       if (error.code !== 'ENOENT') throw error
     })
-    return
+    return 0o600
   }
   await fs.mkdir(path.dirname(target), { recursive: true, mode: 0o700 })
   await assertSafePath(ctx, relative)
@@ -113,8 +113,11 @@ export async function writeConfig(
     await fs.writeFile(temporary, content, { mode, flag: 'wx' })
     // Preserve captured permissions even when this process has a stricter umask.
     await fs.chmod(temporary, mode)
+    // Windows maps POSIX modes to its writable bit. Track what the filesystem applied.
+    const writtenMode = (await fs.stat(temporary)).mode & 0o777
     await assertSafePath(ctx, relative)
     await fs.rename(temporary, target)
+    return writtenMode
   } finally {
     await fs.unlink(temporary).catch(() => {})
   }

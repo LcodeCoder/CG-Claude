@@ -83,6 +83,25 @@ describe('connection configuration transactions', () => {
     await repairs.restore(backup.id)
     await expect(data.read('.claude/settings.json')).rejects.toMatchObject({ code: 'ENOENT' })
   })
+  test.skipIf(process.platform === 'win32')(
+    'tracks filesystem permission mapping when creating a file, then restores absence',
+    async () => {
+      const chmod = fs.chmod
+      const mapping = vi
+        .spyOn(fs, 'chmod')
+        .mockImplementation(async (target, mode) =>
+          chmod(target, String(target).includes('.guard-') ? 0o666 : mode),
+        )
+      const plan = await repairs.previewConnection(edit, defaultPreferences)
+      const backup = await repairs.applyConnection(plan.id, defaultPreferences, snapshots)
+      mapping.mockRestore()
+      const manifest = (await data.storage.manifests()).find((item) => item.id === backup.id)!
+      expect(manifest.entries[0]?.mode).toBe(0o600)
+      expect(manifest.entries[0]?.afterMode).toBe(0o666)
+      await repairs.restore(backup.id)
+      await expect(data.read('.claude/settings.json')).rejects.toMatchObject({ code: 'ENOENT' })
+    },
+  )
   test('masks prior and new proxy credentials and API URL queries from previews and bootstrap summaries', async () => {
     await data.write(
       '.claude/settings.json',
