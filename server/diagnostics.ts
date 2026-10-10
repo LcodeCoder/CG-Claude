@@ -12,6 +12,13 @@ import type {
   ScanRequest,
 } from '../shared/types.js'
 import { DIAGNOSTIC_CHECK_COUNT } from '../shared/types.js'
+import type { DiagnosticCheckId } from '../shared/diagnostic-checks.js'
+import { collectEnvironmentSources } from './environment-sources.js'
+import {
+  proxyCompatibility,
+  authenticationSources,
+  certificateConfiguration,
+} from './configuration-diagnostics.js'
 import type { Context, CommandResult } from './context.js'
 import { machineInfo } from './context.js'
 import { readAllConfigs, maskedAssignment, safeValue, endpointValue } from './safety.js'
@@ -249,7 +256,7 @@ export async function runDiagnostics(
     onProgress(checks.length, TOTAL_CHECKS, value.title)
   }
   const base = (
-    id: string,
+    id: DiagnosticCheckId,
     category: CheckResult['category'],
     title: string,
     description: string,
@@ -853,34 +860,59 @@ export async function runDiagnostics(
     source: 'official',
     sourceUrl: officialSettings,
   })
-  const tlsDisabled =
-    ctx.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ||
-    /^\s*strict-ssl\s*=\s*(?:false|0)\s*(?:[#;].*)?$/im.test(npmFile?.content ?? '')
+  const environment = collectEnvironmentSources(ctx, files)
+  const disabledNodeTls = environment.sources.filter(
+    (source) => source.values.NODE_TLS_REJECT_UNAUTHORIZED === '0',
+  )
+  const disabledNpmTls = /^\s*strict-ssl\s*=\s*(?:false|0)\s*(?:[#;].*)?$/im.test(
+    npmFile?.content ?? '',
+  )
+  const tlsIncomplete =
+    environment.unavailable.length > 0 ||
+    environment.sources.some((source) =>
+      source.unresolved.includes('NODE_TLS_REJECT_UNAUTHORIZED'),
+    ) ||
+    Boolean(npmFile && !npmFile.editable)
+  const tlsDisabled = disabledNodeTls.length > 0 || disabledNpmTls
   add({
     ...base(
       'tls-verification',
       'terminal',
       'TLS 证书验证',
-      '检查 Node 与 npm 是否关闭证书验证；这是工程配置检查。',
+      '检查当前进程、用户配置和 npm 是否关闭证书验证。',
     ),
-    status: tlsDisabled ? 'fail' : npmFile && !npmFile.editable ? 'manual' : 'pass',
-    fixIds:
-      npmFile?.editable &&
-      /^\s*strict-ssl\s*=\s*(?:false|0)\s*(?:[#;].*)?$/im.test(npmFile.content ?? '')
-        ? ['npm-tls']
-        : [],
-    summary: tlsDisabled ? '检测到关闭 TLS 证书验证的配置' : '未在已读取配置中发现关闭验证',
+    status: tlsDisabled ? 'fail' : tlsIncomplete ? 'manual' : 'pass',
+    fixIds: npmFile?.editable && disabledNpmTls ? ['npm-tls'] : [],
+    summary: tlsDisabled
+      ? '检测到关闭 TLS 证书验证的配置'
+      : tlsIncomplete
+        ? '部分 TLS 配置无法静态确认'
+        : '未在已读取配置中发现关闭验证',
     evidence: [
+      ...disabledNodeTls.map((source) => ({
+        label: `${source.label} · NODE_TLS_REJECT_UNAUTHORIZED`,
+        value: '0（关闭验证）',
+      })),
       {
-        label: 'NODE_TLS_REJECT_UNAUTHORIZED',
-        value: ctx.env.NODE_TLS_REJECT_UNAUTHORIZED === '0' ? '0（关闭验证）' : '未关闭',
+        label: '~/.npmrc · strict-ssl',
+        value: disabledNpmTls
+          ? 'false / 0（关闭验证）'
+          : npmFile?.editable
+            ? '未发现关闭验证'
+            : '无法读取',
       },
+      ...(tlsIncomplete
+        ? [{ label: '检查范围', value: '部分文件未能读取或存在动态表达式，需在实际会话确认' }]
+        : []),
     ],
     recommendation:
-      '恢复证书验证；企业代理需要配置可信 CA，可使用 NODE_EXTRA_CA_CERTS。不要通过关闭 TLS 验证解决证书问题。',
+      '按证据中的来源恢复证书验证。企业代理需要配置可信 CA，可使用 NODE_EXTRA_CA_CERTS；在“自定义 CA 与客户端证书”检查中复核路径。',
     source: 'official',
     sourceUrl: 'https://nodejs.org/api/cli.html',
   })
+  add(proxyCompatibility(environment))
+  add(authenticationSources(environment, preferences))
+  add(await certificateConfiguration(ctx, environment))
   const counts: Record<CheckStatus, number> = { pass: 0, warn: 0, fail: 0, manual: 0, skipped: 0 }
   checks.forEach((check) => {
     counts[check.status]++

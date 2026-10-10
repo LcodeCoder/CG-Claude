@@ -2,6 +2,8 @@ appId: local.claude.guard
 productName: CG Claude
 asar: true
 npmRebuild: false
+# Use the prepared local runtime; avoids shell-specific CLI parsing on Windows.
+electronDist: node_modules/electron/dist
 directories:
   output: release
 files:

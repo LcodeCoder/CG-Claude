@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const DIAGNOSTIC_CHECK_COUNT = 24
+export { DIAGNOSTIC_CHECK_COUNT } from './diagnostic-checks.js'
 
 export const preferencesSchema = z.object({
   expectedTimezone: z.string().max(80).default(''),

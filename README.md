@@ -1,6 +1,6 @@
 # CG Claude
 
-本地中文环境工作台，支持 Electron 桌面版和本机浏览器版。根据 AYi 参考文章逐项整理可检测的环境配置，并核对 Claude Code 官方配置说明。提供 24 项环境检查、连续三遍复检、配置向导、项目配置扫描、字段修复与完整快照还原。
+本地中文环境工作台，支持 Electron 桌面版和本机浏览器版。根据 AYi 参考文章逐项整理可检测的环境配置，并核对 Claude Code 官方配置说明。提供 27 项环境检查、连续三遍复检、配置向导、项目配置扫描、字段修复与完整快照还原。
 
 实际验证与截图见 [验证记录](docs/validation.md)，原文逐项映射见 [来源与实现](docs/reference.md)。
 
@@ -33,7 +33,7 @@ macOS 可双击 `启动工具.command`，Windows 可双击 `启动工具.cmd`，
 
 ## 检测与写入范围
 
-24 项环境检查覆盖系统/浏览器时区、TZ、系统代理、虚拟接口、DNS、IPv6、进程与启动文件代理、npm/Git 用户和生效代理、API 地址、Claude 配置目录、隐私、CLI、TLS、公网出口与浏览器一致性。网络开启时对比历史 IP、国家、城市和网络组织。
+27 项环境检查覆盖系统/浏览器时区、TZ、系统代理、虚拟接口、DNS、IPv6、进程与启动文件代理、npm/Git 用户和生效代理、API 地址、Claude 配置目录、隐私、CLI、TLS、代理兼容性、认证来源、自定义 CA/mTLS、公网出口与浏览器一致性。网络开启时对比历史 IP、国家、城市和网络组织。
 
 可修改的 7 类字段：shell/npm/Git 用户代理、shell/Claude 自定义 API 地址、Claude 隐私变量、npm TLS 校验。支持 `.zshrc`、`.zprofile`、`.zshenv`、`.bashrc`、`.bash_profile`、`.profile`、`.npmrc`、`.gitconfig`、`.config/git/config`、`.claude/settings.json` 这 10 个配置位置。
 
