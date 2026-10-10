@@ -15,6 +15,8 @@ import { DIAGNOSTIC_CHECK_COUNT } from '../shared/types.js'
 import { DIAGNOSTIC_RULESET } from '../shared/diagnostic-checks.js'
 import type { DiagnosticCheckId } from '../shared/diagnostic-checks.js'
 import { collectEnvironmentSources } from './environment-sources.js'
+import { privacyConfiguration } from './privacy-diagnostics.js'
+import { isEnabledEnvironmentFlag } from '../shared/environment-values.js'
 import {
   proxyCompatibility,
   authenticationSources,
@@ -36,7 +38,6 @@ import {
 
 const officialSettings = 'https://code.claude.com/docs/en/settings'
 const officialNetwork = 'https://code.claude.com/docs/en/network-config'
-const officialPrivacy = 'https://code.claude.com/docs/en/data-usage'
 interface SystemSnapshot {
   proxy: CommandResult
   dns: CommandResult
@@ -239,6 +240,7 @@ export async function runDiagnostics(
   ])
   if (results[0]?.status !== 'fulfilled') throw new Error('本机配置无法读取')
   const files = results[0].value as ConfigContent[]
+  const environment = collectEnvironmentSources(ctx, files)
   if (results[1]?.status !== 'fulfilled') throw new Error('系统信息无法读取')
   const system = results[1].value as SystemSnapshot
   const cli =
@@ -501,7 +503,8 @@ export async function runDiagnostics(
   })
   const providers = Object.entries(ctx.env).filter(
     ([key, value]) =>
-      /^CLAUDE_CODE_USE_(?:BEDROCK|VERTEX|FOUNDRY|ANTHROPIC_AWS)$/.test(key) && value === '1',
+      /^CLAUDE_CODE_USE_(?:BEDROCK|VERTEX|FOUNDRY|ANTHROPIC_AWS)$/.test(key) &&
+      isEnabledEnvironmentFlag(value),
   )
   add({
     ...base(
@@ -525,7 +528,7 @@ export async function runDiagnostics(
       ...(runtimeEndpoint
         ? [{ label: 'ANTHROPIC_BASE_URL', value: endpointValue(runtimeEndpoint) }]
         : []),
-      ...providers.map(([key]) => ({ label: key, value: '1' })),
+      ...providers.map(([key]) => ({ label: key, value: '已启用' })),
     ],
     recommendation:
       '自定义 API、Bedrock、Vertex 都可能是有意配置。选择正确的使用方式；清理文件后要重新启动终端。',
@@ -620,37 +623,7 @@ export async function runDiagnostics(
     source: 'official',
     sourceUrl: officialSettings,
   })
-  const effective = (key: string) => env[key] ?? ctx.env[key]
-  const privacyKeys =
-    preferences.privacy === 'minimal'
-      ? ['DISABLE_TELEMETRY', 'DISABLE_ERROR_REPORTING', 'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC']
-      : ['DISABLE_TELEMETRY', 'DISABLE_ERROR_REPORTING']
-  const privacyApplied =
-    privacyKeys.every((key) => String(effective(key) ?? '') === '1') ||
-    String(effective('CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC') ?? '') === '1'
-  add({
-    ...base('claude-privacy', 'claude', '遥测与错误报告', '按你选择的隐私偏好检查官方环境开关。'),
-    status: configError ? 'manual' : privacyApplied ? 'pass' : 'warn',
-    summary: configError
-      ? '配置需修正后检测'
-      : privacyApplied
-        ? '已符合当前隐私偏好'
-        : '部分隐私开关尚未设置',
-    evidence: privacyKeys.map((key) => ({
-      label: key,
-      value:
-        effective(key) === undefined
-          ? '未设置'
-          : ['0', '1'].includes(String(effective(key)))
-            ? String(effective(key))
-            : '[非标准值；已隐藏]',
-    })),
-    fixIds: !configError && !privacyApplied ? ['claude-privacy'] : [],
-    recommendation:
-      '设置 DISABLE_TELEMETRY=1 或关闭全部非必要流量会同时关闭功能旗标，Remote Control 可能不可用。此设置是隐私偏好，不决定账号状态。',
-    source: 'official',
-    sourceUrl: officialPrivacy,
-  })
+  add(privacyConfiguration(environment, preferences))
   add({
     ...base(
       'claude-cli',
@@ -861,7 +834,6 @@ export async function runDiagnostics(
     source: 'official',
     sourceUrl: officialSettings,
   })
-  const environment = collectEnvironmentSources(ctx, files)
   const disabledNodeTls = environment.sources.filter(
     (source) => source.values.NODE_TLS_REJECT_UNAUTHORIZED === '0',
   )
@@ -913,7 +885,7 @@ export async function runDiagnostics(
   })
   add(proxyCompatibility(environment))
   add(authenticationSources(environment, preferences))
-  add(await certificateConfiguration(ctx, environment))
+  add(await certificateConfiguration(environment))
   const counts: Record<CheckStatus, number> = { pass: 0, warn: 0, fail: 0, manual: 0, skipped: 0 }
   checks.forEach((check) => {
     counts[check.status]++

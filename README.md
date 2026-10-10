@@ -43,6 +43,8 @@ macOS 可双击 `启动工具.command`，Windows 可双击 `启动工具.cmd`，
 
 系统/HTTP 代理、自定义网关、Bedrock、Vertex 可以是正常配置，按实际偏好保留。启动文件仅静态解析直接赋值，不执行脚本；复杂函数、条件块、多行表达式与 heredoc 不自动编辑。系统时区、网络客户端、Git include、托管策略、项目配置和 PowerShell 持久环境不自动改写。不清理钥匙串、Claude 会话、Skills 或 Hooks。
 
+资料采用方式和适用边界见 [资料核对记录](docs/research.md)。
+
 ## 本地数据与访问
 
 默认记录目录 `~/.claude-guard/`：

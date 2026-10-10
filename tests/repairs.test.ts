@@ -175,8 +175,7 @@ describe('configuration transactions', () => {
       '.claude/settings.json',
       JSON.stringify({ env: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } }),
     )
-    const plan = await engine.preview(['claude-privacy'], preferences)
-    await engine.apply(plan.id, preferences)
+    await expect(engine.preview(['claude-privacy'], preferences)).rejects.toThrow('没有可自动修改')
     expect(
       JSON.parse(await data.read('.claude/settings.json')).env
         .CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC,

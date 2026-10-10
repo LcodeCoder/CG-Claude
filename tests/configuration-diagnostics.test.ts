@@ -103,10 +103,10 @@ test('OAuth login is not declared missing when no explicit auth variables exist'
   expect(check.fixIds).toEqual([])
 })
 
-test('multiple cloud flags and incomplete refresh-token provisioning require review', async () => {
+test('multiple enabled cloud flags require review without guessing refresh-token prerequisites', async () => {
   const item = await data({
-    CLAUDE_CODE_USE_BEDROCK: '1',
-    CLAUDE_CODE_USE_VERTEX: '1',
+    CLAUDE_CODE_USE_BEDROCK: 'true',
+    CLAUDE_CODE_USE_VERTEX: 'yes',
     CLAUDE_CODE_OAUTH_REFRESH_TOKEN: 'PRIVATE_REFRESH',
   })
   const check = authenticationSources(await item.sources(), {
@@ -114,7 +114,7 @@ test('multiple cloud flags and incomplete refresh-token provisioning require rev
     usageMode: 'bedrock',
   })
   expect(check.status).toBe('warn')
-  expect(check.summary).toContain('scopes')
+  expect(check.summary).toContain('多种认证')
   expect(JSON.stringify(check)).not.toContain('PRIVATE_REFRESH')
 })
 
@@ -125,12 +125,12 @@ test('certificate metadata validates paired readable files without exposing file
   await item.write('certs/client.key', 'PRIVATE_KEY_CONTENT')
   item.ctx.env = {
     NODE_EXTRA_CA_CERTS: path.join(item.home, 'certs/ca.pem'),
-    CLAUDE_CODE_CLIENT_CERT: '~/certs/client.pem',
+    CLAUDE_CODE_CLIENT_CERT: path.join(item.home, 'certs/client.pem'),
     CLAUDE_CODE_CLIENT_KEY: path.join(item.home, 'certs/client.key'),
     CLAUDE_CODE_CLIENT_KEY_PASSPHRASE: 'PRIVATE_PASSPHRASE',
     CLAUDE_CODE_CERT_STORE: 'bundled,system',
   }
-  const check = await certificateConfiguration(item.ctx, await item.sources())
+  const check = await certificateConfiguration(await item.sources())
   expect(check.status).toBe('pass')
   expect(check.summary).toContain('客户端验证')
   expect(JSON.stringify(check)).not.toMatch(/PRIVATE_|certs\/client/)
@@ -143,7 +143,7 @@ test('missing counterpart, empty certificate and unknown certificate store are r
     CLAUDE_CODE_CLIENT_CERT: path.join(item.home, 'empty.pem'),
     CLAUDE_CODE_CERT_STORE: 'invented',
   }
-  const check = await certificateConfiguration(item.ctx, await item.sources())
+  const check = await certificateConfiguration(await item.sources())
   expect(check.status).toBe('warn')
   expect(check.evidence.some((entry) => entry.value.includes('其中一项'))).toBe(true)
   expect(check.evidence.some((entry) => entry.value.includes('文件为空'))).toBe(true)
@@ -152,7 +152,7 @@ test('missing counterpart, empty certificate and unknown certificate store are r
 
 test('relative certificate path is not guessed against the app working directory', async () => {
   const item = await data({ NODE_EXTRA_CA_CERTS: 'certs/ca.pem' })
-  const check = await certificateConfiguration(item.ctx, await item.sources())
+  const check = await certificateConfiguration(await item.sources())
   expect(check.status).toBe('manual')
   expect(check.evidence[0]?.value).toContain('客户端工作目录')
 })
@@ -162,7 +162,7 @@ test('unreadable or malformed user configuration cannot produce a complete clean
   await item.write('.claude/settings.json', '{malformed: private-data}')
   const input = await item.sources()
   expect(proxyCompatibility(input).status).toBe('manual')
-  expect((await certificateConfiguration(item.ctx, input)).status).toBe('manual')
+  expect((await certificateConfiguration(input)).status).toBe('manual')
   expect(JSON.stringify(input.unavailable)).not.toContain('private-data')
 })
 
@@ -179,4 +179,28 @@ test('full scan includes registry IDs once and catches TLS disabled in Claude se
     diagnosticCheckIds.length,
   )
   expect(await fs.readFile(path.join(item.home, '.claude/settings.json'), 'utf8')).toContain('"0"')
+})
+
+test('version-related OAuth refresh variables are not counted as a second login method', async () => {
+  const item = await data({
+    CLAUDE_CODE_OAUTH_TOKEN: 'PRIVATE_TOKEN',
+    CLAUDE_CODE_OAUTH_REFRESH_TOKEN: 'PRIVATE_REFRESH',
+  })
+  const check = authenticationSources(await item.sources(), defaultPreferences)
+  expect(check.status).toBe('manual')
+  expect(check.summary).toContain('版本相关')
+  expect(check.summary).not.toContain('多种认证')
+  expect(JSON.stringify(check)).not.toMatch(/PRIVATE_TOKEN|PRIVATE_REFRESH/)
+})
+
+test('tilde in a settings env path is not expanded into a false certificate pass', async () => {
+  const item = await data()
+  await item.write('certs/ca.pem', 'EXISTS_BUT_NOT_THE_CONFIGURED_LITERAL_PATH')
+  await item.write(
+    '.claude/settings.json',
+    JSON.stringify({ env: { NODE_EXTRA_CA_CERTS: '~/certs/ca.pem' } }),
+  )
+  const check = await certificateConfiguration(await item.sources())
+  expect(check.status).toBe('manual')
+  expect(check.evidence[0]?.value).toContain('不会展开')
 })

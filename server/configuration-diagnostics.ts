@@ -1,8 +1,8 @@
 import { constants, promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { CheckResult, Evidence, Preferences } from '../shared/types.js'
-import type { Context } from './context.js'
 import type { EnvironmentSources } from './environment-sources.js'
+import { isEnabledEnvironmentFlag } from '../shared/environment-values.js'
 import { endpointValue } from './safety.js'
 
 const networkSource = 'https://code.claude.com/docs/en/network-config'
@@ -15,7 +15,6 @@ const credentialKeys = [
   'ANTHROPIC_API_KEY',
   'ANTHROPIC_AWS_API_KEY',
   'CLAUDE_CODE_OAUTH_TOKEN',
-  'CLAUDE_CODE_OAUTH_REFRESH_TOKEN',
   'ANTHROPIC_PROFILE',
 ]
 const cloudKeys = [
@@ -167,7 +166,7 @@ export function authenticationSources(
     '认证配置来源',
     '只检查认证变量和 apiKeyHelper 是否配置；不读取凭据文件、不执行辅助脚本，也不验证账号状态。',
   )
-  check.sourceUrl = 'https://code.claude.com/docs/en/authentication'
+  check.sourceUrl = 'https://code.claude.com/docs/en/iam'
   const methods = new Set<string>()
   const providers = new Set<string>()
   for (const source of input.sources) {
@@ -177,9 +176,9 @@ export function authenticationSources(
         check.evidence.push({ label: `${source.label} · ${key}`, value: '已配置，值已隐藏' })
       }
     for (const key of cloudKeys)
-      if (source.values[key] === '1') {
+      if (isEnabledEnvironmentFlag(source.values[key])) {
         providers.add(key)
-        check.evidence.push({ label: `${source.label} · ${key}`, value: '启用标志为 1' })
+        check.evidence.push({ label: `${source.label} · ${key}`, value: '已启用' })
       }
     if (source.hasApiKeyHelper) {
       methods.add('apiKeyHelper')
@@ -198,25 +197,28 @@ export function authenticationSources(
   }
   const incomplete = missingEvidence(input, authNames)
   check.evidence.push(...incomplete)
-  const refreshMissing =
-    input.sources.some(
-      (source) =>
-        source.values.CLAUDE_CODE_OAUTH_REFRESH_TOKEN && !source.values.CLAUDE_CODE_OAUTH_SCOPES,
-    ) && !input.sources.some((source) => source.values.CLAUDE_CODE_OAUTH_SCOPES)
+  const legacyOAuth = input.sources.filter(
+    (source) =>
+      source.values.CLAUDE_CODE_OAUTH_REFRESH_TOKEN || source.values.CLAUDE_CODE_OAUTH_SCOPES,
+  )
+  for (const source of legacyOAuth)
+    check.evidence.push({
+      label: source.label + ' · OAuth 版本相关变量',
+      value: '发现刷新或 scopes 变量，值已隐藏；当前英文参考未列出，需按客户端版本确认',
+    })
   const conflict =
     providers.size > 1 ||
     methods.size > 1 ||
     (providers.size > 0 && preferences.usageMode === 'official')
-  check.status =
-    conflict || refreshMissing
-      ? 'warn'
-      : incomplete.length || (!methods.size && !providers.size)
-        ? 'manual'
-        : 'pass'
-  check.summary = refreshMissing
-    ? '配置了 OAuth 刷新变量，未发现对应 scopes'
-    : conflict
-      ? '存在多种认证配置或提供商选择，需核对实际选择'
+  check.status = conflict
+    ? 'warn'
+    : incomplete.length || legacyOAuth.length || (!methods.size && !providers.size)
+      ? 'manual'
+      : 'pass'
+  check.summary = conflict
+    ? '存在多种认证配置或提供商选择，需核对实际选择'
+    : legacyOAuth.length
+      ? '存在版本相关 OAuth 变量，需在客户端复核'
       : !methods.size && !providers.size
         ? '未发现显式认证变量；登录方式需在客户端确认'
         : incomplete.length
@@ -233,12 +235,16 @@ export function authenticationSources(
 }
 
 async function certificateMetadata(
-  ctx: Context,
   value: string,
 ): Promise<{ value: string; state: 'ok' | 'review' | 'issue' }> {
   if (!value.trim() || /[$`\x00-\x1f]/.test(value))
     return { value: '路径为空或包含待展开表达式，需在实际终端确认', state: 'review' }
-  const expanded = value.startsWith('~/') ? path.join(ctx.home, value.slice(2)) : value
+  if (value.startsWith('~/'))
+    return {
+      value: '包含 ~ 路径简写；settings env 不会展开，请使用绝对路径或在实际终端核对',
+      state: 'review',
+    }
+  const expanded = value
   if (!path.isAbsolute(expanded))
     return { value: '相对路径的含义取决于客户端工作目录，需在该目录确认', state: 'review' }
   try {
@@ -252,10 +258,7 @@ async function certificateMetadata(
   }
 }
 
-export async function certificateConfiguration(
-  ctx: Context,
-  input: EnvironmentSources,
-): Promise<CheckResult> {
+export async function certificateConfiguration(input: EnvironmentSources): Promise<CheckResult> {
   const check = checkBase(
     'ca-configuration',
     '自定义 CA 与客户端证书',
@@ -279,7 +282,7 @@ export async function certificateConfiguration(
         .filter((key) => source.values[key])
         .map(async (key) => ({
           label: `${source.label} · ${key}`,
-          result: await certificateMetadata(ctx, source.values[key]!),
+          result: await certificateMetadata(source.values[key]!),
         })),
     ),
   )
