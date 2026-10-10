@@ -1,0 +1,53 @@
+import { readFile, writeFile } from 'node:fs/promises'
+import { Resvg } from '@resvg/resvg-js'
+
+// Keep all desktop assets derived from the same editable vector mark.
+const svg = await readFile(new URL('../public/logo.svg', import.meta.url))
+const sizes = [16, 32, 64, 128, 256, 512, 1024]
+const images = new Map(
+  sizes.map((size) => [
+    size,
+    new Resvg(svg, { fitTo: { mode: 'width', value: size } }).render().asPng(),
+  ]),
+)
+await writeFile(new URL('../build/icon.png', import.meta.url), images.get(1024))
+await writeFile(new URL('../build/icon.svg', import.meta.url), svg)
+await writeFile(new URL('../public/favicon.svg', import.meta.url), svg)
+
+const icnsTypes = ['icp4', 'icp5', 'icp6', 'ic07', 'ic08', 'ic09', 'ic10']
+const icnsChunks = sizes.map((size, index) => {
+  const png = images.get(size)
+  const header = Buffer.alloc(8)
+  header.write(icnsTypes[index], 0, 'ascii')
+  header.writeUInt32BE(png.length + 8, 4)
+  return Buffer.concat([header, png])
+})
+const icnsHeader = Buffer.alloc(8)
+icnsHeader.write('icns', 0, 'ascii')
+icnsHeader.writeUInt32BE(8 + icnsChunks.reduce((sum, chunk) => sum + chunk.length, 0), 4)
+await writeFile(
+  new URL('../build/icon.icns', import.meta.url),
+  Buffer.concat([icnsHeader, ...icnsChunks]),
+)
+
+const icoSizes = sizes.filter((size) => size <= 256)
+const icoHeader = Buffer.alloc(6 + icoSizes.length * 16)
+icoHeader.writeUInt16LE(1, 2)
+icoHeader.writeUInt16LE(icoSizes.length, 4)
+let offset = icoHeader.length
+for (const [index, size] of icoSizes.entries()) {
+  const png = images.get(size)
+  const entry = 6 + index * 16
+  icoHeader[entry] = size === 256 ? 0 : size
+  icoHeader[entry + 1] = size === 256 ? 0 : size
+  icoHeader.writeUInt16LE(1, entry + 4)
+  icoHeader.writeUInt16LE(32, entry + 6)
+  icoHeader.writeUInt32LE(png.length, entry + 8)
+  icoHeader.writeUInt32LE(offset, entry + 12)
+  offset += png.length
+}
+await writeFile(
+  new URL('../build/icon.ico', import.meta.url),
+  Buffer.concat([icoHeader, ...icoSizes.map((size) => images.get(size))]),
+)
+console.log('CG Claude icons generated from public/logo.svg')

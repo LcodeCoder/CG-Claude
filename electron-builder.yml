@@ -1,0 +1,31 @@
+appId: local.claude.guard
+productName: CG Claude
+asar: true
+npmRebuild: false
+directories:
+  output: release
+files:
+  - dist/**/*
+  - dist-server/**/*
+  - electron/preload.cjs
+  - package.json
+  - '!dist-server/**/*.map'
+mac:
+  category: public.app-category.developer-tools
+  identity: null
+  target:
+    - dir
+    - dmg
+    - zip
+win:
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  category: Development
+  target:
+    - AppImage
+    - deb

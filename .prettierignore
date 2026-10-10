@@ -1,0 +1,8 @@
+node_modules
+.npm-cache
+dist
+dist-server
+.agents
+skills-lock.json
+package-lock.json
+.test-output

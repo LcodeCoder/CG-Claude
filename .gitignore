@@ -1,0 +1,19 @@
+node_modules/
+dist/
+dist-server/
+.DS_Store
+.env
+.env.*
+!.env.example
+.test-output/
+coverage/
+*.log
+.npm-cache/
+release/
+
+# Local agent state and private verification artifacts
+.agents/
+.claude/
+skills-lock.json
+docs/screenshots/
+*.local.json

@@ -1,0 +1,22 @@
+:root {
+  font-family: 'Manrope Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--ink);
+  background: var(--canvas);
+  font-synthesis: none;
+  font-size: 15px;
+  line-height: 1.65;
+  --canvas: #f8f6f2;
+  --paper: #fffdf9;
+  --ink: #2c2925;
+  --muted: #6a625a;
+  --border: #e5dfd6;
+  --accent: #a94d30;
+  --accent-soft: #f5e8df;
+  --accent-mark: #d97757;
+  --green: #246955;
+  --green-light: #edf5ef;
+  --amber: #805920;
+  --amber-light: #faf0da;
+  --red: #a63e39;
+  --red-light: #fcf0ed;
+}
