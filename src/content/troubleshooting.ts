@@ -47,15 +47,16 @@ export const troubleshootingGuides: Guide[] = [
   {
     id: 'authentication',
     title: '认证失败',
-    codes: '401 · authentication_error',
-    meaning: 'API 凭据可能无效、已撤销或已过期；云平台还需核对其自身认证。',
+    codes: '401 · authentication_error · organization disabled',
+    meaning: '认证错误可能来自凭据问题，也可能是当前会话使用了另一种认证路径。',
     steps: [
       '在 Claude Code /status 确认当前认证来源。',
       '核对 API Key、Bearer、apiKeyHelper 与订阅登录是否符合实际服务方式。',
+      '若登录后提示 400 organization disabled，先核对 ANTHROPIC_API_KEY 是否让会话改用 API 路径；需要保留的 API 或网关凭据不要直接删除。',
       '通过官方客户端与账号入口重新确认凭据，保留错误中的 request ID 供支持人员定位。',
     ],
     checks: [{ id: 'auth-sources', label: '查看认证来源' }],
-    source: 'api-errors',
+    source: 'claude-user-faq',
   },
   {
     id: 'permission',
@@ -63,7 +64,7 @@ export const troubleshootingGuides: Guide[] = [
     codes: '403 · permission_error',
     meaning: 'Claude API 的这个错误表示当前凭据无权访问相应资源。',
     steps: [
-      '核对组织、工作区和资源权限。',
+      '核对组织、工作区和资源权限；登录后出现 403 时，确认管理员是否已启用 Claude Code，也核对企业代理的连接日志。',
       '确认实际服务方式与地区要求；网关或云平台应同时查看其自己的错误说明。',
       '结合完整 error.type 与官方账号页面复核，单次状态码不能确定账号限制原因。',
     ],

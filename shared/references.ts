@@ -36,6 +36,23 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'claude-user-faq',
+    title: 'Claude Code · 用户常见问题与登录后错误',
+    publisher: 'Anthropic · Claude Help Center',
+    url: 'https://support.claude.com/en/articles/14554922-claude-code-user-faq',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway:
+      '登录后的 organization disabled 提示可能与残留 API Key 改变认证路径有关；403 也需核对工作区启用状态和企业代理。',
+    application:
+      '认证错误帮助补充登录与 API 路径复核；先看 /status 和配置来源，再决定是否需要调整。',
+    boundary:
+      '这里只采用安装与登录排查部分。错误提示需结合实际服务方式，云平台与网关可有不同语义；不自动删除凭据，也不从状态码判断封禁。',
+    checkIds: ['auth-sources', 'claude-cli', 'proxy-compatibility'],
+    manualItemIds: ['client', 'auth-method'],
+  },
+  {
     id: 'vds-route-verification',
     title: 'Claude Code VDS Proxy · 路由验证方法',
     publisher: 'by-sonic · 社区项目',
