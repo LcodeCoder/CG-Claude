@@ -74,3 +74,7 @@
 ## 本地探测的 Windows 平台依据
 
 2026-10-11 核对 Node.js child_process 与 Microsoft NeedCurrentDirectoryForExePathW 文档。Windows .cmd 需要解释器启动，不能把直接 execFile 的启动失败当成已安装工具不存在。CG Claude 仅对三个固定只读查询设置兼容回退，保留隔离环境、超时与输出上限；任意项目路径与输入都继续通过参数数组。回退子进程不隐式优先搜索当前目录；该选项不会清理或改写用户 PATH 中显式的目录。文献页关联 Claude CLI 与 npm 有效代理结果。
+
+## 原生安装与桌面进程环境
+
+2026-10-11 再核对官方 setup 文档。原生安装启动器在用户 .local/bin 路径（Windows 为 claude.exe）；不同安装方式的更新方式分别核对。桌面进程的 PATH 与交互终端可能不同，故版本探测失败不等于所有安装方式均未安装。新增固定候选文件的元数据检查，不读取文件内容、不执行候选程序；状态保留待确认。CG Claude 服务的 Node 版本明确标注为服务运行时，不作为 Claude Code 的安装要求。文献增加 setup 依据，错误帮助增加安装/PATH 分流。

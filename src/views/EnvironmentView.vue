@@ -91,7 +91,8 @@ const resultNavigation = computed(() => {
   const opened = groups.value
     .flatMap((group) => group.checks)
     .find((check) => check.id === filters.value.expanded)
-  return `当前显示 ${count} 项${labels[filters.value.status]}${opened ? `，已展开${opened.title}` : ''}`
+  const inProgress = props.scanning ? '正在检测；下方保留最近已完成的结果。' : ''
+  return `${inProgress}当前显示 ${count} 项${labels[filters.value.status]}${opened ? `，已展开${opened.title}` : ''}`
 })
 
 const issueCount = computed(() =>
@@ -260,7 +261,13 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
           <h2>
             检测详情 <span v-if="report">{{ report.checks.length }}</span>
           </h2>
-          <p>查看证据，再决定如何处理。</p>
+          <p>
+            {{
+              report && scanning
+                ? '正在检测；下方保留最近已完成的结果。'
+                : '查看证据，再决定如何处理。'
+            }}
+          </p>
         </div>
         <button class="icon-button" aria-label="设置检测偏好" @click="emit('settings')">
           <SlidersHorizontal :size="17" />
@@ -304,10 +311,14 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
         </button>
       </div>
       <div v-if="!report" class="result-empty">
-        <ScanLine :size="35" />
-        <h3>还没有检测结果</h3>
-        <p>点击「开始检测」，检查实际本机配置。<br />默认不进行外部网络查询。</p>
-        <button class="button secondary" @click="emit('scan')">开始第一次检测</button>
+        <LoaderCircle v-if="scanning" class="spin" :size="35" />
+        <ScanLine v-else :size="35" />
+        <h3>{{ scanning ? '正在检测本机配置' : '还没有检测结果' }}</h3>
+        <p v-if="scanning">检测完成后，这里会显示检查证据和处理建议。</p>
+        <p v-else>点击「开始检测」，检查实际本机配置。<br />默认不进行外部网络查询。</p>
+        <button v-if="!scanning" class="button secondary" :disabled="busy" @click="emit('scan')">
+          开始第一次检测
+        </button>
       </div>
       <div v-else-if="!groups.length" class="result-empty small">
         <Search :size="26" />

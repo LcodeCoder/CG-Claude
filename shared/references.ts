@@ -36,6 +36,21 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'claude-setup',
+    title: 'Claude Code · 安装方式、PATH 与版本验证',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/setup',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: '安装后的版本验证和更新方式因安装渠道而异；原生安装的启动器有固定用户路径。',
+    application:
+      '版本探测失败时，只核对用户原生安装候选文件元数据，并提供终端与桌面环境的复核步骤。',
+    boundary:
+      '文件存在不代表可运行或已登录；不执行候选文件、不读取其内容。以实际终端的 claude --version 与 claude doctor 为准。',
+    checkIds: ['claude-cli'],
+  },
+  {
     id: 'node-windows-commands',
     title: 'Node.js · Windows 批处理程序的启动方式',
     publisher: 'Node.js',

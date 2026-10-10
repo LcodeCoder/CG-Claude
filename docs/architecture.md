@@ -25,6 +25,7 @@ flowchart LR
 | 文献搜索、阅读层次与关联导航               | `src/views/ReferencesView.vue`、`src/components/ReferenceCard.vue`                          |
 | 稳定检查 ID、检测规则版本                  | `shared/diagnostic-checks.ts`                                                               |
 | 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
+| CLI 版本与原生安装候选元数据               | `server/cli-diagnostics.ts`                                                                 |
 | 固定系统指令与 Windows .cmd 回退           | `server/commands.ts`                                                                        |
 | 进程、Claude 用户设置与静态 shell 来源     | `server/environment-sources.ts`                                                             |
 | MCP 结构、字面凭据与变量引用               | `server/mcp-diagnostics.ts`、`server/projects.ts`                                           |

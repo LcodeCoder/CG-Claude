@@ -16,6 +16,7 @@ import { DIAGNOSTIC_RULESET } from '../shared/diagnostic-checks.js'
 import type { DiagnosticCheckId } from '../shared/diagnostic-checks.js'
 import { collectEnvironmentSources } from './environment-sources.js'
 import { privacyConfiguration } from './privacy-diagnostics.js'
+import { cliInstallation } from './cli-diagnostics.js'
 import { isEnabledEnvironmentFlag } from '../shared/environment-values.js'
 import {
   proxyCompatibility,
@@ -630,24 +631,7 @@ export async function runDiagnostics(
     sourceUrl: officialSettings,
   })
   add(privacyConfiguration(environment, preferences))
-  add({
-    ...base(
-      'claude-cli',
-      'claude',
-      'Claude Code 安装',
-      '只执行 claude --version，读取已安装客户端版本。',
-    ),
-    status: cli.ok ? 'pass' : 'manual',
-    summary: cli.ok
-      ? safeValue(cli.stdout.split(/\r?\n/)[0] || '已安装', 100)
-      : '未检测到可执行的 Claude Code',
-    evidence: [{ label: 'Node.js', value: machine.nodeVersion }],
-    recommendation: cli.ok
-      ? '如遇版本问题，使用客户端官方更新方式。'
-      : '检查 Claude Code 是否已安装并加入 PATH；浏览器使用者可跳过。',
-    source: 'official',
-    sourceUrl: 'https://code.claude.com/docs/en/setup',
-  })
+  add(await cliInstallation(ctx, cli, machine.nodeVersion))
   add({
     ...base(
       'browser-timezone',

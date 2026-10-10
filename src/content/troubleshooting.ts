@@ -14,6 +14,19 @@ type Guide = {
 /** Curated help stays offline; it never submits credentials or reproduces API requests. */
 export const troubleshootingGuides: Guide[] = [
   {
+    id: 'installation',
+    title: '找不到 Claude Code 或版本探测失败',
+    codes: 'command not found · PATH · launch',
+    meaning: '桌面应用与终端的 PATH 可能不同；探测失败需要结合安装方式核对。',
+    steps: [
+      '在新终端运行 claude --version，确认该终端是否能找到客户端。',
+      '运行 claude doctor 核对实际安装位置与 PATH；原生安装候选文件存在，只能说明文件信息。',
+      '按官方说明和实际安装方式处理。CG Claude 服务的 Node 版本不代表 Claude 客户端的运行要求。',
+    ],
+    checks: [{ id: 'claude-cli', label: '查看安装与版本证据' }],
+    source: 'claude-setup',
+  },
+  {
     id: 'connection',
     title: '连接超时或断开',
     codes: 'timeout · ECONNRESET · DNS',
