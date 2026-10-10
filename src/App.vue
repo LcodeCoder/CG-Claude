@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, reactive, watch, onMounted, nextTick } from 'vue'
+import { computed, ref, watch, onMounted, nextTick } from 'vue'
 import {
   ShieldCheck,
   ScanLine,
@@ -25,15 +25,12 @@ import {
   Check,
   X,
   BookOpen,
-  Terminal,
-  CircleDot,
   Info,
   LoaderCircle,
   RotateCcw,
   SlidersHorizontal,
   ArrowLeft,
   WifiOff,
-  Network,
   WandSparkles,
   Workflow,
   LibraryBig,
@@ -50,6 +47,12 @@ import SetupWizard from './components/SetupWizard.vue'
 import ReferencesView from './views/ReferencesView.vue'
 import ManualReviewView from './views/ManualReviewView.vue'
 import HistoryView from './views/HistoryView.vue'
+import ConfigurationsView from './views/ConfigurationsView.vue'
+import ProjectsView from './views/ProjectsView.vue'
+import BackupsView from './views/BackupsView.vue'
+import SettingsView from './views/SettingsView.vue'
+import AboutView from './views/AboutView.vue'
+import { formatDate } from './lib/format'
 
 type Page =
   | 'overview'
@@ -83,6 +86,7 @@ const {
   projectReport,
 } = guard
 const page = ref<Page>('overview')
+watch(page, () => window.scrollTo({ top: 0, behavior: 'instant' }), { flush: 'post' })
 const referenceCheckId = ref<string>()
 function openReferences(checkId?: string) {
   referenceCheckId.value = checkId
@@ -121,11 +125,6 @@ function setupReport() {
 const networkEnabled = ref(false)
 const scanPasses = ref(3)
 const projectPath = ref('')
-const latestSnapshot = computed(() =>
-  boot.value?.snapshots.find(
-    (value) => value.purpose !== 'before-restore' && value.status === 'ready',
-  ),
-)
 watch(
   () => boot.value?.projectRoot,
   (value) => {
@@ -147,7 +146,7 @@ async function executeSnapshotRestore() {
   }
 }
 const restoreTarget = ref<BackupSummary>()
-const draft = reactive<Preferences>({ ...defaultPreferences })
+const draft = ref<Preferences>({ ...defaultPreferences })
 const lastAction = ref('')
 const nav = [
   { id: 'overview' as const, label: '环境检测', icon: ScanLine },
@@ -221,12 +220,12 @@ const reportPreferencesChanged = computed(
 const reportedUsageMode = computed(
   () => report.value?.preferences.usageMode ?? boot.value?.preferences.usageMode ?? 'official',
 )
-const existingFiles = computed(() => boot.value?.files.filter((file) => file.exists).length ?? 0)
 const activeBackups = computed(
   () => boot.value?.backups.filter((backup) => backup.status === 'applied').length ?? 0,
 )
 const preferenceChanged = computed(
-  () => JSON.stringify(draft) !== JSON.stringify(boot.value?.preferences ?? defaultPreferences),
+  () =>
+    JSON.stringify(draft.value) !== JSON.stringify(boot.value?.preferences ?? defaultPreferences),
 )
 const exportBase = computed(() =>
   report.value ? `/api/reports/${report.value.id}/export?redact=1` : '',
@@ -241,7 +240,7 @@ const stateHeading = computed(() =>
 watch(
   () => boot.value?.preferences,
   (value) => {
-    if (value) Object.assign(draft, value)
+    if (value) draft.value = { ...value }
   },
   { immediate: true },
 )
@@ -256,24 +255,6 @@ onMounted(async () => {
   await guard.importLegacyReviews()
 })
 
-function formatDate(value: string, full = false) {
-  return new Intl.DateTimeFormat(
-    'zh-CN',
-    full
-      ? {
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-          hour12: false,
-        }
-      : { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false },
-  ).format(new Date(value))
-}
-function formatFixes(ids: FixId[]) {
-  return ids.map((id) => fixLabels[id]).join('、')
-}
 function selectAll() {
   selected.value =
     selected.value.length === availableFixes.value.length ? [] : [...availableFixes.value]
@@ -815,57 +796,14 @@ const commandForPlatform = computed(() =>
           </div>
         </template>
 
-        <template v-else-if="page === 'configs'">
-          <div class="compact-summary">
-            <span class="summary-icon"><FolderCog :size="23" /></span>
-            <div>
-              <strong>{{ existingFiles }} 个现有配置文件</strong>
-              <p>检测 {{ boot?.files.length }} 个已知用户配置位置，仅对选定配置生成修改。</p>
-            </div>
-            <button class="button secondary" :disabled="busy" @click="scanLocalConfigs">
-              <ScanLine :size="15" />检测本机配置
-            </button>
-          </div>
-          <section class="data-panel">
-            <div class="panel-heading">
-              <h2>本机配置位置</h2>
-              <span class="quiet-text">原始内容留在你的电脑上</span>
-            </div>
-            <div v-for="file in boot?.files" :key="file.id" class="config-file-row">
-              <span class="file-icon" :class="{ missing: !file.exists }"
-                ><FileCode2 :size="20"
-              /></span>
-              <div class="config-file-title">
-                <strong>{{ file.label }}</strong
-                ><button
-                  class="path-copy"
-                  :title="'复制 ' + file.path"
-                  @click="copyPath(file.path)"
-                >
-                  {{ file.path }}
-                </button>
-              </div>
-              <span class="config-description">{{ file.summary }}</span
-              ><span
-                class="file-state"
-                :class="file.exists ? (file.editable ? 'exists' : 'protected') : 'missing'"
-                ><CircleDot :size="11" />{{
-                  file.exists ? (file.editable ? '已存在' : '需手动处理') : '尚未创建'
-                }}</span
-              >
-            </div>
-          </section>
-          <section class="scope-note">
-            <Info :size="19" />
-            <div>
-              <h3>修改范围清楚可见</h3>
-              <p>
-                修复只移除所选代理项或 API 地址覆盖，隐私设置使用官方环境变量。复杂 shell
-                表达式、符号链接、项目与托管配置会保留供你手动确认。工具不读取账号密码或系统钥匙串。
-              </p>
-            </div>
-          </section>
-        </template>
+        <ConfigurationsView
+          v-else-if="page === 'configs'"
+          :files="boot?.files ?? []"
+          :busy="busy"
+          :connected="connected"
+          @scan="scanLocalConfigs"
+          @copy="copyPath"
+        />
 
         <HistoryView
           v-else-if="page === 'history'"
@@ -875,198 +813,29 @@ const commandForPlatform = computed(() =>
           @scan="scanOpen = true"
         />
 
-        <template v-else-if="page === 'projects'">
-          <form class="project-picker data-panel" @submit.prevent="guard.scanProject(projectPath)">
-            <label for="project-path">本地项目目录</label>
-            <div>
-              <input
-                id="project-path"
-                v-model.trim="projectPath"
-                placeholder="输入项目绝对路径"
-              /><button
-                v-if="boot?.runtime === 'electron'"
-                type="button"
-                class="button secondary"
-                :disabled="busy"
-                @click="chooseProject"
-              >
-                选择目录</button
-              ><button class="button primary" :disabled="busy || !projectPath || !connected">
-                <LoaderCircle v-if="working" class="spin" :size="16" /><Search
-                  v-else
-                  :size="16"
-                />扫描项目
-              </button>
-            </div>
-            <p>
-              检查 Claude 项目设置、MCP、npm / Git 代理、TLS、依赖清单和本地 Git
-              提交。仅读取固定配置位置，密钥值会隐藏。
-            </p>
-          </form>
-          <section v-if="projectReport" class="data-panel project-results">
-            <div class="panel-heading">
-              <div>
-                <h2>{{ projectReport.findings.length }} 项项目配置检查</h2>
-                <p>{{ projectReport.root }}</p>
-              </div>
-              <span class="quiet-text"
-                >{{ projectReport.counts.fail }} 项需处理 ·
-                {{ projectReport.counts.warn }} 项需关注</span
-              >
-            </div>
-            <article
-              v-for="finding in projectReport.findings"
-              :key="finding.id"
-              class="project-finding"
-            >
-              <span class="project-status" :class="finding.status">{{
-                finding.status === 'pass'
-                  ? '通过'
-                  : finding.status === 'fail'
-                    ? '需处理'
-                    : finding.status === 'warn'
-                      ? '需关注'
-                      : finding.status === 'manual'
-                        ? '待确认'
-                        : '未检测'
-              }}</span>
-              <div>
-                <h3>{{ finding.title }}</h3>
-                <p>{{ finding.summary }}</p>
-                <dl v-if="finding.evidence.length">
-                  <template v-for="evidence in finding.evidence" :key="evidence.label"
-                    ><dt>{{ evidence.label }}</dt>
-                    <dd>{{ evidence.value }}</dd></template
-                  >
-                </dl>
-                <small>{{ finding.recommendation }}</small>
-              </div>
-            </article>
-          </section>
-          <section v-else class="data-panel empty-view">
-            <FileCode2 :size="34" />
-            <h2>选择项目，检查配置覆盖</h2>
-            <p>项目中的设置可能覆盖全局配置。扫描后可以逐项对照处理建议。</p>
-          </section>
-          <p class="wizard-hint">
-            本页检查已列出的配置与元数据。代码缺陷、业务逻辑、其他语言依赖和远端 Git
-            备份需要项目自己的测试与审查。
-          </p>
-        </template>
+        <ProjectsView
+          v-else-if="page === 'projects'"
+          v-model="projectPath"
+          :report="projectReport"
+          :busy="busy"
+          :working="working"
+          :connected="connected"
+          :desktop="boot?.runtime === 'electron'"
+          @scan="guard.scanProject"
+          @choose="chooseProject"
+        />
 
-        <template v-else-if="page === 'backups'">
-          <section class="snapshot-panel data-panel">
-            <div class="panel-heading">
-              <div>
-                <h2>完整配置快照</h2>
-                <p>一次保存本机配置与检测偏好，一次回到配置之前。</p>
-              </div>
-              <div class="heading-actions">
-                <button
-                  class="button secondary"
-                  :disabled="busy || !connected"
-                  @click="guard.captureSnapshot"
-                >
-                  <ArchiveRestore :size="15" />保存当前快照</button
-                ><button
-                  class="button primary"
-                  :disabled="busy || !connected || !latestSnapshot"
-                  @click="latestSnapshot && guard.previewSnapshot(latestSnapshot.id)"
-                >
-                  <RotateCcw :size="15" />一键还原之前的配置快照
-                </button>
-              </div>
-            </div>
-            <div v-if="!boot?.snapshots.length" class="snapshot-empty">
-              每次一键配置开始前会自动保存快照，也可以手动保存当前状态。
-            </div>
-            <article v-for="snapshot in boot?.snapshots" :key="snapshot.id" class="snapshot-row">
-              <ArchiveRestore :size="19" />
-              <div>
-                <strong>{{ snapshot.label }}</strong>
-                <p>
-                  {{ formatDate(snapshot.createdAt, true) }} ·
-                  {{ snapshot.files.length }} 个配置位置 ·
-                  {{ snapshot.status === 'restored' ? '已还原' : '可还原' }}
-                </p>
-                <small v-if="snapshot.excludedFiles.length"
-                  >{{ snapshot.excludedFiles.length }} 个不可读文件未包含在快照中</small
-                >
-              </div>
-              <button
-                class="button secondary"
-                :disabled="busy || !connected"
-                @click="guard.previewSnapshot(snapshot.id)"
-              >
-                还原此快照
-              </button>
-            </article>
-          </section>
-
-          <div class="compact-summary">
-            <span class="summary-icon green"><ArchiveRestore :size="23" /></span>
-            <div>
-              <strong>{{ activeBackups }} 份可恢复备份</strong>
-              <p>原文件内容仅保存在本机工具目录，恢复前再次校验当前文件。</p>
-            </div>
-          </div>
-          <section class="data-panel">
-            <div class="panel-heading">
-              <h2>修复与恢复记录</h2>
-              <span class="quiet-text">{{ boot?.backups.length ?? 0 }} 次修复</span>
-            </div>
-            <div v-if="!boot?.backups.length" class="empty-view">
-              <ArchiveRestore :size="35" />
-              <h2>暂时没有修复备份</h2>
-              <p>每次执行修复前会自动保存原始配置。</p>
-              <button class="button secondary" @click="page = 'overview'">返回环境检测</button>
-            </div>
-            <article v-for="backup in boot?.backups" :key="backup.id" class="backup-row">
-              <span class="backup-icon"
-                ><ArchiveRestore v-if="backup.status === 'applied'" :size="20" /><Check
-                  v-else
-                  :size="20"
-              /></span>
-              <div class="backup-info">
-                <div class="backup-title">
-                  <strong>{{ formatDate(backup.createdAt, true) }}</strong
-                  ><span class="backup-state" :class="backup.status">{{
-                    backup.status === 'applied'
-                      ? '可恢复'
-                      : backup.status === 'restored'
-                        ? '已恢复'
-                        : '修复中断'
-                  }}</span>
-                </div>
-                <p>{{ formatFixes(backup.fixIds) }}</p>
-                <div class="backup-paths">
-                  <code v-for="file in backup.files" :key="file">{{ file }}</code>
-                </div>
-                <small v-if="backup.restoredAt"
-                  >已在 {{ formatDate(backup.restoredAt) }} 恢复</small
-                >
-              </div>
-              <button
-                v-if="backup.status === 'applied'"
-                class="button secondary"
-                :disabled="busy"
-                @click="restoreTarget = backup"
-              >
-                <RotateCcw :size="14" />恢复原配置
-              </button>
-            </article>
-          </section>
-          <section class="scope-note">
-            <LockKeyhole :size="19" />
-            <div>
-              <h3>保留你后来的修改</h3>
-              <p>
-                如果修复后又编辑过配置，自动恢复会停止，防止覆盖新内容。你可以在
-                ~/.claude-guard/backups.json 中对照原始备份。
-              </p>
-            </div>
-          </section>
-        </template>
+        <BackupsView
+          v-else-if="page === 'backups'"
+          :snapshots="boot?.snapshots ?? []"
+          :backups="boot?.backups ?? []"
+          :busy="busy"
+          :connected="connected"
+          @capture="guard.captureSnapshot"
+          @preview="guard.previewSnapshot"
+          @restore="restoreTarget = $event"
+          @overview="page = 'overview'"
+        />
 
         <ManualReviewView
           v-else-if="page === 'checklist'"
@@ -1076,177 +845,22 @@ const commandForPlatform = computed(() =>
           :reset="guard.resetManualReviews"
         />
 
-        <template v-else-if="page === 'settings'">
-          <form
-            class="settings-panel data-panel"
-            @submit.prevent="guard.savePreferences({ ...draft })"
-          >
-            <div class="settings-section">
-              <div class="settings-section-heading">
-                <Network :size="20" />
-                <div>
-                  <h2>网络与服务</h2>
-                  <p>根据你实际使用的方式判断哪些配置需要保留。</p>
-                </div>
-              </div>
-              <div class="field-row">
-                <label for="route-mode"
-                  >网络模式<span>使用 TUN 时才建议移除持久代理配置。</span></label
-                ><select id="route-mode" v-model="draft.routeMode">
-                  <option value="system">系统 / HTTP 代理</option>
-                  <option value="tun">TUN 全流量接管</option>
-                  <option value="custom">自定义路由</option>
-                </select>
-              </div>
-              <div class="field-row">
-                <label for="usage-mode"
-                  >Claude 使用方式<span>自定义或云平台模式会保留相关 API 配置。</span></label
-                ><select id="usage-mode" v-model="draft.usageMode">
-                  <option value="official">官方默认 API</option>
-                  <option value="custom">自定义 API / 网关</option>
-                  <option value="bedrock">Amazon Bedrock</option>
-                  <option value="vertex">Google Vertex</option>
-                </select>
-              </div>
-            </div>
-            <div class="settings-section">
-              <div class="settings-section-heading">
-                <Laptop :size="20" />
-                <div>
-                  <h2>环境期望值</h2>
-                  <p>可留空，按实际环境检测；这里的选项不修改系统地区。</p>
-                </div>
-              </div>
-              <div class="field-row">
-                <label for="expected-timezone"
-                  >期望时区<span>发现差异后，先核对本机真实设置。</span></label
-                ><select id="expected-timezone" v-model="draft.expectedTimezone">
-                  <option value="">不指定期望时区</option>
-                  <option value="Asia/Shanghai">Asia/Shanghai</option>
-                  <option value="Asia/Taipei">Asia/Taipei</option>
-                  <option value="Asia/Singapore">Asia/Singapore</option>
-                  <option value="Asia/Tokyo">Asia/Tokyo</option>
-                  <option value="America/Los_Angeles">America/Los_Angeles</option>
-                  <option value="America/New_York">America/New_York</option>
-                  <option value="Europe/London">Europe/London</option>
-                  <option value="UTC">UTC</option>
-                  <option
-                    v-if="
-                      draft.expectedTimezone &&
-                      ![
-                        'Asia/Shanghai',
-                        'Asia/Taipei',
-                        'Asia/Singapore',
-                        'Asia/Tokyo',
-                        'America/Los_Angeles',
-                        'America/New_York',
-                        'Europe/London',
-                        'UTC',
-                      ].includes(draft.expectedTimezone)
-                    "
-                    :value="draft.expectedTimezone"
-                  >
-                    {{ draft.expectedTimezone }}
-                  </option>
-                </select>
-              </div>
-              <div class="field-row">
-                <label for="expected-country"
-                  >期望出口国家 / 地区<span>这是网络核对条件，与服务实际支持资格不同。</span></label
-                ><select id="expected-country" v-model="draft.expectedCountry">
-                  <option value="">不指定期望地区</option>
-                  <option value="US">美国 (US)</option>
-                  <option value="TW">台湾 (TW)</option>
-                  <option value="SG">新加坡 (SG)</option>
-                  <option value="JP">日本 (JP)</option>
-                  <option value="GB">英国 (GB)</option>
-                  <option value="DE">德国 (DE)</option>
-                  <option value="CA">加拿大 (CA)</option>
-                  <option value="AU">澳大利亚 (AU)</option>
-                  <option value="CN">中国 (CN)</option>
-                  <option value="HK">香港 (HK)</option>
-                </select>
-              </div>
-            </div>
-            <div class="settings-section">
-              <div class="settings-section-heading">
-                <LockKeyhole :size="20" />
-                <div>
-                  <h2>Claude Code 隐私偏好</h2>
-                  <p>修改偏好后，仍需在修复预览中执行配置写入。</p>
-                </div>
-              </div>
-              <label class="radio-card" :class="{ selected: draft.privacy === 'balanced' }"
-                ><input v-model="draft.privacy" type="radio" value="balanced" name="privacy" /><span
-                  ><strong>关闭使用指标与错误报告</strong
-                  ><small>设置 DISABLE_TELEMETRY 与 DISABLE_ERROR_REPORTING。</small></span
-                ></label
-              ><label class="radio-card" :class="{ selected: draft.privacy === 'minimal' }"
-                ><input v-model="draft.privacy" type="radio" value="minimal" name="privacy" /><span
-                  ><strong>关闭全部非必要流量</strong
-                  ><small>另外设置 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC。</small></span
-                ></label
-              >
-              <p class="privacy-impact">
-                <Info :size="15" />关闭使用指标或全部非必要流量会关闭功能旗标，Remote Control
-                可能不可用。已有设置保留。
-              </p>
-            </div>
-            <div class="settings-footer">
-              <span>{{ preferenceChanged ? '有尚未保存的偏好' : '偏好已同步到本机' }}</span
-              ><button class="button primary" :disabled="busy || !preferenceChanged">
-                <LoaderCircle v-if="working" class="spin" :size="15" /><Check
-                  v-else
-                  :size="15"
-                />保存检测偏好
-              </button>
-            </div>
-          </form>
-        </template>
+        <SettingsView
+          v-else-if="page === 'settings'"
+          v-model="draft"
+          :busy="busy"
+          :working="working"
+          :connected="connected"
+          :changed="preferenceChanged"
+          @save="guard.savePreferences"
+        />
 
-        <template v-else-if="page === 'about'">
-          <section class="about-intro data-panel">
-            <BrandMark large />
-            <h2>CG Claude</h2>
-            <p>检测、预览、修复、恢复。<br />一个直接操作本机配置的环境工作台。</p>
-            <span class="version-label">v{{ appVersion }}</span>
-          </section>
-          <div class="about-grid">
-            <section class="data-panel about-card">
-              <Terminal :size="22" />
-              <h3>使用方式</h3>
-              <ol>
-                <li>按实际网络方式设置检测偏好。</li>
-                <li>开始本机检测；公网查询可选开启。</li>
-                <li>选择修复项目，核对具体修改。</li>
-                <li>执行修复后复检，重新启动终端。</li>
-                <li>需要回退时，打开「备份恢复」。</li>
-              </ol>
-            </section>
-            <section class="data-panel about-card">
-              <LockKeyhole :size="22" />
-              <h3>数据与范围</h3>
-              <p>
-                本机服务仅监听 127.0.0.1。配置、报告和备份保存在本机。网络检测开启时访问
-                ipinfo.io、api.ipify.org 和 Google STUN；请求不包含配置与密钥。
-              </p>
-              <p>
-                DNS 泄漏、账号支付与平台限制不会根据本机信息猜测。需要人工核对的结果会明确标记。
-              </p>
-            </section>
-          </div>
-          <section class="data-panel sources-panel">
-            <div class="panel-heading">
-              <h2>参考文献</h2>
-              <button class="text-link" @click="openReferences()">
-                查看完整文献库<ArrowUpRight :size="14" />
-              </button>
-            </div>
-            <p class="quiet-text">
-              官方说明、项目文档、社区记录与外部检测分别标注。每条文献包含核对日期、采用方式和判断边界。
-            </p>
-          </section>
-        </template>
+        <AboutView
+          v-else-if="page === 'about'"
+          :version="appVersion"
+          @references="openReferences()"
+        />
+
         <ReferencesView
           v-else-if="page === 'references'"
           :check-id="referenceCheckId"

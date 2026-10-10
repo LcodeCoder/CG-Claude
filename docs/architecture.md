@@ -1,0 +1,67 @@
+# 项目结构与扩展指南
+
+CG Claude 是一个本地应用。Vue 展示事实、收集选择和预览修改；Node 服务负责固定范围的读取与事务；Electron 提供窗口、目录选择和原生导出。前端不直接读写文件。
+
+```mermaid
+flowchart LR
+  Views[Vue 页面与配置向导] --> Guard[useGuard 状态与请求]
+  Guard --> API[本机 HTTP API]
+  Desktop[Electron 主进程与 preload] --> API
+  API --> Diagnostics[只读环境与项目检查]
+  API --> Transactions[配置修复与快照事务]
+  API --> Storage[本机记录与目录互斥]
+  Shared[共享类型、检查 ID 与文献] --> Views
+  Shared --> API
+```
+
+## 从哪里开始读
+
+| 任务                                       | 入口                                                                                        |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| 页面导航、检测详情与全局弹窗               | `src/App.vue`                                                                               |
+| 页面请求、服务连接与任务状态               | `src/composables/useGuard.ts`                                                               |
+| 本机配置、项目、记录、备份、偏好、使用说明 | `src/views/` 下对应视图                                                                     |
+| 一键配置向导和节点状态                     | `src/components/SetupWizard.vue`、`server/workflows.ts`                                     |
+| 稳定检查 ID、检测规则版本                  | `shared/diagnostic-checks.ts`                                                               |
+| 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
+| 进程、Claude 用户设置与静态 shell 来源     | `server/environment-sources.ts`                                                             |
+| 代理、认证、证书及隐私规则                 | `server/configuration-diagnostics.ts`、`server/privacy-diagnostics.ts`、`shared/privacy.ts` |
+| 本地配置静态解析与选定字段修改             | `server/configs.ts`                                                                         |
+| 路径、脱敏、固定目标和原子文件操作         | `server/safety.ts`                                                                          |
+| 预览校验、备份、写入与回退                 | `server/repairs.ts`、`server/snapshots.ts`                                                  |
+| 本机记录、版本兼容与访问互斥               | `server/storage.ts`、`server/lock.ts`                                                       |
+| HTTP 路由、输入校验、Host/Origin/token     | `server/index.ts`                                                                           |
+| 文献摘要、关联检查和外链主机               | `shared/references.ts`、`src/views/ReferencesView.vue`                                      |
+| 窗口、IPC、外链与原生文件对话框            | `electron/main.ts`、`electron/preload.ts`                                                   |
+
+页面通过带类型的 props、model 和事件与 App 交互；磁盘写入保留在服务端。`useGuard` 负责请求完成后的状态同步。新增视图不要复制本机 API、互斥、预览过期或快照恢复逻辑。
+
+## 新增一项检查
+
+1. 先在官方或项目原文核对检查的依据、适用版本和读取范围。
+2. 在 `shared/diagnostic-checks.ts` 注册稳定 ID；总检查数由列表推导，修改判断含义时更新规则版本。
+3. 用独立规则函数返回 `CheckResult`。状态要区分明确问题、待确认和未检测；缺少读取权限、动态表达式或未知版本不能返回假通过。
+4. 在 `server/diagnostics.ts` 的对应读取阶段加入结果。复用已读配置，避免重复执行本机命令；固定参数，不执行用户脚本。
+5. 在 `shared/references.ts` 添加来源和 `checkIds`。文献会自动关联详情，Electron 的外链主机白名单也从这里生成。
+6. 为重要判断和失败边界补充测试。使用 `tests/fixtures.ts` 的临时根目录，不依赖维护者真实代理、账号或配置。
+7. 验证三遍检测、统计数量和历史比较。更新 README 的能力描述和 `docs/validation.md` 的实际结果。
+
+## 扩展可修改配置
+
+修改必须有可读预览、原始备份、预览后冲突校验和异常回退。修复只修改选择的字段，保留其他键、注释和文件权限；无法可靠解析的内容交给人工核对。完整快照还要保存缺失状态和检测偏好，恢复前再保存当前状态。
+
+配置目标集中在 `server/context.ts`，输入 schema 在 `shared/types.ts`，字段转换在 `server/configs.ts`，事务在 `server/repairs.ts`。增加可修复字段时同步检查 ID、FixId、界面说明与恢复测试，避免前端自行拼接任意路径或命令。
+
+## 样式与品牌
+
+`src/styles/tokens.css` 是配色和字体变量入口。`src/style.css` 只维护顺序导入：基础、布局、检测、数据页面、弹窗、响应式、配置流程、项目/快照、阅读微调。拆分时保留了原样式节点顺序，最后的阅读调整继续覆盖前面的共用规则。文献、人工复核与历史比较有独立的页面样式文件。
+
+新样式优先使用变量，正文用深色，说明文字保持可读对比度；长路径、变量名和证据要能换行。使用真实空状态、禁用状态和焦点样式。验证默认 Electron 窗口、较矮窗口、390px 窄窗以及键盘操作。
+
+原创 Logo 的唯一源文件是 `public/logo.svg`。执行 `npm run icons` 生成 PNG、ICNS 和 ICO；不要分别手动编辑各个平台图标。
+
+## 数据与兼容性
+
+报告、备份、快照、流程与复核记录存在用户本机。原始配置可能包含凭据，不能进入截图、公开日志或仓库。报告只保存脱敏证据，导出默认继续隐藏 IP 与主机标识。
+
+新字段要兼容旧记录：例如报告的 `ruleset` 为可选字段，旧记录可以阅读且比较时提示规则来源不完整。每份记录的时间表达实际发生的动作，导入旧复核勾选时不能伪造历史确认时间。
