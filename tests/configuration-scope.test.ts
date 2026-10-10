@@ -24,3 +24,16 @@ test('scope comparison never expands shell shorthand or unresolved relative expr
     expect(claudeConfigurationScopeReason(ctx)).toBeUndefined()
   }
 })
+
+test('Windows home syntax stays equivalent when system command tests simulate macOS', () => {
+  const ctx = createContext({
+    home: 'C:\\Users\\Runner\\home',
+    platform: 'darwin',
+    env: { CLAUDE_CONFIG_DIR: 'C:\\Users\\Runner\\home\\.claude\\unused\\..\\' },
+  })
+  expect(claudeConfigurationScopeReason(ctx)).toBeUndefined()
+  ctx.env.CLAUDE_CONFIG_DIR = 'C:\\Users\\Runner\\home/.claude/./'
+  expect(claudeConfigurationScopeReason(ctx)).toBeUndefined()
+  ctx.env.CLAUDE_CONFIG_DIR = 'C:\\Users\\Runner\\outside'
+  expect(claudeConfigurationScopeReason(ctx)).toContain('CLAUDE_CONFIG_DIR')
+})

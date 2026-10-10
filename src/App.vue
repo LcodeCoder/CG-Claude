@@ -45,6 +45,7 @@ import { createResultFilters } from './lib/environment-results'
 import { primaryNavigation, workspacePages } from './content/navigation'
 import type { WorkspacePage } from './content/navigation'
 
+const pageHeading = ref<HTMLElement | null>(null)
 const guard = useGuard()
 const {
   boot,
@@ -247,6 +248,7 @@ const commandForPlatform = computed(() =>
 
 <template>
   <div class="app-shell">
+    <button class="skip-to-content" @click="focusResult(pageHeading)">跳到主要内容</button>
     <aside class="sidebar">
       <a class="brand" href="#" @click.prevent="page = 'overview'"
         ><BrandMark /><span><strong>CG Claude</strong><small>本地环境工作台</small></span></a
@@ -278,12 +280,24 @@ const commandForPlatform = computed(() =>
           <p>按需检测，预览后修改。<br />每次修复都有原始备份。</p>
         </div>
         <nav class="secondary-nav" aria-label="辅助导航">
-          <button :class="{ active: page === 'settings' }" @click="page = 'settings'">
+          <button
+            :class="{ active: page === 'settings' }"
+            :aria-current="page === 'settings' ? 'page' : undefined"
+            @click="page = 'settings'"
+          >
             <Settings2 :size="17" />检测偏好</button
-          ><button :class="{ active: page === 'about' }" @click="page = 'about'">
+          ><button
+            :class="{ active: page === 'about' }"
+            :aria-current="page === 'about' ? 'page' : undefined"
+            @click="page = 'about'"
+          >
             <BookOpen :size="17" />使用说明
           </button>
-          <button :class="{ active: page === 'references' }" @click="openReferences()">
+          <button
+            :class="{ active: page === 'references' }"
+            :aria-current="page === 'references' ? 'page' : undefined"
+            @click="openReferences()"
+          >
             <LibraryBig :size="17" />参考文献
           </button>
         </nav>
@@ -314,7 +328,7 @@ const commandForPlatform = computed(() =>
       <div class="page-content">
         <div class="page-heading">
           <div>
-            <h1>{{ workspacePages[page].title }}</h1>
+            <h1 ref="pageHeading" tabindex="-1">{{ workspacePages[page].title }}</h1>
             <p>{{ workspacePages[page].description }}</p>
           </div>
           <div class="heading-actions">

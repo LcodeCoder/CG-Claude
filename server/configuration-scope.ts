@@ -8,10 +8,14 @@ export function claudeConfigurationScopeReason(
   ctx: Context,
   file?: ConfigContent,
 ): string | undefined {
-  const paths = ctx.platform === 'win32' ? path.win32 : path.posix
+  // The configured home can carry Windows syntax in an isolated platform simulation.
+  const windowsPaths =
+    ctx.platform === 'win32' ||
+    (path.win32.isAbsolute(ctx.home) && !path.posix.isAbsolute(ctx.home))
+  const paths = windowsPaths ? path.win32 : path.posix
   const normalize = (value: string) => {
     const resolved = paths.resolve(value)
-    return ctx.platform === 'win32' ? resolved.toLowerCase() : resolved
+    return windowsPaths ? resolved.toLowerCase() : resolved
   }
   const expected = normalize(paths.join(ctx.home, '.claude'))
   const overrides: unknown[] = [ctx.env.CLAUDE_CONFIG_DIR]

@@ -43,3 +43,19 @@
     padding-top: 18px;
   }
 }
+
+.skip-to-content {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 150;
+  padding: 10px 16px;
+  border-radius: 6px;
+  color: var(--paper);
+  background: var(--ink);
+  font-size: 14px;
+  transform: translateY(-180%);
+}
+.skip-to-content:focus-visible {
+  transform: none;
+}
