@@ -12,6 +12,7 @@ import type {
   ScanRequest,
 } from '../shared/types.js'
 import { DIAGNOSTIC_CHECK_COUNT } from '../shared/types.js'
+import { DIAGNOSTIC_RULESET } from '../shared/diagnostic-checks.js'
 import type { DiagnosticCheckId } from '../shared/diagnostic-checks.js'
 import { collectEnvironmentSources } from './environment-sources.js'
 import {
@@ -919,6 +920,7 @@ export async function runDiagnostics(
   })
   return {
     id: randomUUID(),
+    ruleset: DIAGNOSTIC_RULESET,
     createdAt,
     completedAt: new Date().toISOString(),
     machine,

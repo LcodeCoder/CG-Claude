@@ -110,6 +110,7 @@ export interface NetworkInfo {
   browserIp?: string
 }
 export interface ScanReport {
+  ruleset?: string
   id: string
   createdAt: string
   completedAt: string

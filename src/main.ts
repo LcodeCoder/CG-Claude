@@ -6,4 +6,5 @@ import './styles/tokens.css'
 import './style.css'
 import './styles/references.css'
 import './styles/manual-review.css'
+import './styles/history.css'
 createApp(App).mount('#app')

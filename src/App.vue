@@ -22,6 +22,7 @@ import {
   RefreshCw,
   FileCode2,
   Search,
+  Check,
   X,
   BookOpen,
   Terminal,
@@ -48,6 +49,7 @@ import NetworkPath from './components/NetworkPath.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import ReferencesView from './views/ReferencesView.vue'
 import ManualReviewView from './views/ManualReviewView.vue'
+import HistoryView from './views/HistoryView.vue'
 
 type Page =
   | 'overview'
@@ -337,6 +339,12 @@ function viewReport(value: ScanReport) {
   report.value = value
   selected.value = []
   page.value = 'overview'
+}
+
+async function openHistoricalCheck(value: ScanReport, id: string) {
+  viewReport(value)
+  await nextTick()
+  await openCheck(id)
 }
 
 function selectFix(id: FixId) {
@@ -859,43 +867,13 @@ const commandForPlatform = computed(() =>
           </section>
         </template>
 
-        <template v-else-if="page === 'history'">
-          <section class="data-panel">
-            <div class="panel-heading">
-              <h2>检测记录</h2>
-              <span class="quiet-text">{{ boot?.reports.length ?? 0 }} / 30 次</span>
-            </div>
-            <div v-if="!boot?.reports.length" class="empty-view">
-              <History :size="35" />
-              <h2>还没有检测记录</h2>
-              <p>完成检测后，结果会自动保存在本机。</p>
-              <button class="button primary" @click="scanOpen = true">开始检测</button>
-            </div>
-            <div v-else class="history-table">
-              <div class="table-header">
-                <span>检测时间</span><span>检测范围</span><span>检测结果</span><span />
-              </div>
-              <button
-                v-for="item in boot.reports"
-                :key="item.id"
-                class="history-row"
-                @click="viewReport(item)"
-              >
-                <span class="history-date"
-                  ><span class="history-date-icon"><History :size="16" /></span
-                  >{{ formatDate(item.completedAt, true)
-                  }}<small v-if="item.id === boot.reports[0]?.id">最新</small></span
-                ><span>{{ item.networkEnabled ? '本机 + 公网出口' : '本机配置' }}</span
-                ><span class="history-result"
-                  ><span class="positive">{{ item.counts.pass }} 通过</span
-                  ><span v-if="item.counts.warn + item.counts.fail" class="attention"
-                    >{{ item.counts.warn + item.counts.fail }} 需关注</span
-                  ><span>{{ item.counts.manual + item.counts.skipped }} 待确认</span></span
-                ><ChevronRight :size="16" />
-              </button>
-            </div>
-          </section>
-        </template>
+        <HistoryView
+          v-else-if="page === 'history'"
+          :reports="boot?.reports ?? []"
+          @open="viewReport"
+          @check="openHistoricalCheck"
+          @scan="scanOpen = true"
+        />
 
         <template v-else-if="page === 'projects'">
           <form class="project-picker data-panel" @submit.prevent="guard.scanProject(projectPath)">
