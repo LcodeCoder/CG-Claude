@@ -13,7 +13,9 @@ export interface ReferenceEntry {
   application: string
   boundary: string
   checkIds: string[]
+  projectCheckIds?: string[]
 }
+export type ReferenceTarget = { scope: 'environment' | 'project'; id: string }
 export const referenceKindLabels: Record<ReferenceKind, string> = {
   official: '官方文档',
   maintainer: '项目文档',
@@ -29,6 +31,71 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 }
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
+  {
+    id: 'claude-permissions',
+    title: 'Claude Code · 权限模式与规则',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/permissions',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: 'deny、ask、allow 按顺序匹配；跳过权限提示的模式应限定在隔离环境。',
+    application:
+      '检查项目权限结构、默认模式和覆盖整个命令工具的 allow 声明，提供 /permissions 复核路径。',
+    boundary: '本地声明不能证明实际批准结果，工作区信任、客户端版本和组织策略还会影响生效。',
+    checkIds: [],
+    projectCheckIds: [
+      '.claude/settings.json-permissions',
+      '.claude/settings.local.json-permissions',
+    ],
+  },
+  {
+    id: 'claude-hooks',
+    title: 'Claude Code · Hooks 事件与配置',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/hooks',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: 'Hooks 能在事件发生时执行命令、发起 HTTP 请求或调用其他处理方式。',
+    application: '标出项目 Hooks 来源和事件类别数量，提醒在实际客户端复核。',
+    boundary: '扫描只看对象结构，既不执行 Hook，也不展示可能包含凭据的完整命令。',
+    checkIds: [],
+    projectCheckIds: ['.claude/settings.json-hooks', '.claude/settings.local.json-hooks'],
+  },
+  {
+    id: 'claude-mcp',
+    title: 'Claude Code · MCP 配置、作用域与信任',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/mcp',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: '项目 .mcp.json 是共享配置；凭据字段可引用环境变量，服务使用仍需核对来源与信任。',
+    application: '检查 JSON 结构、凭据字段和项目自动启用声明；不连接、不启动 MCP 服务。',
+    boundary: 'enableAllProjectMcpServers 声明受版本与工作区信任影响，存在字段不等于服务已运行。',
+    checkIds: [],
+    projectCheckIds: [
+      'project-mcp',
+      'project-secrets',
+      '.claude/settings.json-mcp-approval',
+      '.claude/settings.local.json-mcp-approval',
+    ],
+  },
+  {
+    id: 'bun-lockfile',
+    title: 'Bun · 锁文件格式与版本记录',
+    publisher: 'Bun',
+    url: 'https://bun.sh/docs/pm/lockfile',
+    kind: 'maintainer',
+    topic: 'engineering',
+    checkedAt,
+    takeaway: '当前 Bun 使用 bun.lock；早期版本使用二进制 bun.lockb。',
+    application: '将两种 Bun 锁文件计入项目依赖检查；只检查文件元数据。',
+    boundary: '不读取二进制内容，不转换格式，不运行安装；存在锁文件不代表依赖没有漏洞。',
+    checkIds: [],
+    projectCheckIds: ['project-dependencies'],
+  },
   {
     id: 'claude-managed-settings',
     title: 'Claude Code · 组织管理配置与生效验证',
@@ -94,6 +161,7 @@ export const references: ReferenceEntry[] = [
     application: '核对代理协议、变量优先顺序与证书配置；修改后提醒重新启动相关会话。',
     boundary: '本机配置只能说明设置情况，实际连通性和最终路由仍需复核。',
     checkIds: ['system-proxy', 'runtime-proxy', 'proxy-compatibility', 'ca-configuration'],
+    projectCheckIds: ['project-proxy', 'project-tls'],
   },
   {
     id: 'claude-settings',
@@ -113,6 +181,12 @@ export const references: ReferenceEntry[] = [
       'shell-endpoint',
       'runtime-endpoint',
     ],
+    projectCheckIds: [
+      '.claude/settings.json',
+      '.claude/settings.local.json',
+      'project-endpoint',
+      'project-proxy',
+    ],
   },
   {
     id: 'claude-env',
@@ -126,6 +200,7 @@ export const references: ReferenceEntry[] = [
     application: '核对代理、认证、CLAUDE_CONFIG_DIR 和隐私开关的含义。',
     boundary: '变量的意义随客户端版本变化；未知值保留并提示复核。',
     checkIds: ['config-directory', 'claude-privacy', 'auth-sources', 'proxy-compatibility'],
+    projectCheckIds: ['project-privacy', 'project-endpoint'],
   },
   {
     id: 'claude-auth',
@@ -152,6 +227,7 @@ export const references: ReferenceEntry[] = [
     application: '提供可预览的隐私开关，说明功能旗标与 Remote Control 可能受影响。',
     boundary: '隐私开关不代表账号状态，也不会代替网页端的数据隐私选择。',
     checkIds: ['claude-privacy'],
+    projectCheckIds: ['project-privacy'],
   },
   {
     id: 'claude-access',
@@ -230,6 +306,7 @@ export const references: ReferenceEntry[] = [
     application: '检测环境和配置中的 TLS 校验关闭项，并提供选择性恢复。',
     boundary: '企业自定义 CA 应按证书配置处理，关闭校验不是证书问题的修复方式。',
     checkIds: ['tls-verification', 'ca-configuration'],
+    projectCheckIds: ['project-tls'],
   },
   {
     id: 'npm-config',
@@ -243,6 +320,7 @@ export const references: ReferenceEntry[] = [
     application: '区分文件中的代理与命令读取的生效值；保留 registry 和认证设置。',
     boundary: 'npm 的网络配置不等于 Claude Code 或浏览器的实际出口。',
     checkIds: ['npm-proxy', 'npm-effective-proxy', 'tls-verification'],
+    projectCheckIds: ['project-tool-proxy'],
   },
   {
     id: 'git-config',
@@ -256,6 +334,7 @@ export const references: ReferenceEntry[] = [
     application: '检查 Git 的持久代理、实际生效值和 TLS 配置，项目扫描核对有效提交。',
     boundary: '工具不会执行项目脚本，也不会替用户创建或上传项目提交。',
     checkIds: ['git-proxy', 'git-effective-proxy', 'tls-verification'],
+    projectCheckIds: ['project-tool-proxy'],
   },
   {
     id: 'mihomo-tun',
@@ -390,4 +469,16 @@ export const references: ReferenceEntry[] = [
 ]
 export function referencesForCheck(checkId: string): ReferenceEntry[] {
   return references.filter((entry) => entry.checkIds.includes(checkId))
+}
+
+export function referencesForProjectFinding(id: string): ReferenceEntry[] {
+  return references.filter((entry) => entry.projectCheckIds?.includes(id))
+}
+export function matchesReferenceTarget(entry: ReferenceEntry, target?: ReferenceTarget): boolean {
+  return (
+    !target ||
+    (target.scope === 'environment'
+      ? entry.checkIds.includes(target.id)
+      : Boolean(entry.projectCheckIds?.includes(target.id)))
+  )
 }

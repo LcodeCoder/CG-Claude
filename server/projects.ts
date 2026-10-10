@@ -5,27 +5,12 @@ import type { CheckStatus, ProjectFinding, ProjectReport } from '../shared/types
 import type { Context } from './context.js'
 import { claudeEnv, parseClaude, npmAssignments, gitAssignments, proxyKeys } from './configs.js'
 import { endpointValue, safeValue } from './safety.js'
+import {
+  isEnabledEnvironmentFlag,
+  isNonEmptyEnvironmentValue,
+} from '../shared/environment-values.js'
+import { projectFiles, readProjectFiles } from './project-files.js'
 
-const projectFiles = [
-  'package.json',
-  'package-lock.json',
-  'pnpm-lock.yaml',
-  'yarn.lock',
-  '.claude/settings.json',
-  '.claude/settings.local.json',
-  '.mcp.json',
-  '.npmrc',
-  '.git/config',
-  '.gitignore',
-  'CLAUDE.md',
-  '.env',
-  '.env.local',
-] as const
-interface FileState {
-  exists: boolean
-  content?: string
-  error?: string
-}
 export async function scanProject(ctx: Context, supplied: string): Promise<ProjectReport> {
   const input = supplied.trim().replace(/^~(?=$|[\/\\])/, ctx.home)
   if (!path.isAbsolute(input)) throw new Error('请输入项目的绝对路径，或在桌面版中选择目录')
@@ -33,33 +18,7 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     throw new Error('项目目录不存在或无法读取')
   })
   if (!(await fs.stat(root)).isDirectory()) throw new Error('项目路径必须是文件夹')
-  const files = new Map<string, FileState>()
-  for (const relative of projectFiles) {
-    let current = root
-    try {
-      for (const part of relative.split('/')) {
-        current = path.join(current, part)
-        const stat = await fs.lstat(current)
-        if (stat.isSymbolicLink()) throw new Error('含符号链接，未读取链接目标')
-      }
-      const stat = await fs.lstat(current)
-      // Lock files and dotenv files only need presence checks; never load their secrets.
-      const metadataOnly = /(?:lock|\.env)/.test(relative)
-      if (!stat.isFile() || (!metadataOnly && stat.size > 1024 * 1024))
-        throw new Error('不是普通文件或需读取的配置超过 1 MB，请手动检查')
-      files.set(relative, {
-        exists: true,
-        content: metadataOnly ? undefined : await fs.readFile(current, 'utf8'),
-      })
-    } catch (error) {
-      files.set(
-        relative,
-        (error as NodeJS.ErrnoException).code === 'ENOENT'
-          ? { exists: false }
-          : { exists: true, error: safeValue((error as Error).message) },
-      )
-    }
-  }
+  const files = await readProjectFiles(root)
   const findings: ProjectFinding[] = []
   const add = (
     id: string,
@@ -78,7 +37,8 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     '只读取项目配置、Git 元数据和依赖清单，不执行项目脚本、Hooks 或安装依赖。',
     unavailable.map(([name, file]) => ({ label: name, value: file.error! })),
   )
-  const env: Record<string, unknown> = {}
+  const env: Record<string, string> = {}
+  let envIncomplete = false
   for (const relative of ['.claude/settings.json', '.claude/settings.local.json']) {
     const file = files.get(relative)!
     if (!file.exists) {
@@ -88,32 +48,114 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     try {
       if (file.error) throw new Error(file.error)
       const config = parseClaude(file.content ?? null)
-      Object.assign(env, claudeEnv(config))
+      const settingsEnv = claudeEnv(config)
+      const unresolvedKeys = Object.keys(settingsEnv).filter(
+        (key) => typeof settingsEnv[key] !== 'string',
+      )
+      if (unresolvedKeys.length) envIncomplete = true
+      Object.assign(
+        env,
+        Object.fromEntries(
+          Object.entries(settingsEnv).filter(
+            (entry): entry is [string, string] => typeof entry[1] === 'string',
+          ),
+        ),
+      )
       add(
         relative,
         `${relative} 格式`,
-        'pass',
-        'JSON 和 env 结构可读取',
+        unresolvedKeys.length ? 'manual' : 'pass',
+        unresolvedKeys.length ? 'JSON 可读取，部分 env 不是字符串' : 'JSON 和 env 结构可读取',
         '全局、项目、本地、命令行与受管理策略可能存在优先级，仍需核对最终生效值。',
       )
-      const permissions = config.permissions as Record<string, unknown> | undefined
-      const bypass = permissions?.defaultMode === 'bypassPermissions'
+      const permissions = config.permissions
+      const invalidPermissions =
+        permissions !== undefined &&
+        (!permissions || typeof permissions !== 'object' || Array.isArray(permissions))
+      const permissionObject =
+        !invalidPermissions && permissions ? (permissions as Record<string, unknown>) : {}
+      const invalidLists = ['allow', 'ask', 'deny'].some(
+        (key) =>
+          permissionObject[key] !== undefined &&
+          (!Array.isArray(permissionObject[key]) ||
+            !(permissionObject[key] as unknown[]).every((value) => typeof value === 'string')),
+      )
+      const mode = permissionObject.defaultMode
+      const bypass = mode === 'bypassPermissions'
+      const unknownMode =
+        mode !== undefined &&
+        ![
+          'default',
+          'manual',
+          'auto',
+          'acceptEdits',
+          'plan',
+          'dontAsk',
+          'bypassPermissions',
+        ].includes(String(mode))
+      const broadRules = Array.isArray(permissionObject.allow)
+        ? permissionObject.allow.filter(
+            (rule) => typeof rule === 'string' && /^(?:Bash|PowerShell)(?:\(\*\))?$/.test(rule),
+          )
+        : []
       add(
         relative + '-permissions',
         '项目权限模式',
-        bypass ? 'warn' : 'pass',
-        bypass ? '项目默认跳过权限检查' : '未发现默认绕过权限模式',
-        '按项目需要复核 permissions，不自动扩大或缩小权限。',
+        invalidPermissions || invalidLists
+          ? 'fail'
+          : bypass
+            ? 'warn'
+            : unknownMode || broadRules.length
+              ? 'manual'
+              : 'pass',
+        invalidPermissions || invalidLists
+          ? '权限配置结构需要修正'
+          : bypass
+            ? '项目配置声明跳过权限提示'
+            : broadRules.length
+              ? '存在覆盖整个命令工具的 allow 规则'
+              : unknownMode
+                ? '权限模式需按客户端版本确认'
+                : '未发现默认绕过权限模式',
+        '在 Claude Code /permissions 核对来源和生效规则。deny、ask、allow 有优先顺序，组织策略也可能覆盖本地选择；bypassPermissions 只适合受隔离的环境。扫描不执行命令、不扩大或缩小权限。',
+        [
+          { label: '来源文件', value: relative },
+          ...(broadRules.length
+            ? [
+                {
+                  label: '工具级 allow 规则',
+                  value:
+                    String(broadRules.length) + ' 条；实际批准结果还受 ask/deny 和组织策略影响',
+                },
+              ]
+            : []),
+        ],
       )
-      if (config.hooks && typeof config.hooks === 'object')
+      if (config.hooks !== undefined) {
+        const validHooks =
+          config.hooks && typeof config.hooks === 'object' && !Array.isArray(config.hooks)
         add(
           relative + '-hooks',
           '项目 Hooks',
+          validHooks ? 'manual' : 'fail',
+          validHooks
+            ? '存在 ' + Object.keys(config.hooks as object).length + ' 类 Hooks，来源需复核'
+            : 'hooks 必须是对象',
+          'Hooks 可以执行命令或发起 HTTP 请求。在实际客户端核对来源、事件和权限；本工具不会执行、连接或展示完整命令。',
+          [{ label: '来源文件', value: relative }],
+        )
+      }
+      if (config.enableAllProjectMcpServers === true)
+        add(
+          relative + '-mcp-approval',
+          '项目 MCP 自动启用',
           'manual',
-          `存在 ${Object.keys(config.hooks).length} 类 Hooks`,
-          '检查命令来源、用途和权限；扫描不会执行 Hook，也不会展示完整命令。',
+          '项目配置声明自动启用全部项目 MCP 服务',
+          '这项声明的生效还受客户端版本与工作区信任影响；在客户端逐项核对服务来源。本工具不会启动 MCP 服务。',
+          [{ label: '来源文件', value: relative }],
         )
     } catch (error) {
+      envIncomplete = true
       add(
         relative,
         `${relative} 格式`,
@@ -127,16 +169,24 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
   add(
     'project-proxy',
     '项目代理覆盖',
-    proxyEnv.length ? 'manual' : 'pass',
-    proxyEnv.length ? '项目配置设置了代理环境变量' : '未在项目 env 中发现代理覆盖',
+    proxyEnv.length || envIncomplete ? 'manual' : 'pass',
+    proxyEnv.length
+      ? '项目配置设置了代理环境变量'
+      : envIncomplete
+        ? '项目 env 未完整读取，代理覆盖待确认'
+        : '未在项目 env 中发现代理覆盖',
     '与网络模式对照；TUN 模式下检查是否存在重复代理。',
     proxyEnv.map(([key, value]) => ({ label: key, value: endpointValue(String(value)) })),
   )
   add(
     'project-endpoint',
     '项目 API 地址',
-    env.ANTHROPIC_BASE_URL ? 'manual' : 'pass',
-    env.ANTHROPIC_BASE_URL ? '项目配置覆盖了 API 地址' : '未发现项目 API 地址覆盖',
+    env.ANTHROPIC_BASE_URL || envIncomplete ? 'manual' : 'pass',
+    env.ANTHROPIC_BASE_URL
+      ? '项目配置覆盖了 API 地址'
+      : envIncomplete
+        ? '项目 env 未完整读取，API 地址待确认'
+        : '未发现项目 API 地址覆盖',
     '自定义网关或云平台可以是有意配置，官方模式请核对是否为残留。',
     env.ANTHROPIC_BASE_URL
       ? [{ label: 'ANTHROPIC_BASE_URL', value: endpointValue(String(env.ANTHROPIC_BASE_URL)) }]
@@ -146,16 +196,20 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     'DISABLE_TELEMETRY',
     'DISABLE_ERROR_REPORTING',
     'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
-  ].filter((key) => key in env && String(env[key]) !== '1')
+  ].filter((key) => key in env && !isNonEmptyEnvironmentValue(env[key]))
+  if ('DO_NOT_TRACK' in env && !isEnabledEnvironmentFlag(env.DO_NOT_TRACK))
+    privacyOverrides.push('DO_NOT_TRACK')
   add(
     'project-privacy',
     '项目隐私覆盖',
-    privacyOverrides.length ? 'warn' : 'pass',
+    privacyOverrides.length || envIncomplete ? 'manual' : 'pass',
     privacyOverrides.length
-      ? '项目配置可能重新启用全局已关闭的非必要流量'
-      : '未发现重新启用隐私流量的项目覆盖',
-    '全局修复不会重写项目文件，在项目配置中核对这些字段。',
-    privacyOverrides.map((key) => ({ label: key, value: '[非 1 值；已隐藏]' })),
+      ? '项目配置包含未启用的隐私开关，需结合全局选择核对'
+      : envIncomplete
+        ? '项目 env 未完整读取，隐私覆盖待确认'
+        : '未发现未启用的项目隐私开关',
+    '非空 DISABLE_* / 非必要流量开关都表示关闭，0 也生效；DO_NOT_TRACK 使用布尔值。项目未启用某个开关不代表最终重新开启流量，其他层和总开关仍可能生效。全局修复不改写项目文件。',
+    privacyOverrides.map((key) => ({ label: key, value: '项目值未启用此开关；值已隐藏' })),
   )
   const npm = files.get('.npmrc')!
   const git = files.get('.git/config')!
@@ -163,8 +217,12 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
   add(
     'project-tool-proxy',
     '项目 npm / Git 代理',
-    proxies.length ? 'manual' : 'pass',
-    proxies.length ? '项目工具配置含代理字段' : '未在已读取文件中发现代理字段',
+    proxies.length || npm.error || git.error ? 'manual' : 'pass',
+    proxies.length
+      ? '项目工具配置含代理字段'
+      : npm.error || git.error
+        ? '项目工具配置未完整读取，代理待确认'
+        : '未在已读取文件中发现代理字段',
     '项目层的代理不会随用户级配置修复移除。',
     proxies.map((item) => ({ label: item.key, value: endpointValue(item.value) })),
   )
@@ -174,11 +232,16 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
   add(
     'project-tls',
     '项目 TLS 证书校验',
-    tlsDisabled ? 'fail' : 'pass',
-    tlsDisabled ? '项目配置关闭了 TLS 证书校验' : '未在已读取配置中发现关闭校验',
+    tlsDisabled ? 'fail' : envIncomplete || npm.error ? 'manual' : 'pass',
+    tlsDisabled
+      ? '项目配置关闭了 TLS 证书校验'
+      : envIncomplete || npm.error
+        ? '项目配置未完整读取，证书校验待确认'
+        : '未在已读取配置中发现关闭校验',
     '启用证书校验；企业代理可配置可信 CA，避免忽略证书错误。',
   )
   let mcpCredentials = false
+  let mcpIncomplete = false
   const mcp = files.get('.mcp.json')!
   if (!mcp.exists)
     add(
@@ -223,6 +286,7 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
         '逐项复核来源、命令和权限；扫描不会连接或启动 MCP 服务。',
       )
     } catch (error) {
+      mcpIncomplete = true
       add(
         'project-mcp',
         '项目 MCP 配置',
@@ -235,13 +299,17 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     }
   const secretsPresent =
     mcpCredentials ||
-    Object.keys(env).some((key) => /(?:API_KEY|AUTH_TOKEN|PASSWORD|SECRET)/i.test(key)) ||
+    Object.keys(env).some((key) => /(?:API_KEY|TOKEN|PASSWORD|SECRET)/i.test(key)) ||
     /(?:_authToken|_password)\s*=/.test(npm.content ?? '')
   add(
     'project-secrets',
     '项目凭据存放',
-    secretsPresent ? 'warn' : 'pass',
-    secretsPresent ? '项目配置含凭据字段，值已隐藏' : '未在已读取项目配置中发现常见凭据字段',
+    secretsPresent ? 'warn' : envIncomplete || mcpIncomplete || npm.error ? 'manual' : 'pass',
+    secretsPresent
+      ? '项目配置含凭据字段，值已隐藏'
+      : envIncomplete || mcpIncomplete || npm.error
+        ? '项目配置未完整读取，凭据字段待确认'
+        : '未在已读取项目配置中发现常见凭据字段',
     '凭据留在本地未提交的设置或受管理的秘密存储中，不提交到 Git。这里只检查常见字段，不能证明仓库没有其他密钥。',
   )
   const dotenv = ['.env', '.env.local'].filter((name) => files.get(name)!.exists)
@@ -260,9 +328,13 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
       const parsed = JSON.parse(pkg.content ?? '')
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
         throw new Error('package.json 必须是对象')
-      const locks = ['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'].filter(
-        (name) => files.get(name)!.exists,
-      )
+      const locks = [
+        'package-lock.json',
+        'pnpm-lock.yaml',
+        'yarn.lock',
+        'bun.lock',
+        'bun.lockb',
+      ].filter((name) => files.get(name)!.exists)
       add(
         'project-dependencies',
         '依赖清单与锁文件',
@@ -307,11 +379,12 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     ],
     3000,
   )
+  const validGitCommit = gitCommit.ok && /^[a-f\d]{40,64}$/i.test(gitCommit.stdout.trim())
   add(
     'project-git',
     '本地 Git 提交备份',
-    gitCommit.ok && /^[a-f\d]{40,64}$/i.test(gitCommit.stdout) ? 'pass' : 'warn',
-    gitCommit.ok ? '存在可读取的 Git 提交' : '未确认有效的 Git 提交备份',
+    validGitCommit ? 'pass' : 'warn',
+    validGitCommit ? '存在可读取的 Git 提交' : '未确认有效的 Git 提交备份',
     '原文 6.11 / 9：将代码保存并提交到本人控制的 Git 仓库。已有提交不代表工作区修改已提交，也不代表有异地备份。',
   )
   add(

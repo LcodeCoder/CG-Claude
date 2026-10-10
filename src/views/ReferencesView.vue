@@ -1,27 +1,40 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { BookOpen, ExternalLink, Search, X, ArrowUpRight } from '@lucide/vue'
-import { references, referenceKindLabels, referenceTopicLabels } from '../../shared/references'
-import type { ReferenceKind, ReferenceTopic } from '../../shared/references'
-import type { CheckResult } from '../../shared/types'
-const props = defineProps<{ checkId?: string; checks?: CheckResult[] }>()
-const emit = defineEmits<{ clear: []; check: [id: string] }>()
+import {
+  references,
+  referenceKindLabels,
+  referenceTopicLabels,
+  matchesReferenceTarget,
+} from '../../shared/references'
+import type { ReferenceKind, ReferenceTopic, ReferenceTarget } from '../../shared/references'
+import type { CheckResult, ProjectFinding } from '../../shared/types'
+const props = defineProps<{
+  target?: ReferenceTarget
+  checks?: CheckResult[]
+  projectFindings?: ProjectFinding[]
+}>()
+const emit = defineEmits<{ clear: []; check: [id: string]; project: [id: string] }>()
 const query = ref('')
 const kind = ref<ReferenceKind | 'all'>('all')
 const topic = ref<ReferenceTopic | 'all'>('all')
 watch(
-  () => props.checkId,
+  () => props.target,
   () => {
     query.value = ''
     kind.value = 'all'
     topic.value = 'all'
   },
 )
-const selectedCheck = computed(() => props.checks?.find((check) => check.id === props.checkId))
+const selectedTitle = computed(() => {
+  if (!props.target) return ''
+  const items = props.target.scope === 'project' ? props.projectFindings : props.checks
+  return items?.find((item) => item.id === props.target?.id)?.title ?? props.target.id
+})
 const filtered = computed(() =>
   references.filter(
     (entry) =>
-      (!props.checkId || entry.checkIds.includes(props.checkId)) &&
+      matchesReferenceTarget(entry, props.target) &&
       (kind.value === 'all' || entry.kind === kind.value) &&
       (topic.value === 'all' || entry.topic === topic.value) &&
       [entry.title, entry.publisher, entry.takeaway, entry.application, entry.boundary, entry.url]
@@ -38,6 +51,9 @@ function clearFilters() {
   kind.value = 'all'
   topic.value = 'all'
   emit('clear')
+}
+function relatedProjectFindings(ids?: string[]) {
+  return props.projectFindings?.filter((finding) => ids?.includes(finding.id)) ?? []
 }
 function relatedChecks(ids: string[]) {
   return props.checks?.filter((check) => ids.includes(check.id)) ?? []
@@ -86,8 +102,8 @@ function relatedChecks(ids: string[]) {
       </select></label
     >
   </div>
-  <div v-if="checkId" class="reference-focus">
-    <span>正在查看「{{ selectedCheck?.title ?? checkId }}」的依据</span
+  <div v-if="target" class="reference-focus">
+    <span>正在查看「{{ selectedTitle }}」的依据</span
     ><button class="text-link" @click="emit('clear')">查看全部文献<X :size="14" /></button>
   </div>
   <p class="reference-count" role="status">
@@ -142,6 +158,17 @@ function relatedChecks(ids: string[]) {
           @click="emit('check', check.id)"
         >
           {{ check.title }}<ArrowUpRight :size="12" />
+        </button>
+      </div>
+      <div v-if="relatedProjectFindings(entry.projectCheckIds).length" class="reference-checks">
+        <span>相关项目检查</span>
+        <button
+          v-for="finding in relatedProjectFindings(entry.projectCheckIds)"
+          :key="finding.id"
+          class="text-link"
+          @click="emit('project', finding.id)"
+        >
+          {{ finding.title }}<ArrowUpRight :size="12" />
         </button>
       </div>
     </article>

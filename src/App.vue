@@ -44,6 +44,7 @@ import BrandMark from './components/BrandMark.vue'
 import CheckRow from './components/CheckRow.vue'
 import NetworkPath from './components/NetworkPath.vue'
 import SetupWizard from './components/SetupWizard.vue'
+import type { ReferenceTarget } from '../shared/references'
 import ReferencesView from './views/ReferencesView.vue'
 import ManualReviewView from './views/ManualReviewView.vue'
 import HistoryView from './views/HistoryView.vue'
@@ -87,11 +88,22 @@ const {
 } = guard
 const page = ref<Page>('overview')
 watch(page, () => window.scrollTo({ top: 0, behavior: 'instant' }), { flush: 'post' })
-const referenceCheckId = ref<string>()
+const referenceTarget = ref<ReferenceTarget>()
+const projectFocusId = ref('')
 function openReferences(checkId?: string) {
-  referenceCheckId.value = checkId
+  referenceTarget.value = checkId ? { scope: 'environment', id: checkId } : undefined
   page.value = 'references'
   window.scrollTo({ top: 0 })
+}
+function openProjectReferences(id: string) {
+  referenceTarget.value = { scope: 'project', id }
+  page.value = 'references'
+}
+async function openProjectFinding(id: string) {
+  projectFocusId.value = id
+  page.value = 'projects'
+  await nextTick()
+  await focusResult(document.getElementById('project-finding-' + id))
 }
 async function openCheck(id: string) {
   page.value = 'overview'
@@ -817,12 +829,15 @@ const commandForPlatform = computed(() =>
           v-else-if="page === 'projects'"
           v-model="projectPath"
           :report="projectReport"
+          :focus-id="projectFocusId"
           :busy="busy"
           :working="working"
           :connected="connected"
           :desktop="boot?.runtime === 'electron'"
           @scan="guard.scanProject"
           @choose="chooseProject"
+          @references="openProjectReferences"
+          @focus="openProjectFinding"
         />
 
         <BackupsView
@@ -863,9 +878,11 @@ const commandForPlatform = computed(() =>
 
         <ReferencesView
           v-else-if="page === 'references'"
-          :check-id="referenceCheckId"
+          :target="referenceTarget"
+          :project-findings="projectReport?.findings"
           :checks="report?.checks"
-          @clear="referenceCheckId = undefined"
+          @clear="referenceTarget = undefined"
+          @project="openProjectFinding"
           @check="openCheck"
         />
         <footer class="page-footer">

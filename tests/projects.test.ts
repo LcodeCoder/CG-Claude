@@ -32,7 +32,7 @@ test('finds project overrides, invalid TLS and credentials without leaking secre
   )
   const report = await scanProject(data.ctx, data.home)
   expect(report.findings.find((item) => item.id === 'project-tls')?.status).toBe('fail')
-  expect(report.findings.find((item) => item.id === 'project-privacy')?.status).toBe('warn')
+  expect(report.findings.find((item) => item.id === 'project-privacy')?.status).toBe('pass')
   expect(report.findings.find((item) => item.id === 'project-secrets')?.status).toBe('warn')
   const text = JSON.stringify(report)
   expect(text).not.toContain('secret-password')
@@ -87,4 +87,106 @@ test('checks oversized metadata files without reading their contents and catches
   expect(report.findings.find((item) => item.id === 'project-readable')?.status).toBe('pass')
   expect(report.findings.find((item) => item.id === 'project-tls')?.status).toBe('fail')
   expect(JSON.stringify(report)).not.toContain('large-private-fixture')
+})
+
+test('incomplete project env cannot make dependent checks look fully clean', async () => {
+  await data.write('.claude/settings.json', '{malformed:PRIVATE_VALUE}')
+  const report = await scanProject(data.ctx, data.home)
+  for (const id of [
+    'project-proxy',
+    'project-endpoint',
+    'project-privacy',
+    'project-tls',
+    'project-secrets',
+  ])
+    expect(report.findings.find((item) => item.id === id)?.status).toBe('manual')
+  expect(JSON.stringify(report)).not.toContain('PRIVATE_VALUE')
+})
+
+test('privacy presence switches and DO_NOT_TRACK are interpreted separately in project settings', async () => {
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({
+      env: { DISABLE_TELEMETRY: '0', DISABLE_ERROR_REPORTING: 'false', DO_NOT_TRACK: 'true' },
+    }),
+  )
+  expect(
+    (await scanProject(data.ctx, data.home)).findings.find((item) => item.id === 'project-privacy')
+      ?.status,
+  ).toBe('pass')
+  await data.write(
+    '.claude/settings.local.json',
+    JSON.stringify({ env: { DISABLE_TELEMETRY: '', DO_NOT_TRACK: '0' } }),
+  )
+  const finding = (await scanProject(data.ctx, data.home)).findings.find(
+    (item) => item.id === 'project-privacy',
+  )!
+  expect(finding.status).toBe('manual')
+  expect(finding.summary).not.toContain('重新启用')
+})
+
+test('nonstring project env values are incomplete and never coerced into an endpoint', async () => {
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({ env: { ANTHROPIC_BASE_URL: { secret: 'PRIVATE_VALUE' } } }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === '.claude/settings.json')?.status).toBe('manual')
+  expect(report.findings.find((item) => item.id === 'project-endpoint')?.status).toBe('manual')
+  expect(JSON.stringify(report)).not.toContain('PRIVATE_VALUE')
+})
+
+test('permission structure, full-tool approval and hook source are reported without command content', async () => {
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({
+      permissions: { allow: ['Bash(*)', 'PowerShell'], deny: ['Bash(rm *)'] },
+      hooks: { Stop: [{ hooks: [{ type: 'command', command: 'PRIVATE_COMMAND' }] }] },
+      enableAllProjectMcpServers: true,
+    }),
+  )
+  let report = await scanProject(data.ctx, data.home)
+  expect(
+    report.findings.find((item) => item.id === '.claude/settings.json-permissions')?.status,
+  ).toBe('manual')
+  expect(report.findings.find((item) => item.id === '.claude/settings.json-hooks')?.status).toBe(
+    'manual',
+  )
+  expect(
+    report.findings.find((item) => item.id === '.claude/settings.json-mcp-approval')?.status,
+  ).toBe('manual')
+  expect(JSON.stringify(report)).not.toContain('PRIVATE_COMMAND')
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({ permissions: { allow: 'Bash' }, hooks: [] }),
+  )
+  report = await scanProject(data.ctx, data.home)
+  expect(
+    report.findings.find((item) => item.id === '.claude/settings.json-permissions')?.status,
+  ).toBe('fail')
+  expect(report.findings.find((item) => item.id === '.claude/settings.json-hooks')?.status).toBe(
+    'fail',
+  )
+})
+
+test('OAuth and other token-named fields are hidden in project credential findings', async () => {
+  await data.write(
+    '.claude/settings.local.json',
+    JSON.stringify({ env: { CLAUDE_CODE_OAUTH_TOKEN: 'PRIVATE_OAUTH_VALUE' } }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-secrets')?.status).toBe('warn')
+  expect(JSON.stringify(report)).not.toContain('PRIVATE_OAUTH_VALUE')
+})
+
+test('Bun lockfiles count as lock metadata and invalid Git output is not called a commit', async () => {
+  await data.write('package.json', '{}')
+  await data.write('bun.lock', 'PRIVATE_LOCK_CONTENT')
+  data.ctx.run = async () => ({ ok: true, stdout: 'unexpected PRIVATE_OUTPUT', stderr: '' })
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-dependencies')?.status).toBe('pass')
+  const git = report.findings.find((item) => item.id === 'project-git')!
+  expect(git.status).toBe('warn')
+  expect(git.summary).toContain('未确认')
+  expect(JSON.stringify(report)).not.toMatch(/PRIVATE_LOCK_CONTENT|PRIVATE_OUTPUT/)
 })

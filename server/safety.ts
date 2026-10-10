@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import type { Context } from './context.js'
 import { configTargets, configPath } from './context.js'
+import { FileReadError, fileReadMessage, readBoundedText } from './file-reading.js'
 
 export function hash(content: string | null): string {
   return createHash('sha256')
@@ -38,9 +39,9 @@ export async function assertSafePath(ctx: Context, relative: string): Promise<st
     current = path.join(current, part)
     try {
       const stat = await fs.lstat(current)
-      if (stat.isSymbolicLink()) throw new Error('此路径含符号链接，请手动编辑真实配置文件')
-      if (current !== target && !stat.isDirectory()) throw new Error('配置目录不是文件夹')
-      if (current === target && !stat.isFile()) throw new Error('此配置不是普通文件')
+      if (stat.isSymbolicLink()) throw new FileReadError('此路径含符号链接，请手动编辑真实配置文件')
+      if (current !== target && !stat.isDirectory()) throw new FileReadError('配置目录不是文件夹')
+      if (current === target && !stat.isFile()) throw new FileReadError('此配置不是普通文件')
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
       throw error
@@ -68,13 +69,12 @@ export async function readConfig(ctx: Context, relative: string): Promise<Config
   }
   try {
     const target = await assertSafePath(ctx, relative)
-    const stat = await fs.stat(target)
-    if (stat.size > 1024 * 1024) throw new Error('配置超过 1 MB，请手动检查')
-    const content = await fs.readFile(target, 'utf8')
-    return { ...base, exists: true, content, mode: stat.mode & 0o777 }
+    const result = await readBoundedText(target, 1024 * 1024)
+    await assertSafePath(ctx, relative)
+    return { ...base, exists: true, content: result.text, mode: result.mode }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return base
-    return { ...base, exists: true, editable: false, error: (error as Error).message }
+    return { ...base, exists: true, editable: false, error: fileReadMessage(error) }
   }
 }
 export async function writeConfig(
