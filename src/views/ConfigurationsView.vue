@@ -2,8 +2,18 @@
 import { computed } from 'vue'
 import { CircleDot, FileCode2, FolderCog, Info, ScanLine } from '@lucide/vue'
 import type { ConfigFileInfo } from '../../shared/types'
-const props = defineProps<{ files: ConfigFileInfo[]; busy: boolean; connected: boolean }>()
-const emit = defineEmits<{ scan: []; copy: [path: string] }>()
+import ConnectionEditor from '../components/ConnectionEditor.vue'
+import type { ConnectionConfiguration, ConnectionRequest } from '../../shared/connections'
+import type { RepairPlan } from '../../shared/types'
+const props = defineProps<{
+  files: ConfigFileInfo[]
+  busy: boolean
+  connected: boolean
+  connection?: ConnectionConfiguration
+  preview: (request: ConnectionRequest) => Promise<RepairPlan | undefined>
+  save: (id: string) => Promise<boolean>
+}>()
+const emit = defineEmits<{ scan: []; copy: [path: string]; references: []; backups: [] }>()
 const existingFiles = computed(() => props.files.filter((file) => file.exists).length)
 </script>
 <template>
@@ -17,6 +27,16 @@ const existingFiles = computed(() => props.files.filter((file) => file.exists).l
       <ScanLine :size="15" />检测本机配置
     </button>
   </div>
+  <ConnectionEditor
+    :config="connection"
+    :busy="busy"
+    :connected="connected"
+    :preview="preview"
+    :save="save"
+    @scan="emit('scan')"
+    @references="emit('references')"
+    @backups="emit('backups')"
+  />
   <section class="data-panel">
     <div class="panel-heading">
       <h2>本机配置位置</h2>
@@ -45,8 +65,8 @@ const existingFiles = computed(() => props.files.filter((file) => file.exists).l
     <div>
       <h3>修改范围清楚可见</h3>
       <p>
-        修复只移除所选代理项或 API 地址覆盖，隐私设置使用官方环境变量。复杂 shell
-        表达式、符号链接、项目与托管配置会保留供你手动确认。工具不读取账号密码或系统钥匙串。
+        连接设置只修改预览中列出的用户字段；诊断修复按所选项目处理，隐私设置使用官方环境变量。复杂
+        shell 表达式、符号链接、项目与托管配置会保留供你手动确认。工具不读取账号密码或系统钥匙串。
       </p>
     </div>
   </section>

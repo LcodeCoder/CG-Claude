@@ -2,6 +2,7 @@ import { categoryLabels, statusLabels } from '../shared/types.js'
 import type { ScanReport } from '../shared/types.js'
 export function redactReport(report: ScanReport): ScanReport {
   const copy = structuredClone(report)
+  delete copy.configurationFingerprint
   const privateValues = [copy.machine.hostname, copy.network?.ip, copy.network?.browserIp].filter(
     Boolean,
   ) as string[]

@@ -80,6 +80,7 @@ const {
   selected,
   availableFixes,
   canRepair,
+  reportConfigurationChanged,
   busy,
   setupPreview,
   setupJob,
@@ -559,6 +560,14 @@ const commandForPlatform = computed(() =>
             >
             <button class="text-link" :disabled="busy" @click="scanOpen = true">重新检测</button>
           </div>
+          <div v-if="reportConfigurationChanged && !isHistorical" class="notice info-notice">
+            <FolderCog :size="16" /><span>{{
+              report?.configurationFingerprint
+                ? '用户配置文件已在检测后变化。当前记录仍可查看，重新检测后才能预览诊断修复。'
+                : '这份旧记录没有配置基线。重新检测后才能预览诊断修复。'
+            }}</span>
+            <button class="text-link" :disabled="busy" @click="scanOpen = true">重新检测</button>
+          </div>
           <div v-if="lastAction" class="notice success-notice">
             <CircleCheck :size="16" /><span>{{ lastAction }}</span
             ><button class="icon-button" aria-label="关闭修复提醒" @click="lastAction = ''">
@@ -768,7 +777,7 @@ const commandForPlatform = computed(() =>
                   <CircleCheck :size="23" /><span>{{
                     isHistorical
                       ? '请返回最新结果后选择修复'
-                      : reportPreferencesChanged
+                      : reportPreferencesChanged || reportConfigurationChanged
                         ? '重新检测后显示可修复项目'
                         : report
                           ? '没有可自动修复的项目'
@@ -813,6 +822,11 @@ const commandForPlatform = computed(() =>
           :files="boot?.files ?? []"
           :busy="busy"
           :connected="connected"
+          :connection="boot?.connection"
+          :preview="guard.previewConnection"
+          :save="guard.applyConnection"
+          @references="openReferences('proxy-compatibility')"
+          @backups="page = 'backups'"
           @scan="scanLocalConfigs"
           @copy="copyPath"
         />

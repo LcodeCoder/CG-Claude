@@ -19,7 +19,7 @@ import type { ScanReport } from '../shared/types.js'
 import { createContext, machineInfo } from './context.js'
 import type { Context } from './context.js'
 import { describeConfigs } from './configs.js'
-import { readAllConfigs } from './safety.js'
+import { readAllConfigs, configurationFingerprint } from './safety.js'
 import { Storage } from './storage.js'
 import { RepairEngine } from './repairs.js'
 import { runRepeatedDiagnostics, TOTAL_CHECKS } from './diagnostics.js'
@@ -28,6 +28,9 @@ import { SetupWorkflows } from './workflows.js'
 import { acquireServiceLock } from './lock.js'
 import { SnapshotEngine } from './snapshots.js'
 import { scanProject } from './projects.js'
+
+import { connectionRequestSchema } from '../shared/connections.js'
+import { CONNECTION_FILE, describeConnectionConfiguration } from './connections.js'
 
 interface ScanJob {
   id: string
@@ -163,6 +166,15 @@ export async function createAppServer(options: ServerOptions = {}) {
         send(res, 200, {
           machine: machineInfo(ctx),
           preferences: values[0],
+          configurationFingerprint: configurationFingerprint(
+            values[1] as Awaited<ReturnType<typeof readAllConfigs>>,
+          ),
+          connection: describeConnectionConfiguration(
+            ctx,
+            (values[1] as Awaited<ReturnType<typeof readAllConfigs>>).find(
+              (file) => file.relative === CONNECTION_FILE,
+            )!,
+          ),
           files: describeConfigs(values[1] as Awaited<ReturnType<typeof readAllConfigs>>),
           reports: values[2],
           backups: values[3],
@@ -326,6 +338,29 @@ export async function createAppServer(options: ServerOptions = {}) {
           return
         }
         send(res, 200, job)
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/connections/preview') {
+        const request = connectionRequestSchema.parse(await body(req))
+        send(
+          res,
+          200,
+          await mutation(async () =>
+            repairs.previewConnection(request, await storage.preferences()),
+          ),
+        )
+        return
+      }
+      const connectionApply = url.pathname.match(/^\/api\/connections\/([\w-]+)\/apply$/)
+      if (req.method === 'POST' && connectionApply) {
+        await body(req)
+        send(
+          res,
+          200,
+          await mutation(async () =>
+            repairs.applyConnection(connectionApply[1]!, await storage.preferences(), snapshots),
+          ),
+        )
         return
       }
       if (req.method === 'POST' && url.pathname === '/api/repairs/preview') {

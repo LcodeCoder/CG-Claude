@@ -58,6 +58,22 @@ export interface ConfigContent {
   mode: number
   error?: string
 }
+/** A local report can only offer repairs while its observed user files still match. */
+export function configurationFingerprint(files: ConfigContent[]): string {
+  return hash(
+    JSON.stringify(
+      files
+        .map((file) => ({
+          relative: file.relative,
+          contentHash: hash(file.content),
+          mode: file.mode,
+          editable: file.editable,
+          error: file.error ?? null,
+        }))
+        .sort((a, b) => a.relative.localeCompare(b.relative)),
+    ),
+  )
+}
 export async function readConfig(ctx: Context, relative: string): Promise<ConfigContent> {
   const base = {
     relative,

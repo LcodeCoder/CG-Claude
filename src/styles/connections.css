@@ -1,0 +1,207 @@
+.connection-panel {
+  margin-bottom: 24px;
+}
+.connection-panel .panel-heading {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.connection-panel .panel-heading p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.connection-panel .rotated {
+  transform: rotate(180deg);
+}
+.connection-form {
+  border-top: 1px solid var(--border);
+}
+.connection-scope {
+  padding: 20px 24px;
+  background: var(--canvas);
+}
+.connection-scope strong {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.connection-scope p {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.9;
+  margin: 8px 0;
+}
+.connection-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.connection-form > .notice {
+  margin: 18px 24px;
+}
+.connection-field {
+  padding: 21px 24px;
+  border-top: 1px solid var(--border);
+}
+.connection-field-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.connection-field-heading label {
+  font-size: 15px;
+  font-weight: 600;
+}
+.connection-field-heading code {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.connection-field select {
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 13px;
+  min-width: 122px;
+}
+.connection-field input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  background: var(--paper);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+.connection-field input[aria-invalid='true'] {
+  border-color: var(--red);
+}
+.connection-current {
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  margin-top: 12px;
+  line-height: 1.8;
+}
+.connection-help {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.9;
+  margin-top: 8px;
+}
+.connection-field-error,
+.connection-remove-note {
+  color: var(--red);
+  font-size: 13px;
+  line-height: 1.8;
+  margin-top: 8px;
+}
+.connection-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 24px;
+  border-top: 1px solid var(--border);
+}
+.connection-actions > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.connection-saved {
+  display: flex;
+  gap: 10px;
+  padding: 20px 24px;
+  background: var(--green-light);
+  color: var(--green);
+}
+.connection-saved > svg {
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.connection-saved strong {
+  font-size: 14px;
+}
+.connection-saved p {
+  font-size: 13px;
+  line-height: 1.9;
+  margin: 7px 0;
+}
+.connection-saved .text-link {
+  margin-right: 16px;
+}
+.connection-preview-file h3 {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.connection-preview-file h3 small {
+  display: block;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 13px;
+  margin-top: 6px;
+}
+.connection-preview-change {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-top: 12px;
+  padding: 14px;
+}
+.connection-preview-change > strong {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.connection-preview-change dl {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.connection-preview-change dt {
+  color: var(--muted);
+}
+.connection-preview-change dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.connection-preview-notes {
+  padding-left: 19px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.9;
+  margin: 20px 0;
+}
+.connection-preview-notes li + li {
+  margin-top: 7px;
+}
+@media (max-width: 600px) {
+  .connection-field-heading {
+    flex-wrap: wrap;
+  }
+  .connection-field-heading label {
+    min-width: 180px;
+    flex: 1;
+  }
+  .connection-field-heading select {
+    max-width: 100%;
+  }
+  .connection-field,
+  .connection-scope {
+    padding: 18px;
+  }
+  .connection-actions {
+    padding: 18px;
+    flex-wrap: wrap;
+  }
+  .connection-actions > button {
+    margin-left: auto;
+  }
+}

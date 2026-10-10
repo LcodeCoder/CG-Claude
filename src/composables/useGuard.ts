@@ -16,6 +16,7 @@ import type {
 } from '../../shared/types'
 import { DIAGNOSTIC_CHECK_COUNT } from '../../shared/types'
 import { browserSnapshot } from './browser'
+import type { ConnectionRequest } from '../../shared/connections'
 interface Job {
   id: string
   status: 'running' | 'complete' | 'failed'
@@ -45,10 +46,19 @@ export function useGuard() {
   let mounted = true
   let toastTimer: ReturnType<typeof setTimeout> | undefined
   const selected = ref<FixId[]>([])
+  const reportConfigurationChanged = computed(() =>
+    Boolean(
+      report.value &&
+      boot.value &&
+      (!report.value.configurationFingerprint ||
+        report.value.configurationFingerprint !== boot.value.configurationFingerprint),
+    ),
+  )
   const canRepair = computed(
     () =>
       Boolean(
         connected.value &&
+        !reportConfigurationChanged.value &&
         report.value &&
         boot.value &&
         report.value.id === boot.value.reports[0]?.id,
@@ -239,6 +249,44 @@ export function useGuard() {
       working.value = false
     }
   }
+  async function previewConnection(request: ConnectionRequest): Promise<RepairPlan | undefined> {
+    if (busy.value || !connected.value) return
+    working.value = true
+    try {
+      return await api<RepairPlan>('/connections/preview', {
+        method: 'POST',
+        body: JSON.stringify(request),
+      })
+    } catch (failure) {
+      notify((failure as Error).message, 'error')
+    } finally {
+      working.value = false
+    }
+  }
+  async function applyConnection(id: string): Promise<boolean> {
+    if (busy.value || !connected.value) return false
+    working.value = true
+    let saved = false
+    try {
+      await api<BackupSummary>('/connections/' + id + '/apply', { method: 'POST', body: '{}' })
+      saved = true
+      plan.value = undefined
+      selected.value = []
+      await refresh()
+      notify('连接设置已保存，修改前的完整快照与原始备份已保留。')
+      return true
+    } catch (failure) {
+      notify(
+        saved
+          ? '连接设置已保存，但界面刷新未完成。重新连接后可查看快照与备份。'
+          : (failure as Error).message,
+        'error',
+      )
+      return saved
+    } finally {
+      working.value = false
+    }
+  }
   async function restore(id: string): Promise<boolean> {
     if (busy.value) return false
     working.value = true
@@ -417,6 +465,8 @@ export function useGuard() {
     snapshotPlan,
     projectReport,
     captureSnapshot,
+    previewConnection,
+    applyConnection,
     saveManualReview,
     resetManualReviews,
     importLegacyReviews,
@@ -435,6 +485,7 @@ export function useGuard() {
     selected,
     availableFixes,
     canRepair,
+    reportConfigurationChanged,
     busy,
     initialize,
     scan,

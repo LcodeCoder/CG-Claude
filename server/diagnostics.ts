@@ -24,7 +24,13 @@ import {
 } from './configuration-diagnostics.js'
 import type { Context, CommandResult } from './context.js'
 import { machineInfo } from './context.js'
-import { readAllConfigs, maskedAssignment, safeValue, endpointValue } from './safety.js'
+import {
+  readAllConfigs,
+  configurationFingerprint,
+  maskedAssignment,
+  safeValue,
+  endpointValue,
+} from './safety.js'
 import type { ConfigContent } from './safety.js'
 import {
   shellAssignments,
@@ -898,6 +904,7 @@ export async function runDiagnostics(
     machine,
     preferences,
     checks,
+    configurationFingerprint: configurationFingerprint(files),
     network,
     networkEnabled: request.network,
     counts,

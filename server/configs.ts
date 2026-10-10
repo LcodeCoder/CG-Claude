@@ -81,7 +81,7 @@ export function gitAssignments(content: string): Assignment[] {
   })
 }
 export function parseClaude(content: string | null): Record<string, unknown> {
-  if (content === null || !content.trim()) return {}
+  if (content === null) return {}
   let value: unknown
   try {
     value = JSON.parse(content)

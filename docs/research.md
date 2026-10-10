@@ -15,6 +15,8 @@
 | 服务故障、额度与账号异常需要区分 | [服务状态](https://status.claude.com/)、[错误分流](https://support.claude.com/en/articles/12466728-troubleshoot-claude-error-messages)、[警告与申诉](https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals) | 人工复核提供入口、确认时间与备注，环境结果不推算账号状态                                                   |
 | 修改前保存基线与前后对比         | 用户原文章、社区诊断项目、项目事务验证                                                                                                                                                                                               | 保存完整快照、精确预览、冲突阻止与失败回退；历史记录比较状态、摘要和证据                                   |
 
+连接编辑依据当前官方网络配置：允许 HTTP(S) 代理、NO_PROXY、自定义 API 网关和额外 CA；每个字段单独选择保持、设置或移除。写入用户 env 不等于当前 shell 或项目配置已生效，保存后提示重新启动并用 `/status` 复核。地址校验不能证明连通性。
+
 新增项目配置核对依据：[权限规则](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[MCP](https://code.claude.com/docs/en/mcp)、[Bun 锁文件](https://bun.sh/docs/pm/lockfile)。项目结果可按状态筛选、展开证据，并在对应文献与项目项之间跳转。权限检查区分配置声明和实际生效；Hooks 不执行或展示完整命令；MCP 自动启用声明仍受版本与工作区信任影响；Bun 两种锁文件只查元数据。
 
 ## 保留为人工判断的内容

@@ -213,3 +213,64 @@ test('manual review reset clears only that record file', async () => {
   expect(await data.storage.manualReviews()).toEqual([])
   expect((await data.storage.preferences()).routeMode).toBe('tun')
 })
+
+test('connection API saves with a full snapshot and restores while keeping secrets out of responses', async () => {
+  const original =
+    JSON.stringify(
+      {
+        env: {
+          ANTHROPIC_API_KEY: 'fake-private-api-key',
+          HTTPS_PROXY: 'http://old-user:old-password@localhost:8080',
+        },
+        hooks: { Stop: [] },
+      },
+      null,
+      4,
+    ) + '\n'
+  await data.write('.claude/settings.json', original)
+  const request = { changes: [{ key: 'HTTPS_PROXY', value: 'http://127.0.0.1:7890' }] }
+  expect((await post('/api/connections/preview', request, '')).status).toBe(403)
+  expect(
+    (
+      await post('/api/connections/preview', {
+        changes: [{ key: 'NODE_OPTIONS', value: 'anything' }],
+      })
+    ).status,
+  ).toBe(400)
+  const preview = await post('/api/connections/preview', request)
+  expect(preview.status).toBe(200)
+  const plan = await preview.json()
+  expect(JSON.stringify(plan)).not.toContain('old-password')
+  expect((await post(`/api/repairs/${plan.id}/apply`, {})).status).toBe(400)
+  const apply = await post(`/api/connections/${plan.id}/apply`, {})
+  expect(apply.status).toBe(200)
+  const backup = await apply.json()
+  expect(backup.snapshotId).toBeTruthy()
+  const bootstrap = await (await fetch(base + '/api/bootstrap')).json()
+  expect(bootstrap.connection.editable).toBe(true)
+  expect(bootstrap.snapshots[0].purpose).toBe('connection')
+  const visible = JSON.stringify([plan, backup, bootstrap])
+  for (const secret of ['fake-private-api-key', 'old-password', 'old-user', '"original"'])
+    expect(visible).not.toContain(secret)
+  expect((await post(`/api/backups/${backup.id}/restore`, {})).status).toBe(200)
+  expect(await data.read('.claude/settings.json')).toBe(original)
+})
+
+test('compares report file baselines across reloads and excludes the fingerprint from redacted exports', async () => {
+  await data.write('.claude/settings.json', '{}')
+  const started = await (await post('/api/scans', { network: false })).json()
+  let completed = started
+  while (completed.status === 'running') {
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    completed = await (await fetch(base + '/api/scans/' + started.id)).json()
+  }
+  const report = completed.report
+  const before = await (await fetch(base + '/api/bootstrap')).json()
+  expect(before.configurationFingerprint).toBe(report.configurationFingerprint)
+  await data.write('.claude/settings.json', '{"model":"external-change"}')
+  const after = await (await fetch(base + '/api/bootstrap')).json()
+  expect(after.configurationFingerprint).not.toBe(report.configurationFingerprint)
+  expect(after.reports[0].configurationFingerprint).toBe(report.configurationFingerprint)
+  const exported = await (await fetch(base + `/api/reports/${report.id}/export?format=json`)).json()
+  expect(exported.configurationFingerprint).toBeUndefined()
+})

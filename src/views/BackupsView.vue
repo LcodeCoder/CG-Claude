@@ -48,7 +48,7 @@ function formatFixes(ids: BackupSummary['fixIds']) {
       </div>
     </div>
     <div v-if="!snapshots.length" class="snapshot-empty">
-      每次一键配置开始前会自动保存快照，也可以手动保存当前状态。
+      一键配置和连接设置保存前会自动保存快照，也可以手动保存当前状态。
     </div>
     <article v-for="snapshot in snapshots" :key="snapshot.id" class="snapshot-row">
       <ArchiveRestore :size="19" />
@@ -81,8 +81,8 @@ function formatFixes(ids: BackupSummary['fixIds']) {
   </div>
   <section class="data-panel">
     <div class="panel-heading">
-      <h2>修复与恢复记录</h2>
-      <span class="quiet-text">{{ backups.length ?? 0 }} 次修复</span>
+      <h2>配置修改与恢复记录</h2>
+      <span class="quiet-text">{{ backups.length ?? 0 }} 次修改</span>
     </div>
     <div v-if="!backups.length" class="empty-view">
       <ArchiveRestore :size="35" />
@@ -105,7 +105,7 @@ function formatFixes(ids: BackupSummary['fixIds']) {
                 : '修复中断'
           }}</span>
         </div>
-        <p>{{ formatFixes(backup.fixIds) }}</p>
+        <p>{{ backup.label ?? formatFixes(backup.fixIds) }}</p>
         <div class="backup-paths">
           <code v-for="file in backup.files" :key="file">{{ file }}</code>
         </div>

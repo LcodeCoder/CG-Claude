@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { ConnectionConfiguration } from './connections.js'
 
 export { DIAGNOSTIC_CHECK_COUNT } from './diagnostic-checks.js'
 
@@ -110,6 +111,7 @@ export interface NetworkInfo {
   browserIp?: string
 }
 export interface ScanReport {
+  configurationFingerprint?: string
   ruleset?: string
   id: string
   createdAt: string
@@ -141,6 +143,8 @@ export interface FilePreview {
   exists: boolean
 }
 export interface RepairPlan {
+  kind?: 'connection'
+  label?: string
   id: string
   createdAt: string
   expiresAt: string
@@ -149,6 +153,8 @@ export interface RepairPlan {
   notes: string[]
 }
 export interface BackupSummary {
+  label?: string
+  snapshotId?: string
   id: string
   createdAt: string
   fixIds: FixId[]
@@ -169,6 +175,8 @@ export interface Bootstrap {
   snapshots: SnapshotSummary[]
   projectRoot: string
   manualReviews: ManualReview[]
+  connection?: ConnectionConfiguration
+  configurationFingerprint?: string
 }
 export const repairRequestSchema = z.object({ fixIds: z.array(z.enum(fixIds)).min(1).max(7) })
 export const manualItems = [
@@ -368,7 +376,7 @@ export interface SnapshotSummary {
   id: string
   createdAt: string
   label: string
-  purpose: 'manual' | 'setup' | 'before-restore'
+  purpose: 'manual' | 'setup' | 'connection' | 'before-restore'
   status: 'ready' | 'restored'
   files: string[]
   excludedFiles: string[]

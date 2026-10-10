@@ -8,6 +8,11 @@ import { transformConfig } from './configs.js'
 import { Storage } from './storage.js'
 import type { BackupManifest } from './storage.js'
 
+import { connectionRequestSchema } from '../shared/connections.js'
+import type { ConnectionRequest } from '../shared/connections.js'
+import { prepareConnectionEdit, validateConnectionFiles } from './connections.js'
+import type { SnapshotEngine } from './snapshots.js'
+
 interface PlannedFile {
   relative: string
   before: string | null
@@ -19,6 +24,7 @@ interface InternalPlan {
   preview: RepairPlan
   entries: PlannedFile[]
   preferencesHash: string
+  connectionChanges?: ConnectionRequest
 }
 export class NoRepairChangesError extends Error {
   constructor() {
@@ -31,10 +37,13 @@ export class RepairEngine {
     readonly ctx: Context,
     readonly storage: Storage,
   ) {}
-  async preview(ids: FixId[], preferences: Preferences): Promise<RepairPlan> {
+  private checkPlanCapacity() {
     for (const [id, plan] of this.plans)
       if (Date.parse(plan.preview.expiresAt) < Date.now()) this.plans.delete(id)
     if (this.plans.size >= 30) throw new Error('待处理的预览过多，请完成现有修复或稍后重试')
+  }
+  async preview(ids: FixId[], preferences: Preferences): Promise<RepairPlan> {
+    this.checkPlanCapacity()
     const selected = [...new Set(ids)]
     if (
       selected.some((id) => /^(?:shell|npm|git)-proxy$/.test(id)) &&
@@ -90,6 +99,39 @@ export class RepairEngine {
     })
     return preview
   }
+  async previewConnection(
+    request: ConnectionRequest,
+    preferences: Preferences,
+  ): Promise<RepairPlan> {
+    this.checkPlanCapacity()
+    const edit = await prepareConnectionEdit(this.ctx, connectionRequestSchema.parse(request))
+    if (!edit.changes.length) throw new Error('所选连接设置与此文件当前值一致，无需修改')
+    const preview: RepairPlan = {
+      id: randomUUID(),
+      kind: 'connection',
+      label: '保存 Claude Code 用户连接设置',
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 600000).toISOString(),
+      fixIds: [],
+      files: [{ path: edit.file.display, exists: edit.file.exists, changes: edit.changes }],
+      notes: edit.notes,
+    }
+    this.plans.set(preview.id, {
+      preview,
+      connectionChanges: request,
+      preferencesHash: hash(JSON.stringify(preferences)),
+      entries: [
+        {
+          relative: edit.file.relative,
+          before: edit.file.content,
+          after: edit.after,
+          mode: edit.file.mode,
+          beforeHash: hash(edit.file.content),
+        },
+      ],
+    })
+    return preview
+  }
   discard(id: string) {
     this.plans.delete(id)
   }
@@ -99,6 +141,28 @@ export class RepairEngine {
     return plan.entries.map((entry) => ({ relative: entry.relative, afterHash: hash(entry.after) }))
   }
   async apply(id: string, preferences: Preferences): Promise<BackupSummary> {
+    if (this.plans.get(id)?.preview.kind === 'connection')
+      throw new Error('连接设置请通过连接预览保存，以便保留完整快照')
+    return this.applyPlan(id, preferences)
+  }
+  async applyConnection(
+    id: string,
+    preferences: Preferences,
+    snapshots: SnapshotEngine,
+  ): Promise<BackupSummary> {
+    if (this.plans.get(id)?.preview.kind !== 'connection')
+      throw new Error('连接设置预览不存在，请重新预览')
+    return this.applyPlan(
+      id,
+      preferences,
+      async () => (await snapshots.capture('connection', '连接设置修改前的完整配置')).id,
+    )
+  }
+  private async applyPlan(
+    id: string,
+    preferences: Preferences,
+    capture?: () => Promise<string>,
+  ): Promise<BackupSummary> {
     const plan = this.plans.get(id)
     if (!plan) throw new Error('修复预览不存在，请重新生成')
     if (Date.parse(plan.preview.expiresAt) < Date.now()) {
@@ -109,13 +173,21 @@ export class RepairEngine {
       throw new Error('检测偏好已变化，请重新预览修复')
     for (const entry of plan.entries) {
       const current = await readConfig(this.ctx, entry.relative)
-      if (!current.editable || hash(current.content) !== entry.beforeHash)
+      if (
+        !current.editable ||
+        hash(current.content) !== entry.beforeHash ||
+        current.mode !== entry.mode
+      )
         throw new Error(`~/${entry.relative} 在预览后发生变化，请重新预览`)
     }
+    if (plan.connectionChanges) await validateConnectionFiles(plan.connectionChanges)
+    const snapshotId = capture ? await capture() : undefined
     const manifest: BackupManifest = {
       id: randomUUID(),
       createdAt: new Date().toISOString(),
       fixIds: plan.preview.fixIds,
+      label: plan.preview.label,
+      snapshotId,
       files: plan.entries.map((entry) => '~/' + entry.relative),
       status: 'failed',
       entries: plan.entries.map((entry) => ({
@@ -132,7 +204,11 @@ export class RepairEngine {
       for (const entry of plan.entries) {
         // Recheck immediately before each write, as other applications may edit configuration.
         const current = await readConfig(this.ctx, entry.relative)
-        if (!current.editable || hash(current.content) !== entry.beforeHash)
+        if (
+          !current.editable ||
+          hash(current.content) !== entry.beforeHash ||
+          current.mode !== entry.mode
+        )
           throw new Error(`~/${entry.relative} 已被其他程序修改`)
         await writeConfig(this.ctx, entry.relative, entry.after, entry.mode)
         written.push(entry)
@@ -147,7 +223,11 @@ export class RepairEngine {
       for (const entry of written.reverse()) {
         try {
           const current = await readConfig(this.ctx, entry.relative)
-          if (!current.editable || hash(current.content) !== hash(entry.after))
+          if (
+            !current.editable ||
+            hash(current.content) !== hash(entry.after) ||
+            current.mode !== entry.mode
+          )
             throw new Error('内容又发生变化')
           await writeConfig(this.ctx, entry.relative, entry.before, entry.mode)
         } catch {
@@ -168,7 +248,11 @@ export class RepairEngine {
     if (!manifest || manifest.status !== 'applied') throw new Error('此备份不处于可恢复状态')
     for (const entry of manifest.entries) {
       const current = await readConfig(this.ctx, entry.relative)
-      if (!current.editable || hash(current.content) !== entry.afterHash)
+      if (
+        !current.editable ||
+        hash(current.content) !== entry.afterHash ||
+        current.mode !== entry.mode
+      )
         throw new Error(
           `~/${entry.relative} 在修复后被修改，恢复会覆盖新内容，已停止。请手动对照备份。`,
         )
@@ -177,7 +261,11 @@ export class RepairEngine {
     try {
       for (const entry of manifest.entries) {
         const current = await readConfig(this.ctx, entry.relative)
-        if (!current.editable || hash(current.content) !== entry.afterHash)
+        if (
+          !current.editable ||
+          hash(current.content) !== entry.afterHash ||
+          current.mode !== entry.mode
+        )
           throw new Error(`~/${entry.relative} 已变化`)
         await writeConfig(this.ctx, entry.relative, entry.original, entry.mode)
         restored.push({ entry, applied: current.content })
@@ -192,7 +280,11 @@ export class RepairEngine {
       for (const { entry, applied } of restored.reverse()) {
         try {
           const current = await readConfig(this.ctx, entry.relative)
-          if (!current.editable || hash(current.content) !== entry.beforeHash)
+          if (
+            !current.editable ||
+            hash(current.content) !== entry.beforeHash ||
+            current.mode !== entry.mode
+          )
             throw new Error('文件再次改变')
           await writeConfig(this.ctx, entry.relative, applied, entry.mode)
         } catch {

@@ -26,6 +26,7 @@ flowchart LR
 | 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
 | 进程、Claude 用户设置与静态 shell 来源     | `server/environment-sources.ts`                                                             |
 | 代理、认证、证书及隐私规则                 | `server/configuration-diagnostics.ts`、`server/privacy-diagnostics.ts`、`shared/privacy.ts` |
+| 主动编辑连接设置与严格字段校验             | `shared/connections.ts`、`server/connections.ts`、`src/components/ConnectionEditor.vue`     |
 | 本地配置静态解析与选定字段修改             | `server/configs.ts`                                                                         |
 | 路径、脱敏、固定目标和原子文件操作         | `server/safety.ts`                                                                          |
 | 预览校验、备份、写入与回退                 | `server/repairs.ts`、`server/snapshots.ts`                                                  |
@@ -51,6 +52,10 @@ flowchart LR
 修改必须有可读预览、原始备份、预览后冲突校验和异常回退。修复只修改选择的字段，保留其他键、注释和文件权限；无法可靠解析的内容交给人工核对。完整快照还要保存缺失状态和检测偏好，恢复前再保存当前状态。
 
 配置目标集中在 `server/context.ts`，输入 schema 在 `shared/types.ts`，字段转换在 `server/configs.ts`，事务在 `server/repairs.ts`。增加可修复字段时同步检查 ID、FixId、界面说明与恢复测试，避免前端自行拼接任意路径或命令。
+
+连接编辑使用独立的有限字段 schema 和 plan kind，仍复用 RepairEngine 的预览、冲突校验、备份、写入与回退。保存前由 SnapshotEngine 捕获完整配置基线；普通修复端点不能消费连接预览而绕过快照。CA 元数据在预览与写入前分别验证。
+
+报告的 `configurationFingerprint` 由固定配置的内容校验、权限和读取状态计算；bootstrap 提供当前基线。前端遇到配置已变化或缺基线的旧报告时要求重新检测。默认导出移除基线指纹，避免把配置内容的摘要标识带到外部。
 
 ## 样式与品牌
 
