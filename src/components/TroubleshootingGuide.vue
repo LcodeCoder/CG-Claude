@@ -1,8 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ArrowUpRight, BookOpen, Compass } from '@lucide/vue'
+import type { ManualReviewId } from '../../shared/types'
 import { environmentTerms, troubleshootingGuides } from '../content/troubleshooting'
-const emit = defineEmits<{ check: [id: string]; source: [id: string]; manual: [] }>()
+const emit = defineEmits<{
+  check: [id: string]
+  source: [id: string]
+  manual: [id: ManualReviewId]
+}>()
 const selected = ref(troubleshootingGuides[0]!.id)
 const guide = computed(() => troubleshootingGuides.find((item) => item.id === selected.value)!)
 </script>
@@ -47,7 +52,7 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
         >
           {{ check.label }}<ArrowUpRight :size="13" />
         </button>
-        <button v-if="guide.manual" class="text-link" @click="emit('manual')">
+        <button v-if="guide.manual" class="text-link" @click="emit('manual', guide.manual!)">
           打开人工复核<ArrowUpRight :size="13" />
         </button>
         <button class="text-link" @click="emit('source', guide.source)">

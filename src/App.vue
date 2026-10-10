@@ -74,23 +74,33 @@ const appVersion = packageMetadata.version
 watch(page, () => window.scrollTo({ top: 0, behavior: 'instant' }), { flush: 'post' })
 const referenceTarget = ref<ReferenceTarget>()
 const projectFocusId = ref('')
-function openReferences(checkId?: string) {
-  referenceTarget.value = checkId ? { scope: 'environment', id: checkId } : undefined
+async function openReferenceTarget(target?: ReferenceTarget) {
+  referenceTarget.value = target
   page.value = 'references'
-  window.scrollTo({ top: 0 })
+  await nextTick()
+  await focusResult(document.getElementById(target ? 'reference-context' : 'reference-intro'))
+}
+function openReferences(checkId?: string) {
+  return openReferenceTarget(checkId ? { scope: 'environment', id: checkId } : undefined)
 }
 function openSource(id: string) {
-  referenceTarget.value = { scope: 'source', id }
-  page.value = 'references'
+  return openReferenceTarget({ scope: 'source', id })
 }
 async function openHelp() {
   page.value = 'about'
   await nextTick()
   await focusResult(document.getElementById('troubleshooting'))
 }
+function openManualReferences(id: string) {
+  return openReferenceTarget({ scope: 'manual', id })
+}
+async function openManualItem(id: string) {
+  page.value = 'checklist'
+  await nextTick()
+  await focusResult(document.getElementById('manual-item-' + id))
+}
 function openProjectReferences(id: string) {
-  referenceTarget.value = { scope: 'project', id }
-  page.value = 'references'
+  return openReferenceTarget({ scope: 'project', id })
 }
 async function openProjectFinding(id: string) {
   projectFocusId.value = id
@@ -481,6 +491,7 @@ const commandForPlatform = computed(() =>
           :busy="busy"
           :save="guard.saveManualReview"
           :reset="guard.resetManualReviews"
+          @references="openManualReferences"
         />
 
         <SettingsView
@@ -499,7 +510,7 @@ const commandForPlatform = computed(() =>
           @references="openReferences()"
           @check="openCheck"
           @source="openSource"
-          @manual="page = 'checklist'"
+          @manual="openManualItem"
         />
 
         <ReferencesView
@@ -509,6 +520,7 @@ const commandForPlatform = computed(() =>
           :checks="report?.checks"
           @clear="referenceTarget = undefined"
           @project="openProjectFinding"
+          @manual="openManualItem"
           @check="openCheck"
         />
         <footer class="page-footer">

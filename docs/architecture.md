@@ -18,7 +18,7 @@ flowchart LR
 
 | 任务                                       | 入口                                                                                        |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| 页面导航、检测详情与全局弹窗               | `src/App.vue`                                                                               |
+| 页面导航与全局弹窗                         | `src/App.vue`                                                                               |
 | 页面请求、服务连接与任务状态               | `src/composables/useGuard.ts`                                                               |
 | 本机配置、项目、记录、备份、偏好、使用说明 | `src/views/` 下对应视图                                                                     |
 | 一键配置向导和节点状态                     | `src/components/SetupWizard.vue`、`server/workflows.ts`                                     |
@@ -76,8 +76,12 @@ flowchart LR
 
 配置事务记录原文件 mode 和实际写入后的 `afterMode`。Windows 的权限映射可能改变 POSIX 数值，因此还原必须使用观测到的写后权限核对冲突。旧备份缺少 `afterMode` 时继续使用原 mode；不要通过跳过权限检查解决平台差异。
 
+环境详情在 `src/views/EnvironmentView.vue`，筛选模型在 `src/lib/environment-results.ts`。
+
 错误排查内容在 `src/content/troubleshooting.ts`，交互组件在 `src/components/TroubleshootingGuide.vue`。内容只引用稳定检查 ID 和文献源 ID，由 App 接收事件并导航。帮助页不执行账号请求；没有检测报告时先打开检测选项。
 
 环境首页由 `src/views/EnvironmentView.vue` 维护统计、连接路径、详情筛选和修复选择；App 只连接页面与本机操作。筛选模型在 `src/lib/environment-results.ts`，由 App 保存，所以跨页返回时搜索和展开状态仍保留。统计导航等待父级 model 更新后再读取目标列表，避免跳到旧筛选中的节点。详情、项目和帮助页共用 `src/lib/navigation.ts` 的焦点与滚动逻辑。
 
 主导航和页面说明在 `src/content/navigation.ts` 注册。新增页面先补齐标题、说明和稳定 ID，再接入视图；不要在主模板继续叠加文案条件分支。
+
+文献关联分别使用 `checkIds`、`projectCheckIds` 和带类型的 `manualItemIds`；来源单条、检查、项目与人工复核四种筛选范围明确区分。人工复核事项注册在 `shared/types.ts`，其稳定 ID 用于保存记录和双向定位。

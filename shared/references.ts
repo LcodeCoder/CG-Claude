@@ -1,3 +1,4 @@
+import type { ManualReviewId } from './types.js'
 import type { DiagnosticCheckId } from './diagnostic-checks.js'
 
 /** Sources are curated at build time. Opening this library makes no network requests. */
@@ -16,8 +17,9 @@ export interface ReferenceEntry {
   boundary: string
   checkIds: DiagnosticCheckId[]
   projectCheckIds?: string[]
+  manualItemIds?: ManualReviewId[]
 }
-export type ReferenceTarget = { scope: 'environment' | 'project' | 'source'; id: string }
+export type ReferenceTarget = { scope: 'environment' | 'project' | 'manual' | 'source'; id: string }
 export const referenceKindLabels: Record<ReferenceKind, string> = {
   official: '官方文档',
   maintainer: '项目文档',
@@ -34,7 +36,51 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'claude-identity',
+    title: 'Claude · 身份与企业验证说明',
+    publisher: 'Anthropic',
+    url: 'https://support.claude.com/en/articles/14328960-identity-verification-on-claude',
+    kind: 'official',
+    topic: 'account',
+    checkedAt,
+    takeaway: '部分能力或平台复核可能出现身份或企业验证提示，具体要求由官方验证流程提供。',
+    application: '在账号提示排查中提供官方依据；资料仅由用户在官方流程中提交。',
+    boundary: '本机工具无法确认是否需要验证、结果或账号处理原因；不收集证件、照片或企业身份资料。',
+    checkIds: [],
+    manualItemIds: ['account-notice'],
+  },
+  {
+    id: 'claude-sessions',
+    title: 'Claude · 管理活跃登录会话',
+    publisher: 'Anthropic',
+    url: 'https://support.claude.com/en/articles/13124001-managing-your-active-sessions',
+    kind: 'official',
+    topic: 'account',
+    checkedAt,
+    takeaway: '账号设置可查看活跃设备、浏览器与近似位置，并由用户处理不认识的会话。',
+    application: '把登录设备和浏览器资料检查关联到官方说明，保持人工复核。',
+    boundary: '近似位置来自 IP；本工具不读取、终止或修改任何账号会话。',
+    checkIds: [],
+    manualItemIds: ['sessions', 'browser-profile'],
+  },
+  {
+    id: 'claude-model-improvement',
+    title: 'Claude · 模型改进隐私选择',
+    publisher: 'Anthropic',
+    url: 'https://privacy.claude.com/en/articles/12109829-how-do-i-change-my-model-improvement-privacy-settings',
+    kind: 'official',
+    topic: 'privacy',
+    checkedAt,
+    takeaway: '消费计划账号的模型改进选择在隐私设置中管理，也涉及这些账号的 Claude Code 会话。',
+    application: '说明网页账号选择与本机可选遥测不同，提供账号页面人工确认入口。',
+    boundary:
+      '此设置不等于关闭全部服务数据处理。官方说明保留安全与政策处理情形，本工具不读取或修改账号选择。',
+    checkIds: ['claude-privacy'],
+    manualItemIds: ['cloud-privacy'],
+  },
+  {
     id: 'anthropic-system-trust',
+    manualItemIds: ['account-notice'],
     title: 'Anthropic · 平台检测、处理与申诉的公开说明',
     publisher: 'Anthropic',
     url: 'https://www.anthropic.com/transparency/system-trust-reporting',
@@ -127,6 +173,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-key-choice',
+    manualItemIds: ['client', 'auth-method', 'usage'],
     title: 'Claude 帮助中心 · API Key 与订阅选择',
     publisher: 'Anthropic',
     url: 'https://support.claude.com/en/articles/12304248-manage-api-key-environment-variables-in-claude-code',
@@ -180,6 +227,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-settings',
+    manualItemIds: ['backup'],
     title: 'Claude Code · 配置文件与优先级',
     publisher: 'Anthropic',
     url: 'https://code.claude.com/docs/en/settings',
@@ -219,6 +267,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-auth',
+    manualItemIds: ['client', 'auth-method'],
     title: 'Claude Code · 认证与凭据优先级',
     publisher: 'Anthropic',
     url: 'https://code.claude.com/docs/en/iam',
@@ -246,6 +295,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-access',
+    manualItemIds: ['regions'],
     title: 'Claude · 可访问的国家与地区',
     publisher: 'Claude Help Center',
     url: 'https://support.claude.com/en/articles/8461763-where-can-i-access-claude',
@@ -259,6 +309,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'api-regions',
+    manualItemIds: ['regions'],
     title: 'Claude API · 支持地区',
     publisher: 'Claude Platform Docs',
     url: 'https://platform.claude.com/docs/en/api/supported-regions',
@@ -272,6 +323,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-appeals',
+    manualItemIds: ['account-notice'],
     title: 'Claude · 警告、限制与申诉',
     publisher: 'Claude Help Center',
     url: 'https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals',
@@ -298,6 +350,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'api-errors',
+    manualItemIds: ['usage', 'billing', 'account-notice'],
     title: 'Claude API · 错误代码',
     publisher: 'Claude Platform Docs',
     url: 'https://platform.claude.com/docs/en/api/errors',
@@ -353,6 +406,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'mihomo-tun',
+    manualItemIds: ['dns', 'fixed-route'],
     title: 'Mihomo · TUN 与 DNS 接管',
     publisher: 'MetaCubeX',
     url: 'https://wiki.metacubex.one/config/inbound/tun/',
@@ -366,6 +420,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'browserleaks-dns',
+    manualItemIds: ['dns', 'fixed-route'],
     title: 'BrowserLeaks · DNS 出口检测',
     publisher: 'BrowserLeaks',
     url: 'https://browserleaks.com/dns',
@@ -379,6 +434,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'browserleaks-webrtc',
+    manualItemIds: ['webrtc'],
     title: 'BrowserLeaks · WebRTC 出口检测',
     publisher: 'BrowserLeaks',
     url: 'https://browserleaks.com/webrtc',
@@ -392,6 +448,20 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'ayi-guide',
+    manualItemIds: [
+      'dns',
+      'webrtc',
+      'regions',
+      'client',
+      'backup',
+      'timezone-auto',
+      'fixed-route',
+      'asn',
+      'browser-profile',
+      'cloud-privacy',
+      'usage',
+      'billing',
+    ],
     title: 'AYi · 2026 年 10 月 Claude 使用环境指南',
     publisher: 'AYi_AInotes',
     url: 'https://x.com/AYi_AInotes/status/2106639522586829094',
@@ -444,6 +514,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-status',
+    manualItemIds: ['service-status'],
     title: 'Claude · 官方服务状态',
     publisher: 'Anthropic',
     url: 'https://status.claude.com/',
@@ -489,6 +560,9 @@ export function referencesForCheck(checkId: string): ReferenceEntry[] {
 export function referencesForProjectFinding(id: string): ReferenceEntry[] {
   return references.filter((entry) => entry.projectCheckIds?.includes(id))
 }
+export function referencesForManualItem(id: string): ReferenceEntry[] {
+  return references.filter((entry) => entry.manualItemIds?.some((itemId) => itemId === id))
+}
 export function matchesReferenceTarget(entry: ReferenceEntry, target?: ReferenceTarget): boolean {
   return (
     !target ||
@@ -496,6 +570,8 @@ export function matchesReferenceTarget(entry: ReferenceEntry, target?: Reference
       ? entry.id === target.id
       : target.scope === 'environment'
         ? entry.checkIds.some((id) => id === target.id)
-        : Boolean(entry.projectCheckIds?.includes(target.id)))
+        : target.scope === 'manual'
+          ? Boolean(entry.manualItemIds?.some((id) => id === target.id))
+          : Boolean(entry.projectCheckIds?.includes(target.id)))
   )
 }

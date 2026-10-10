@@ -282,6 +282,14 @@ export const manualItems = [
     category: '服务',
   },
   {
+    id: 'account-notice',
+    title: '核对账号提示与官方复核入口',
+    description:
+      '出现验证、警告或组织复核提示时，核对官网登录页的完整说明。身份验证只按官方流程完成；本机配置不能确定处理原因。',
+    url: 'https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals',
+    category: '账号',
+  },
+  {
     id: 'auth-method',
     title: '确认客户端实际采用的认证方式',
     description:
@@ -290,6 +298,8 @@ export const manualItems = [
     category: '客户端',
   },
 ] as const
+
+export type ManualReviewId = (typeof manualItems)[number]['id']
 
 export const manualReviewRequestSchema = z.object({
   id: z.enum(manualItems.map((item) => item.id)),

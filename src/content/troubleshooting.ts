@@ -1,3 +1,4 @@
+import type { ManualReviewId } from '../../shared/types'
 import type { DiagnosticCheckId } from '../../shared/diagnostic-checks'
 
 type Guide = {
@@ -8,7 +9,7 @@ type Guide = {
   steps: string[]
   checks: { id: DiagnosticCheckId; label: string }[]
   source: string
-  manual?: boolean
+  manual?: ManualReviewId
 }
 /** Curated help stays offline; it never submits credentials or reproduces API requests. */
 export const troubleshootingGuides: Guide[] = [
@@ -27,7 +28,7 @@ export const troubleshootingGuides: Guide[] = [
       { id: 'route-consistency', label: '查看两侧出口' },
     ],
     source: 'api-errors',
-    manual: true,
+    manual: 'fixed-route',
   },
   {
     id: 'authentication',
@@ -54,7 +55,7 @@ export const troubleshootingGuides: Guide[] = [
     ],
     checks: [{ id: 'auth-sources', label: '查看认证来源' }],
     source: 'api-errors',
-    manual: true,
+    manual: 'regions',
   },
   {
     id: 'rate-limit',
@@ -68,7 +69,7 @@ export const troubleshootingGuides: Guide[] = [
     ],
     checks: [{ id: 'auth-sources', label: '确认正在使用的认证' }],
     source: 'api-errors',
-    manual: true,
+    manual: 'usage',
   },
   {
     id: 'billing',
@@ -82,7 +83,7 @@ export const troubleshootingGuides: Guide[] = [
     ],
     checks: [{ id: 'auth-sources', label: '查看认证来源' }],
     source: 'api-errors',
-    manual: true,
+    manual: 'billing',
   },
   {
     id: 'service',
@@ -96,6 +97,20 @@ export const troubleshootingGuides: Guide[] = [
     ],
     checks: [],
     source: 'claude-status',
+  },
+  {
+    id: 'account-notice',
+    title: '账号或组织复核提示',
+    codes: 'verification · account notice',
+    meaning: '以官网登录页和通知中的具体要求为准。环境检测不能确定账号处理原因。',
+    steps: [
+      '在官网登录页核对完整提示、时间与账号；网络错误和账号通知需要分别处理。',
+      '若提示身份或企业验证，由本人在官方流程中完成；CG Claude 不收集这类资料。',
+      '认为处理有误时，使用官方支持或申诉入口，附上完整提示与时间。',
+    ],
+    checks: [],
+    source: 'claude-appeals',
+    manual: 'account-notice',
   },
   {
     id: 'certificate',

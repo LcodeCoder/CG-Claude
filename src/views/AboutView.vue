@@ -2,12 +2,13 @@
 import { ArrowUpRight, LockKeyhole, Terminal } from '@lucide/vue'
 import BrandMark from '../components/BrandMark.vue'
 import TroubleshootingGuide from '../components/TroubleshootingGuide.vue'
+import type { ManualReviewId } from '../../shared/types'
 defineProps<{ version: string }>()
 const emit = defineEmits<{
   references: []
   check: [id: string]
   source: [id: string]
-  manual: []
+  manual: [id: ManualReviewId]
 }>()
 </script>
 <template>
@@ -42,7 +43,7 @@ const emit = defineEmits<{
   <TroubleshootingGuide
     @check="emit('check', $event)"
     @source="emit('source', $event)"
-    @manual="emit('manual')"
+    @manual="emit('manual', $event)"
   />
   <section class="data-panel sources-panel">
     <div class="panel-heading">

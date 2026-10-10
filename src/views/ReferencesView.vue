@@ -8,13 +8,19 @@ import {
   matchesReferenceTarget,
 } from '../../shared/references'
 import type { ReferenceKind, ReferenceTopic, ReferenceTarget } from '../../shared/references'
+import { manualItems } from '../../shared/types'
 import type { CheckResult, ProjectFinding } from '../../shared/types'
 const props = defineProps<{
   target?: ReferenceTarget
   checks?: CheckResult[]
   projectFindings?: ProjectFinding[]
 }>()
-const emit = defineEmits<{ clear: []; check: [id: string]; project: [id: string] }>()
+const emit = defineEmits<{
+  clear: []
+  check: [id: string]
+  project: [id: string]
+  manual: [id: string]
+}>()
 const query = ref('')
 const kind = ref<ReferenceKind | 'all'>('all')
 const topic = ref<ReferenceTopic | 'all'>('all')
@@ -30,6 +36,8 @@ const selectedTitle = computed(() => {
   if (!props.target) return ''
   if (props.target.scope === 'source')
     return references.find((entry) => entry.id === props.target?.id)?.title ?? props.target.id
+  if (props.target.scope === 'manual')
+    return manualItems.find((item) => item.id === props.target?.id)?.title ?? props.target.id
   const items = props.target.scope === 'project' ? props.projectFindings : props.checks
   return items?.find((item) => item.id === props.target?.id)?.title ?? props.target.id
 })
@@ -62,7 +70,7 @@ function relatedChecks(ids: string[]) {
 }
 </script>
 <template>
-  <section class="reference-intro data-panel">
+  <section id="reference-intro" tabindex="-1" class="reference-intro data-panel">
     <BookOpen :size="24" />
     <div>
       <h2>每个建议，都可以追溯出处</h2>
@@ -104,8 +112,8 @@ function relatedChecks(ids: string[]) {
       </select></label
     >
   </div>
-  <div v-if="target" class="reference-focus">
-    <span>正在查看「{{ selectedTitle }}」的依据</span
+  <div v-if="target" id="reference-context" tabindex="-1" class="reference-focus">
+    <span>{{ target.scope === 'source' ? '正在阅读' : '正在查看依据' }}：{{ selectedTitle }}</span
     ><button class="text-link" @click="emit('clear')">查看全部文献<X :size="14" /></button>
   </div>
   <p class="reference-count" role="status">
@@ -171,6 +179,17 @@ function relatedChecks(ids: string[]) {
           @click="emit('project', finding.id)"
         >
           {{ finding.title }}<ArrowUpRight :size="12" />
+        </button>
+      </div>
+      <div v-if="entry.manualItemIds?.length" class="reference-checks">
+        <span>关联人工复核</span>
+        <button
+          v-for="id in entry.manualItemIds"
+          :key="id"
+          class="text-link"
+          @click="emit('manual', id)"
+        >
+          {{ manualItems.find((item) => item.id === id)?.title }}<ArrowUpRight :size="13" />
         </button>
       </div>
     </article>

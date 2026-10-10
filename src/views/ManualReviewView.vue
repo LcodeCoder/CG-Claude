@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import { ArrowUpRight, Check, Info, ListChecks, MessageSquareText } from '@lucide/vue'
 import { manualItems } from '../../shared/types'
 import type { ManualReview, ManualReviewRequest } from '../../shared/types'
 import GuardDialog from '../components/GuardDialog.vue'
+import { referencesForManualItem } from '../../shared/references'
+const emit = defineEmits<{ references: [id: string] }>()
 const props = defineProps<{
   reviews: ManualReview[]
   busy: boolean
@@ -29,6 +31,12 @@ function dateLabel(date: string) {
 async function toggle(id: (typeof manualItems)[number]['id']) {
   const review = reviewFor(id)
   await props.save({ id, checked: !review?.checked, note: review?.note ?? '' })
+  await nextTick()
+  // Saving temporarily disables the control; return the keyboard to the same item.
+  document
+    .getElementById('manual-item-' + id)
+    ?.querySelector<HTMLInputElement>('input')
+    ?.focus({ preventScroll: true })
 }
 function edit(id: (typeof manualItems)[number]['id']) {
   editingId.value = id
@@ -64,6 +72,8 @@ async function resetReviews() {
     <article
       v-for="item in manualItems"
       :key="item.id"
+      :id="'manual-item-' + item.id"
+      tabindex="-1"
       class="manual-row"
       :class="{ done: reviewFor(item.id)?.checked }"
     >
@@ -93,6 +103,13 @@ async function resetReviews() {
         </span>
       </div>
       <div class="manual-actions">
+        <button
+          v-if="referencesForManualItem(item.id).length"
+          class="text-link"
+          @click="emit('references', item.id)"
+        >
+          依据与边界 · {{ referencesForManualItem(item.id).length }} 条
+        </button>
         <a :href="item.url" class="button subtle" target="_blank" rel="noopener noreferrer"
           >打开检查<ArrowUpRight :size="14"
         /></a>
