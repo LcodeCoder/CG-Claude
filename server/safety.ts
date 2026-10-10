@@ -58,18 +58,27 @@ export interface ConfigContent {
   mode: number
   error?: string
 }
+export interface ConfigurationState {
+  contentHash: string
+  mode: number
+  editable: boolean
+  error: string | null
+}
+export function configurationState(file: ConfigContent): ConfigurationState {
+  return {
+    contentHash: hash(file.content),
+    mode: file.mode,
+    editable: file.editable,
+    error: file.error ?? null,
+  }
+}
+
 /** A local report can only offer repairs while its observed user files still match. */
 export function configurationFingerprint(files: ConfigContent[]): string {
   return hash(
     JSON.stringify(
       files
-        .map((file) => ({
-          relative: file.relative,
-          contentHash: hash(file.content),
-          mode: file.mode,
-          editable: file.editable,
-          error: file.error ?? null,
-        }))
+        .map((file) => ({ relative: file.relative, ...configurationState(file) }))
         .sort((a, b) => a.relative.localeCompare(b.relative)),
     ),
   )

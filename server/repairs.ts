@@ -4,6 +4,7 @@ import { fixLabels } from '../shared/types.js'
 import { configTargets } from './context.js'
 import type { Context } from './context.js'
 import { hash, readAllConfigs, readConfig, writeConfig } from './safety.js'
+import type { ConfigurationState } from './safety.js'
 import { transformConfig } from './configs.js'
 import { Storage } from './storage.js'
 import type { BackupManifest } from './storage.js'
@@ -13,6 +14,10 @@ import type { ConnectionRequest } from '../shared/connections.js'
 import { prepareConnectionEdit, validateConnectionFiles } from './connections.js'
 import type { SnapshotEngine } from './snapshots.js'
 
+export interface AppliedRepair {
+  backup: BackupSummary
+  files: { relative: string; state: ConfigurationState }[]
+}
 interface PlannedFile {
   relative: string
   before: string | null
@@ -135,12 +140,11 @@ export class RepairEngine {
   discard(id: string) {
     this.plans.delete(id)
   }
-  fingerprints(id: string) {
-    const plan = this.plans.get(id)
-    if (!plan) throw new Error('修复预览不存在，请重新生成')
-    return plan.entries.map((entry) => ({ relative: entry.relative, afterHash: hash(entry.after) }))
-  }
   async apply(id: string, preferences: Preferences): Promise<BackupSummary> {
+    return (await this.applyWithState(id, preferences)).backup
+  }
+  /** Carry the known written state forward without accepting a new filesystem baseline. */
+  async applyWithState(id: string, preferences: Preferences): Promise<AppliedRepair> {
     if (this.plans.get(id)?.preview.kind === 'connection')
       throw new Error('连接设置请通过连接预览保存，以便保留完整快照')
     return this.applyPlan(id, preferences)
@@ -152,17 +156,19 @@ export class RepairEngine {
   ): Promise<BackupSummary> {
     if (this.plans.get(id)?.preview.kind !== 'connection')
       throw new Error('连接设置预览不存在，请重新预览')
-    return this.applyPlan(
-      id,
-      preferences,
-      async () => (await snapshots.capture('connection', '连接设置修改前的完整配置')).id,
-    )
+    return (
+      await this.applyPlan(
+        id,
+        preferences,
+        async () => (await snapshots.capture('connection', '连接设置修改前的完整配置')).id,
+      )
+    ).backup
   }
   private async applyPlan(
     id: string,
     preferences: Preferences,
     capture?: () => Promise<string>,
-  ): Promise<BackupSummary> {
+  ): Promise<AppliedRepair> {
     const plan = this.plans.get(id)
     if (!plan) throw new Error('修复预览不存在，请重新生成')
     if (Date.parse(plan.preview.expiresAt) < Date.now()) {
@@ -217,8 +223,19 @@ export class RepairEngine {
       manifest.status = 'applied'
       await this.storage.saveManifest(manifest)
       this.plans.delete(id)
-      const { entries: _entries, ...summary } = manifest
-      return summary
+      const { entries, ...summary } = manifest
+      return {
+        backup: summary,
+        files: entries.map((entry) => ({
+          relative: entry.relative,
+          state: {
+            contentHash: entry.afterHash,
+            mode: entry.afterMode ?? entry.mode,
+            editable: true,
+            error: null,
+          },
+        })),
+      }
     } catch (error) {
       const rollbackFailures: string[] = []
       for (const { entry, afterMode } of written.reverse()) {

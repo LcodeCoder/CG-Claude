@@ -5,7 +5,7 @@ import { defaultPreferences } from '../shared/types'
 import type { FixId } from '../shared/types'
 import { RepairEngine } from '../server/repairs'
 import { shellAssignments } from '../server/configs'
-import { readConfig } from '../server/safety'
+import { readConfig, configurationState } from '../server/safety'
 import { fixture } from './fixtures'
 const preferences = { ...defaultPreferences, routeMode: 'tun' as const }
 let data: Awaited<ReturnType<typeof fixture>>
@@ -241,4 +241,18 @@ test('refuses invalid encoding before preparing repairs and leaves the file byte
   await expect(engine.preview(['shell-proxy'], preferences)).rejects.toThrow('UTF-8')
   expect(await data.storage.backups()).toHaveLength(0)
   expect(await fs.readFile(target)).toEqual(original)
+})
+
+test('returns the actual written permissions for a newly created configuration on every platform', async () => {
+  const plan = await engine.preview(['claude-privacy'], preferences)
+  const result = await engine.applyWithState(plan.id, preferences)
+  const current = await readConfig(data.ctx, '.claude/settings.json')
+  expect(result.backup.status).toBe('applied')
+  expect(result.files).toEqual([
+    { relative: '.claude/settings.json', state: configurationState(current) },
+  ])
+  expect(result.files[0]?.state.mode).toBe(
+    (await fs.stat(path.join(data.home, '.claude/settings.json'))).mode & 0o777,
+  )
+  expect(result.backup).not.toHaveProperty('entries')
 })

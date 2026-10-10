@@ -1,23 +1,30 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { promises as fs } from 'node:fs'
+import path from 'node:path'
 import { defaultPreferences } from '../shared/types'
 import type { SetupJob, SetupNode } from '../shared/types'
 import { runSequence, SetupWorkflows } from '../server/workflows'
 import { RepairEngine } from '../server/repairs'
 import { SnapshotEngine } from '../server/snapshots'
 import { fixture } from './fixtures'
+// Backoff counts are tested through runSequence; integration tests need no real delays.
+vi.mock('node:timers/promises', () => ({ setTimeout: async () => {} }))
 let data: Awaited<ReturnType<typeof fixture>>
 let workflows: SetupWorkflows
+let repairs: RepairEngine
 beforeEach(async () => {
   data = await fixture()
+  repairs = new RepairEngine(data.ctx, data.storage)
   workflows = new SetupWorkflows(
     data.ctx,
     data.storage,
-    new RepairEngine(data.ctx, data.storage),
+    repairs,
     new SnapshotEngine(data.ctx, data.storage),
   )
   await workflows.init()
 })
 afterEach(async () => {
+  vi.restoreAllMocks()
   await data.cleanup()
 })
 function node(id: SetupNode['id']): SetupNode {
@@ -150,4 +157,95 @@ test('recovers an interrupted persisted workflow without resuming writes', async
   expect(workflows.list()[0]?.status).toBe('interrupted')
   expect(workflows.list()[0]?.nodes.every((n) => n.status === 'skipped')).toBe(true)
   expect(await data.storage.backups()).toHaveLength(0)
+})
+
+test('refuses permission changes after preview before creating a workflow', async () => {
+  await data.write('.npmrc', 'registry=https://registry.example/\n')
+  const target = path.join(data.home, '.npmrc')
+  const mode = (await fs.stat(target)).mode & 0o777
+  const preview = await workflows.preview({
+    preferences: defaultPreferences,
+    fixIds: ['claude-privacy'],
+  })
+  try {
+    await fs.chmod(target, 0o444)
+    await expect(workflows.create(preview.id)).rejects.toThrow('预览后发生变化')
+    expect(await data.storage.backups()).toHaveLength(0)
+    expect(await data.storage.snapshots()).toHaveLength(0)
+  } finally {
+    await fs.chmod(target, mode)
+  }
+})
+
+test('refuses an unreadable file replacing a missing path even when both text hashes are null', async () => {
+  const preview = await workflows.preview({
+    preferences: defaultPreferences,
+    fixIds: ['claude-privacy'],
+  })
+  await fs.writeFile(path.join(data.home, '.npmrc'), Buffer.from([0xc3, 0x28]))
+  await expect(workflows.create(preview.id)).rejects.toThrow('预览后发生变化')
+  expect(await data.storage.snapshots()).toHaveLength(0)
+  expect(await data.storage.backups()).toHaveLength(0)
+})
+
+test('refuses a changed baseline before the snapshot and still runs the final diagnostics', async () => {
+  await data.write('.npmrc', 'registry=https://registry.example/\n')
+  const target = path.join(data.home, '.npmrc')
+  const mode = (await fs.stat(target)).mode & 0o777
+  const preview = await workflows.preview({
+    preferences: defaultPreferences,
+    fixIds: ['claude-privacy'],
+  })
+  const state = await workflows.create(preview.id)
+  try {
+    await fs.chmod(target, 0o444)
+    await workflows.execute(state)
+    expect(state.nodes.find((node) => node.id === 'snapshot')).toMatchObject({
+      status: 'skipped',
+      attempts: 4,
+    })
+    expect(state.nodes.find((node) => node.id === 'verify')?.status).toBe('succeeded')
+    expect(state.reportId).toBeTruthy()
+    expect(await data.storage.snapshots()).toHaveLength(0)
+    expect(await data.storage.backups()).toHaveLength(0)
+    await expect(data.read('.claude/settings.json')).rejects.toMatchObject({ code: 'ENOENT' })
+  } finally {
+    await fs.chmod(target, mode)
+  }
+})
+
+test('uses the written state instead of adopting an external permission change between nodes', async () => {
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://gateway.example' }, model: 'keep-model' }),
+  )
+  const target = path.join(data.home, '.claude/settings.json')
+  const mode = (await fs.stat(target)).mode & 0o777
+  const prefs = { ...defaultPreferences, privacy: 'minimal' as const }
+  const preview = await workflows.preview({
+    preferences: prefs,
+    fixIds: ['claude-endpoint', 'claude-privacy'],
+  })
+  const apply = repairs.applyWithState.bind(repairs)
+  vi.spyOn(repairs, 'applyWithState').mockImplementationOnce(async (...args) => {
+    const result = await apply(...args)
+    await fs.chmod(target, 0o444)
+    return result
+  })
+  try {
+    const state = await workflows.create(preview.id)
+    await workflows.execute(state)
+    expect(state.nodes.find((node) => node.id === 'claude-endpoint')?.status).toBe('succeeded')
+    expect(state.nodes.find((node) => node.id === 'claude-privacy')).toMatchObject({
+      status: 'skipped',
+      attempts: 4,
+    })
+    expect(state.nodes.find((node) => node.id === 'verify')?.status).toBe('succeeded')
+    const current = JSON.parse(await data.read('.claude/settings.json'))
+    expect(current.env).toEqual({})
+    expect(current.model).toBe('keep-model')
+    expect(await data.storage.backups()).toHaveLength(1)
+  } finally {
+    await fs.chmod(target, mode)
+  }
 })

@@ -13,7 +13,8 @@ import type { Context } from './context.js'
 import { configTargets } from './context.js'
 import { runRepeatedDiagnostics } from './diagnostics.js'
 import { proxyKeys, shellAssignments } from './configs.js'
-import { hash, readAllConfigs, safeValue } from './safety.js'
+import { configurationState, readAllConfigs, safeValue } from './safety.js'
+import type { ConfigContent, ConfigurationState } from './safety.js'
 import { NoRepairChangesError, RepairEngine } from './repairs.js'
 import type { Storage } from './storage.js'
 import type { SnapshotEngine } from './snapshots.js'
@@ -95,8 +96,18 @@ export async function runSequence(
 interface PreparedSetup {
   preview: SetupPreview
   request: SetupRequest
-  fingerprints: Map<string, string>
+  baselines: Map<string, ConfigurationState>
   jobId?: string
+}
+function matchesBaseline(file: ConfigContent, baseline?: ConfigurationState): boolean {
+  const current = configurationState(file)
+  return (
+    baseline !== undefined &&
+    baseline.contentHash === current.contentHash &&
+    baseline.mode === current.mode &&
+    baseline.editable === current.editable &&
+    baseline.error === current.error
+  )
 }
 const orderedFixes: FixId[] = [
   'shell-proxy',
@@ -188,7 +199,7 @@ export class SetupWorkflows {
       if (Date.parse(prepared.preview.expiresAt) < Date.now()) this.previews.delete(id)
     if (this.previews.size >= 30) throw new Error('配置预览过多，请完成现有流程或稍后重试')
     const files = await readAllConfigs(this.ctx)
-    const fingerprints = new Map(files.map((file) => [file.relative, hash(file.content)]))
+    const baselines = new Map(files.map((file) => [file.relative, configurationState(file)]))
     const preview: SetupPreview = {
       id: randomUUID(),
       createdAt: new Date().toISOString(),
@@ -258,9 +269,9 @@ export class SetupWorkflows {
       files: [],
     })
     for (const file of await readAllConfigs(this.ctx))
-      if (fingerprints.get(file.relative) !== hash(file.content))
+      if (!matchesBaseline(file, baselines.get(file.relative)))
         throw new Error('配置在预览过程中发生变化，请重新生成预览')
-    this.previews.set(preview.id, { preview, request, fingerprints })
+    this.previews.set(preview.id, { preview, request, baselines })
     return preview
   }
   async create(id: string): Promise<SetupJob> {
@@ -270,7 +281,7 @@ export class SetupWorkflows {
     if (!prepared || Date.parse(prepared.preview.expiresAt) < Date.now())
       throw new Error('配置预览已失效，请重新预览')
     for (const file of await readAllConfigs(this.ctx))
-      if (prepared.fingerprints.get(file.relative) !== hash(file.content))
+      if (!matchesBaseline(file, prepared.baselines.get(file.relative)))
         throw new Error(`${file.display} 在预览后发生变化，请重新预览`)
     const job: SetupJob = {
       id: randomUUID(),
@@ -304,7 +315,7 @@ export class SetupWorkflows {
       for (const file of await readAllConfigs(this.ctx))
         if (
           (!id || applies(id, file.relative)) &&
-          prepared.fingerprints.get(file.relative) !== hash(file.content)
+          !matchesBaseline(file, prepared.baselines.get(file.relative))
         )
           throw new Error(`${file.display} 被其他程序修改，请重新预览`)
     }
@@ -353,10 +364,9 @@ export class SetupWorkflows {
           if (error instanceof NoRepairChangesError) return '配置已符合所选目标，无需写入'
           throw error
         }
-        const fingerprints = this.repairs.fingerprints(plan.id)
         try {
-          const backup = await this.repairs.apply(plan.id, prefs)
-          for (const file of fingerprints) prepared.fingerprints.set(file.relative, file.afterHash)
+          const { backup, files } = await this.repairs.applyWithState(plan.id, prefs)
+          for (const file of files) prepared.baselines.set(file.relative, file.state)
           node.backupId = backup.id
           return `已修改 ${backup.files.length} 个配置文件，原始备份已保存`
         } finally {
