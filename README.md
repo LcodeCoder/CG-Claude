@@ -101,6 +101,8 @@ npm run doctor -- --json
 
 代码入口、扩展检查与样式结构见 [项目结构](docs/architecture.md)，参与开发见 [CONTRIBUTING](CONTRIBUTING.md)。
 
+1.2.0 的本地产物、校验值与已验证范围见 [交付记录](docs/release-1.2.0.md)。
+
 Vue 3 Composition API、TypeScript、Vite、Electron 与 Node 原生 HTTP，Zod 校验输入，前后端共享类型。配置使用同目录临时文件、权限恢复与原子替换，预览校验变化，异常时回退已写入文件。
 
 ```sh
