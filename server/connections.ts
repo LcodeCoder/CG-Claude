@@ -11,13 +11,9 @@ import type { Context } from './context.js'
 import { parseClaude, claudeEnv } from './configs.js'
 import { maskedAssignment, readConfig, safeValue } from './safety.js'
 import type { ConfigContent } from './safety.js'
+import { claudeConfigurationScopeReason } from './configuration-scope.js'
 
 export const CONNECTION_FILE = '.claude/settings.json'
-function overrideReason(ctx: Context): string | undefined {
-  const override = ctx.env.CLAUDE_CONFIG_DIR
-  if (override && path.resolve(override) !== path.join(ctx.home, '.claude'))
-    return '当前进程设置了自定义 CLAUDE_CONFIG_DIR。本入口只支持默认用户配置，请先在实际客户端确认配置目录。'
-}
 function displayValue(ctx: Context, key: string, value: unknown): string {
   return typeof value === 'string'
     ? value.length
@@ -29,7 +25,7 @@ export function describeConnectionConfiguration(
   ctx: Context,
   file: ConfigContent,
 ): ConnectionConfiguration {
-  let reason = file.error ?? overrideReason(ctx)
+  let reason = file.error ?? claudeConfigurationScopeReason(ctx, file)
   let env: Record<string, unknown> = {}
   if (!reason) {
     try {
@@ -47,11 +43,13 @@ export function describeConnectionConfiguration(
       return {
         key,
         present: existing.length > 0,
-        current: existing.length
-          ? existing
-              .map((variant) => variant + '：' + displayValue(ctx, variant, env[variant]))
-              .join('；')
-          : '此文件未设置，会继续使用其他配置层或客户端默认值',
+        current: reason
+          ? '当前文件未纳入编辑范围；请核对上方说明'
+          : existing.length
+            ? existing
+                .map((variant) => variant + '：' + displayValue(ctx, variant, env[variant]))
+                .join('；')
+            : '此文件未设置，会继续使用其他配置层或客户端默认值',
       }
     }),
   }

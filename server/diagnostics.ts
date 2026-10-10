@@ -15,6 +15,7 @@ import { DIAGNOSTIC_CHECK_COUNT } from '../shared/types.js'
 import { DIAGNOSTIC_RULESET } from '../shared/diagnostic-checks.js'
 import type { DiagnosticCheckId } from '../shared/diagnostic-checks.js'
 import { collectEnvironmentSources } from './environment-sources.js'
+import { claudeConfigurationScopeReason } from './configuration-scope.js'
 import { privacyConfiguration } from './privacy-diagnostics.js'
 import { cliInstallation } from './cli-diagnostics.js'
 import { cloudKeys } from '../shared/authentication.js'
@@ -589,6 +590,7 @@ export async function runDiagnostics(
     configError = 'JSON 格式或 env 类型错误，请先手动修正'
   }
   const env = claudeEnv(config)
+  const scopeReason = claudeConfigurationScopeReason(ctx, claudeFile)
   const filteredEnv = Object.entries(env).filter(([key]) => relevantEnvKeys.test(key))
   add({
     ...base(
@@ -597,18 +599,24 @@ export async function runDiagnostics(
       'Claude Code 配置文件',
       '验证 ~/.claude/settings.json 的 JSON 结构。',
     ),
-    status: configError ? 'fail' : 'pass',
+    status: configError ? 'fail' : scopeReason ? 'manual' : 'pass',
     summary:
-      configError || (claudeFile.exists ? '配置结构可读取' : '尚无全局设置，客户端使用默认值'),
+      configError ||
+      (scopeReason
+        ? '默认文件可读取；实际自定义目录尚未检测'
+        : claudeFile.exists
+          ? '配置结构可读取'
+          : '尚无全局设置，客户端使用默认值'),
     evidence: [
       { label: '配置位置', value: claudeFile.display },
+      ...(scopeReason ? [{ label: '作用范围', value: scopeReason }] : []),
       ...filteredEnv
         .filter(([key]) => /TOKEN|API_KEY/.test(key))
         .map(([key]) => ({ label: key, value: '[已配置；密钥已隐藏]' })),
     ],
     recommendation: configError
       ? '先修复 JSON 格式或文件权限，工具会保留原文件。'
-      : '项目级、托管与启动参数可能覆盖全局设置，可在 Claude Code /config 中复核。',
+      : scopeReason || '项目级、托管与启动参数可能覆盖全局设置，可在 Claude Code /status 中复核。',
     source: 'official',
     sourceUrl: officialSettings,
   })
@@ -620,24 +628,28 @@ export async function runDiagnostics(
       'Claude Code API 地址',
       '检查 settings.json 的地址覆盖，按所选提供商判断。',
     ),
-    status: configError
-      ? 'manual'
-      : configuredEndpoint && preferences.usageMode === 'official'
-        ? 'warn'
-        : 'pass',
-    summary: configuredEndpoint
-      ? '已设置自定义 API 地址'
-      : configError
-        ? '配置需修正后检测'
-        : '使用客户端默认 API 地址',
+    status:
+      configError || scopeReason
+        ? 'manual'
+        : configuredEndpoint && preferences.usageMode === 'official'
+          ? 'warn'
+          : 'pass',
+    summary: scopeReason
+      ? '此项只读取默认文件，实际自定义目录需复核'
+      : configuredEndpoint
+        ? '已设置自定义 API 地址'
+        : configError
+          ? '配置需修正后检测'
+          : '使用客户端默认 API 地址',
     evidence: configuredEndpoint
       ? [{ label: 'env.ANTHROPIC_BASE_URL', value: endpointValue(String(configuredEndpoint)) }]
       : [],
     fixIds:
-      !configError && configuredEndpoint && preferences.usageMode === 'official'
+      !configError && !scopeReason && configuredEndpoint && preferences.usageMode === 'official'
         ? ['claude-endpoint']
         : [],
-    recommendation: '恢复默认地址只移除这一项，保留 API Key、模型、权限、Hooks 和其他设置。',
+    recommendation:
+      scopeReason || '恢复默认地址只移除这一项，保留 API Key、模型、权限、Hooks 和其他设置。',
     source: 'official',
     sourceUrl: officialSettings,
   })
@@ -823,15 +835,16 @@ export async function runDiagnostics(
       'Claude 配置目录覆盖',
       '检测 CLAUDE_CONFIG_DIR 是否指向默认目录之外。',
     ),
-    status: ctx.env.CLAUDE_CONFIG_DIR ? 'manual' : 'pass',
-    summary: ctx.env.CLAUDE_CONFIG_DIR
-      ? '设置了自定义配置目录，默认目录检测可能不完整'
-      : '未检测到自定义配置目录覆盖',
-    evidence: ctx.env.CLAUDE_CONFIG_DIR
+    status: scopeReason ? 'manual' : 'pass',
+    summary: scopeReason
+      ? '发现自定义目录声明，默认目录检测不代表实际会话'
+      : '已读取声明未指向默认目录之外',
+    evidence: scopeReason
       ? [{ label: 'CLAUDE_CONFIG_DIR', value: '[已设置；请在终端核对路径]' }]
       : [],
     recommendation:
-      '本机修复仅修改默认目录；自定义目录请在项目扫描或编辑器中核对，不自动改写外部路径。',
+      scopeReason ||
+      '目录声明来自当前进程和默认用户文件；启动文件、其他会话和组织设置需用 /status 另行核对。',
     source: 'official',
     sourceUrl: officialSettings,
   })

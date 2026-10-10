@@ -2,6 +2,7 @@ import { configTargets } from './context.js'
 import type { Context } from './context.js'
 import { claudeEnv, parseClaude, shellAssignments } from './configs.js'
 import type { ConfigContent } from './safety.js'
+import { claudeConfigurationScopeReason } from './configuration-scope.js'
 
 export interface EnvironmentSource {
   label: string
@@ -44,6 +45,10 @@ export function collectEnvironmentSources(
   for (const file of files) {
     const kind = configTargets.find((target) => target.relative === file.relative)?.kind
     if (kind !== 'shell' && kind !== 'claude') continue
+    if (kind === 'claude' && claudeConfigurationScopeReason(ctx, file)) {
+      result.unavailable.push('自定义 CLAUDE_CONFIG_DIR（外部目录未读取）')
+      continue
+    }
     if (!file.editable) {
       result.unavailable.push(file.display)
       continue

@@ -288,3 +288,46 @@ test('legacy invalid report clocks fall back safely without constructing untrust
   expect(reportExportName(report, 'json')).toBe('cg-claude-report.json')
   expect(markdownReport(report)).toContain('时间记录不可用')
 })
+
+test('custom scope cannot treat inactive default-file declarations as actual authentication or privacy', async () => {
+  data.ctx.env.CLAUDE_CONFIG_DIR = data.root + '/private-config'
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({
+      env: {
+        ANTHROPIC_BASE_URL: 'https://gateway.example',
+        ANTHROPIC_API_KEY: 'secret-default-key',
+        DO_NOT_TRACK: '1',
+        DISABLE_ERROR_REPORTING: '1',
+      },
+    }),
+  )
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  for (const id of [
+    'config-directory',
+    'claude-settings',
+    'claude-endpoint',
+    'claude-privacy',
+    'auth-sources',
+  ])
+    expect(report.checks.find((check) => check.id === id)?.status).toBe('manual')
+  expect(report.checks.find((check) => check.id === 'claude-endpoint')?.fixIds).toEqual([])
+  expect(report.checks.find((check) => check.id === 'claude-privacy')?.fixIds).toEqual([])
+  expect(JSON.stringify(report)).not.toContain('secret-default-key')
+  expect(JSON.stringify(report.checks.find((check) => check.id === 'auth-sources'))).not.toContain(
+    'ANTHROPIC_API_KEY',
+  )
+})
+
+test('default-equivalent configuration directory remains in the detected scope', async () => {
+  data.ctx.env.CLAUDE_CONFIG_DIR = data.home + '/.claude/./'
+  await data.write(
+    '.claude/settings.json',
+    JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://gateway.example' } }),
+  )
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  expect(report.checks.find((check) => check.id === 'config-directory')?.status).toBe('pass')
+  expect(report.checks.find((check) => check.id === 'claude-endpoint')?.fixIds).toEqual([
+    'claude-endpoint',
+  ])
+})

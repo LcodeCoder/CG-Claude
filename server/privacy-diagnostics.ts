@@ -63,7 +63,7 @@ export function privacyConfiguration(
     ...unresolved,
     ...input.unavailable.map((label) => ({
       label,
-      value: '文件未能读取，检查范围不完整',
+      value: '该来源未能纳入检测，检查范围不完整',
     })),
     {
       label: '检查范围',

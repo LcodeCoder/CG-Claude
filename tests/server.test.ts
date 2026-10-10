@@ -274,3 +274,24 @@ test('compares report file baselines across reloads and excludes the fingerprint
   const exported = await (await fetch(base + `/api/reports/${report.id}/export?format=json`)).json()
   expect(exported.configurationFingerprint).toBeUndefined()
 })
+
+test('custom-directory bootstrap describes the blocked scope instead of claiming missing fields or editable defaults', async () => {
+  const original = '{"env":{"ANTHROPIC_BASE_URL":"https://gateway.example"},"model":"keep"}'
+  await data.write('.claude/settings.json', original)
+  data.ctx.env.CLAUDE_CONFIG_DIR = data.root + '/other-configuration'
+  const bootstrap = await (await fetch(base + '/api/bootstrap')).json()
+  expect(bootstrap.connection.editable).toBe(false)
+  expect(bootstrap.connection.reason).toContain('CLAUDE_CONFIG_DIR')
+  expect(
+    bootstrap.connection.fields.every((field: { current: string }) =>
+      field.current.includes('未纳入编辑范围'),
+    ),
+  ).toBe(true)
+  expect(
+    bootstrap.files.find((file: { id: string }) => file.id === 'claude-settings'),
+  ).toMatchObject({ editable: false, summary: '默认文件保持原样；实际自定义目录需复核' })
+  expect(bootstrap.files.find((file: { id: string }) => file.id === 'zshrc').editable).toBe(true)
+  const denied = await post('/api/repairs/preview', { fixIds: ['claude-privacy'] })
+  expect(denied.status).toBe(400)
+  expect(await data.read('.claude/settings.json')).toBe(original)
+})

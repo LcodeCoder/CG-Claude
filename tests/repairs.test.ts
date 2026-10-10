@@ -275,3 +275,46 @@ test('returns the actual written permissions for a newly created configuration o
   )
   expect(result.backup).not.toHaveProperty('entries')
 })
+
+test('custom configuration scope rejects default-file repair while unrelated shell repair continues', async () => {
+  const original = JSON.stringify({
+    env: { ANTHROPIC_BASE_URL: 'https://gateway.example' },
+    model: 'keep',
+  })
+  await data.write('.claude/settings.json', original)
+  await data.write('.zshrc', 'export HTTPS_PROXY=http://localhost:7890\n')
+  data.ctx.env.CLAUDE_CONFIG_DIR = path.join(data.root, 'private-config')
+  for (const id of ['claude-privacy', 'claude-endpoint'] as const)
+    await expect(engine.preview([id], preferences)).rejects.toThrow('CLAUDE_CONFIG_DIR')
+  const plan = await engine.preview(['shell-proxy'], preferences)
+  await engine.apply(plan.id, preferences)
+  expect(await data.read('.zshrc')).toBe('')
+  expect(await data.read('.claude/settings.json')).toBe(original)
+})
+
+test('explicit equivalent default directory permits repair but later scope changes reject apply', async () => {
+  const original = '{"model":"keep"}'
+  await data.write('.claude/settings.json', original)
+  data.ctx.env.CLAUDE_CONFIG_DIR = path.join(data.home, '.claude', 'unused', '..') + path.sep
+  const plan = await engine.preview(['claude-privacy'], preferences)
+  data.ctx.env.CLAUDE_CONFIG_DIR = path.join(data.root, 'different')
+  await expect(engine.apply(plan.id, preferences)).rejects.toThrow('CLAUDE_CONFIG_DIR')
+  expect(await data.read('.claude/settings.json')).toBe(original)
+  expect(await data.storage.backups()).toHaveLength(0)
+  data.ctx.env.CLAUDE_CONFIG_DIR = path.join(data.home, '.claude')
+  await engine.apply(plan.id, preferences)
+  expect(JSON.parse(await data.read('.claude/settings.json')).model).toBe('keep')
+})
+
+test('a custom directory declared in default user settings blocks modifying that file', async () => {
+  const original = JSON.stringify({ env: { CLAUDE_CONFIG_DIR: path.join(data.root, 'outside') } })
+  await data.write('.claude/settings.json', original)
+  await expect(engine.preview(['claude-privacy'], preferences)).rejects.toThrow('CLAUDE_CONFIG_DIR')
+  await expect(
+    engine.previewConnection(
+      { changes: [{ key: 'HTTPS_PROXY', value: 'http://localhost:7890' }] },
+      preferences,
+    ),
+  ).rejects.toThrow('CLAUDE_CONFIG_DIR')
+  expect(await data.read('.claude/settings.json')).toBe(original)
+})

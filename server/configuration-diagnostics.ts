@@ -40,7 +40,7 @@ function checkBase(id: string, title: string, description: string): CheckResult 
 }
 function missingEvidence(input: EnvironmentSources, names: RegExp): Evidence[] {
   return [
-    ...input.unavailable.map((label) => ({ label, value: '文件未能读取，检查范围不完整' })),
+    ...input.unavailable.map((label) => ({ label, value: '该来源未能纳入检测，检查范围不完整' })),
     ...input.sources.flatMap((source) =>
       source.unresolved
         .filter((key) => names.test(key))

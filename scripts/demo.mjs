@@ -54,7 +54,12 @@ const env = {
   CG_DEMO: '1',
 }
 for (const key of Object.keys(env))
-  if (/^(?:https?_proxy|all_proxy|no_proxy|ANTHROPIC_|CLAUDE_CODE_USE_)/i.test(key)) delete env[key]
+  if (
+    /^(?:https?_proxy|all_proxy|no_proxy|ANTHROPIC_|CLAUDE_CODE_USE_|CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST$|CLAUDE_CONFIG_DIR$)/i.test(
+      key,
+    )
+  )
+    delete env[key]
 console.log('隔离测试目录：' + root)
 const desktop = process.argv.includes('--desktop')
 const command = desktop ? createRequire(import.meta.url)('electron') : process.execPath

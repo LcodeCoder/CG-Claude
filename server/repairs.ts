@@ -14,6 +14,7 @@ import { connectionRequestSchema } from '../shared/connections.js'
 import type { ConnectionRequest } from '../shared/connections.js'
 import { prepareConnectionEdit, validateConnectionFiles } from './connections.js'
 import type { SnapshotEngine } from './snapshots.js'
+import { claudeConfigurationScopeReason } from './configuration-scope.js'
 
 export interface AppliedRepair {
   backup: BackupSummary
@@ -59,6 +60,13 @@ export class RepairEngine {
     if (selected.some((id) => /endpoint$/.test(id)) && preferences.usageMode !== 'official')
       throw new Error('恢复默认 API 前，请在检测偏好中选择官方默认 API')
     const files = await readAllConfigs(this.ctx)
+    if (selected.some((id) => id.startsWith('claude-'))) {
+      const reason = claudeConfigurationScopeReason(
+        this.ctx,
+        files.find((file) => file.relative === '.claude/settings.json'),
+      )
+      if (reason) throw new Error(reason)
+    }
     const entries: PlannedFile[] = []
     const preview: RepairPlan = {
       id: randomUUID(),
@@ -178,6 +186,10 @@ export class RepairEngine {
       throw new Error('检测偏好已变化，请重新预览修复')
     for (const entry of plan.entries) {
       const current = await readConfig(this.ctx, entry.relative)
+      if (entry.relative === '.claude/settings.json') {
+        const reason = claudeConfigurationScopeReason(this.ctx, current)
+        if (reason) throw new Error(reason)
+      }
       if (
         !current.editable ||
         hash(current.content) !== entry.beforeHash ||
@@ -209,6 +221,10 @@ export class RepairEngine {
       for (const entry of plan.entries) {
         // Recheck immediately before each write, as other applications may edit configuration.
         const current = await readConfig(this.ctx, entry.relative)
+        if (entry.relative === '.claude/settings.json') {
+          const reason = claudeConfigurationScopeReason(this.ctx, current)
+          if (reason) throw new Error(reason)
+        }
         if (
           !current.editable ||
           hash(current.content) !== entry.beforeHash ||

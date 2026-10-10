@@ -239,13 +239,22 @@ export function transformConfig(
   }
   return changes.length ? { after, changes, affectedIds: [...affectedIds] } : null
 }
-export function describeConfigs(files: ConfigContent[]): ConfigFileInfo[] {
+export function describeConfigs(
+  files: ConfigContent[],
+  claudeScopeReason?: string,
+): ConfigFileInfo[] {
   return files.map((file) => ({
     id: configTargets.find((target) => target.relative === file.relative)!.id,
     label: configTargets.find((target) => target.relative === file.relative)!.label,
     path: file.display,
     exists: file.exists,
-    editable: file.editable,
-    summary: file.error ?? (file.exists ? '可检测并预览针对性修改' : '尚未创建'),
+    editable: file.editable && !(file.relative === '.claude/settings.json' && claudeScopeReason),
+    summary:
+      file.error ??
+      (file.relative === '.claude/settings.json' && claudeScopeReason
+        ? '默认文件保持原样；实际自定义目录需复核'
+        : file.exists
+          ? '可检测并预览针对性修改'
+          : '尚未创建'),
   }))
 }

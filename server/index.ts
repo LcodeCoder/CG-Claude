@@ -19,6 +19,7 @@ import type { ScanReport } from '../shared/types.js'
 import { createContext, machineInfo } from './context.js'
 import type { Context } from './context.js'
 import { describeConfigs } from './configs.js'
+import { claudeConfigurationScopeReason } from './configuration-scope.js'
 import { readAllConfigs, configurationFingerprint } from './safety.js'
 import { Storage } from './storage.js'
 import { RepairEngine } from './repairs.js'
@@ -163,19 +164,17 @@ export async function createAppServer(options: ServerOptions = {}) {
         const values = results.map((result) =>
           result.status === 'fulfilled' ? result.value : undefined,
         )
+        const configurationFiles = values[1] as Awaited<ReturnType<typeof readAllConfigs>>
+        const claudeFile = configurationFiles.find((file) => file.relative === CONNECTION_FILE)!
         send(res, 200, {
           machine: machineInfo(ctx),
           preferences: values[0],
-          configurationFingerprint: configurationFingerprint(
-            values[1] as Awaited<ReturnType<typeof readAllConfigs>>,
+          configurationFingerprint: configurationFingerprint(configurationFiles),
+          connection: describeConnectionConfiguration(ctx, claudeFile),
+          files: describeConfigs(
+            configurationFiles,
+            claudeConfigurationScopeReason(ctx, claudeFile),
           ),
-          connection: describeConnectionConfiguration(
-            ctx,
-            (values[1] as Awaited<ReturnType<typeof readAllConfigs>>).find(
-              (file) => file.relative === CONNECTION_FILE,
-            )!,
-          ),
-          files: describeConfigs(values[1] as Awaited<ReturnType<typeof readAllConfigs>>),
           reports: values[2],
           backups: values[3],
           demo: ctx.demo,

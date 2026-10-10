@@ -249,3 +249,25 @@ test('uses the written state instead of adopting an external permission change b
     await fs.chmod(target, mode)
   }
 })
+
+test('custom configuration scope skips Claude nodes after three retries and completes other tasks', async () => {
+  const original = '{"model":"keep"}'
+  await data.write('.claude/settings.json', original)
+  await data.write('.zshrc', 'export HTTPS_PROXY=http://localhost:7890\n')
+  data.ctx.env.CLAUDE_CONFIG_DIR = path.join(data.root, 'outside')
+  const preview = await workflows.preview({
+    preferences: { ...defaultPreferences, routeMode: 'tun' },
+    fixIds: ['claude-privacy', 'shell-proxy'],
+  })
+  expect(preview.nodes.find((node) => node.id === 'claude-privacy')?.blocked).toBe(true)
+  const state = await workflows.create(preview.id)
+  await workflows.execute(state)
+  expect(state.nodes.find((node) => node.id === 'claude-privacy')).toMatchObject({
+    status: 'skipped',
+    attempts: 4,
+  })
+  expect(state.nodes.find((node) => node.id === 'shell-proxy')?.status).toBe('succeeded')
+  expect(state.nodes.find((node) => node.id === 'verify')?.status).toBe('succeeded')
+  expect(state.reportId).toBeTruthy()
+  expect(await data.read('.claude/settings.json')).toBe(original)
+})
