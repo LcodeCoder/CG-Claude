@@ -158,6 +158,25 @@ describe('configuration transactions', () => {
       engine.preview(['claude-endpoint'], { ...preferences, usageMode: 'custom' }),
     ).rejects.toThrow('官方默认 API')
   })
+  test.each(['custom', 'bedrock', 'vertex', 'foundry', 'anthropic-aws'] as const)(
+    'refuses endpoint cleanup in %s mode and preserves provider fields',
+    async (usageMode) => {
+      const original = JSON.stringify({
+        env: {
+          ANTHROPIC_BASE_URL: 'http://127.0.0.1:15721',
+          CLAUDE_CODE_USE_FOUNDRY: '1',
+          ANTHROPIC_FOUNDRY_RESOURCE: 'KEEP_RESOURCE',
+          ANTHROPIC_AWS_WORKSPACE_ID: 'KEEP_WORKSPACE',
+          ANTHROPIC_AWS_API_KEY: 'KEEP_KEY',
+        },
+      })
+      await data.write('.claude/settings.json', original)
+      await expect(
+        engine.preview(['claude-endpoint'], { ...preferences, usageMode }),
+      ).rejects.toThrow('官方默认 API')
+      expect(await data.read('.claude/settings.json')).toBe(original)
+    },
+  )
   test('rejects plans generated with older preferences', async () => {
     const plan = await engine.preview(['claude-privacy'], preferences)
     await expect(engine.apply(plan.id, { ...preferences, privacy: 'minimal' })).rejects.toThrow(

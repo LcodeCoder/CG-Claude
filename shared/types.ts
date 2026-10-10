@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { usageModeIds } from './usage-modes.js'
 import type { ConnectionConfiguration } from './connections.js'
 
 export { DIAGNOSTIC_CHECK_COUNT } from './diagnostic-checks.js'
@@ -10,7 +11,7 @@ export const preferencesSchema = z.object({
     .regex(/^$|^[A-Z]{2}$/)
     .default(''),
   routeMode: z.enum(['system', 'tun', 'custom']).default('system'),
-  usageMode: z.enum(['official', 'custom', 'bedrock', 'vertex']).default('official'),
+  usageMode: z.enum(usageModeIds).default('official'),
   privacy: z.enum(['balanced', 'minimal']).default('balanced'),
 })
 export type Preferences = z.infer<typeof preferencesSchema>

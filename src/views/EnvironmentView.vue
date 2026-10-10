@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usageModeLabel } from '../../shared/usage-modes'
 import { computed, ref, nextTick } from 'vue'
 import {
   Activity,
@@ -184,17 +185,7 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
         <p v-else-if="scanning">{{ progress.current }}</p>
         <p v-else>本机配置先检查，网络出口按需开启。</p>
       </div>
-      <span class="overview-mode"
-        ><span />{{
-          reportedUsageMode === 'official'
-            ? '官方默认 API'
-            : reportedUsageMode === 'custom'
-              ? '自定义 API'
-              : reportedUsageMode === 'bedrock'
-                ? 'Amazon Bedrock'
-                : 'Google Vertex'
-        }}</span
-      >
+      <span class="overview-mode"><span />{{ usageModeLabel(reportedUsageMode) }}</span>
     </div>
     <div
       v-if="scanning"

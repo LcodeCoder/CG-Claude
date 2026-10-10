@@ -29,6 +29,8 @@ export function endpointValue(value: string): string {
 }
 export function maskedAssignment(key: string, value: string): string {
   if (/TOKEN|KEY|PASSWORD|SECRET|AUTH/i.test(key)) return '[已配置；密钥已隐藏]'
+  if (/(?:WORKSPACE_ID|RESOURCE|PROFILE|ORGANIZATION_ID|FEDERATION_RULE_ID)$/i.test(key))
+    return '[身份或资源字段已设置；值已隐藏]'
   if (/PROXY|BASE_URL/i.test(key)) return endpointValue(value)
   return safeValue(value)
 }

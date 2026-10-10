@@ -36,6 +36,39 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'claude-foundry',
+    title: 'Claude Code · Microsoft Foundry 配置与认证',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/microsoft-foundry',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway:
+      'Foundry 支持 API Key、Entra 默认凭据链和 2.1.203 起的 Bearer Token；资源名称与完整 URL 使用不同字段。',
+    application: '新增服务偏好，识别并隐藏认证字段，提示误把 URL 或主机名写入资源名称的声明。',
+    boundary:
+      'Token 优先于 API Key；未设置密钥不代表无法认证。不读取 Azure 凭据，不登录或发起付费请求，实际提供商用 /status 核对。',
+    checkIds: ['auth-sources', 'runtime-endpoint', 'claude-endpoint'],
+    manualItemIds: ['auth-method', 'client'],
+  },
+  {
+    id: 'claude-platform-aws',
+    title: 'Claude Code · Claude Platform on AWS',
+    publisher: 'Anthropic',
+    url: 'https://code.claude.com/docs/en/claude-platform-on-aws',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway:
+      'Claude Platform on AWS 与 Amazon Bedrock 是不同服务；使用 AWS 认证或工作区 API Key，并需要工作区 ID。',
+    application:
+      '提供独立服务偏好与配置来源复核，隐藏工作区和认证值，非官方默认 API 模式保留现有地址。',
+    boundary:
+      '本工具不验证 AWS 登录、区域或工作区权限，也不读取 AWS 凭据文件；实际提供商和地址用 /status 核对。',
+    checkIds: ['auth-sources', 'runtime-endpoint', 'claude-endpoint'],
+    manualItemIds: ['auth-method', 'client'],
+  },
+  {
     id: 'claude-setup',
     title: 'Claude Code · 安装方式、PATH 与版本验证',
     publisher: 'Anthropic',
@@ -355,9 +388,15 @@ export const references: ReferenceEntry[] = [
     topic: 'configuration',
     checkedAt,
     takeaway: '记录官方支持的环境变量及它们的行为和适用范围。',
-    application: '核对代理、认证、CLAUDE_CONFIG_DIR 和隐私开关的含义。',
+    application: '核对代理、认证、CLAUDE_CONFIG_DIR、隐私与宿主管理路由开关的含义。',
     boundary: '变量的意义随客户端版本变化；未知值保留并提示复核。',
-    checkIds: ['config-directory', 'claude-privacy', 'auth-sources', 'proxy-compatibility'],
+    checkIds: [
+      'config-directory',
+      'claude-privacy',
+      'auth-sources',
+      'runtime-endpoint',
+      'proxy-compatibility',
+    ],
     projectCheckIds: ['project-privacy', 'project-endpoint'],
   },
   {

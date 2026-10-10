@@ -17,6 +17,7 @@ import type { DiagnosticCheckId } from '../shared/diagnostic-checks.js'
 import { collectEnvironmentSources } from './environment-sources.js'
 import { privacyConfiguration } from './privacy-diagnostics.js'
 import { cliInstallation } from './cli-diagnostics.js'
+import { cloudKeys } from '../shared/authentication.js'
 import { isEnabledEnvironmentFlag } from '../shared/environment-values.js'
 import {
   proxyCompatibility,
@@ -509,10 +510,9 @@ export async function runDiagnostics(
       '项目配置和 include 文件不在自动修改范围，使用 git config --show-origin --get-regexp proxy 在相关项目核对。',
   })
   const providers = Object.entries(ctx.env).filter(
-    ([key, value]) =>
-      /^CLAUDE_CODE_USE_(?:BEDROCK|VERTEX|FOUNDRY|ANTHROPIC_AWS)$/.test(key) &&
-      isEnabledEnvironmentFlag(value),
+    ([key, value]) => cloudKeys.some((name) => name === key) && isEnabledEnvironmentFlag(value),
   )
+  const hostedProvider = isEnabledEnvironmentFlag(ctx.env.CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST)
   add({
     ...base(
       'runtime-endpoint',
@@ -520,18 +520,29 @@ export async function runDiagnostics(
       '当前进程 API 地址',
       '读取 ANTHROPIC_BASE_URL 与官方云平台选择变量，隐藏凭据。',
     ),
-    status:
-      runtimeEndpoint && preferences.usageMode === 'official'
+    status: hostedProvider
+      ? 'manual'
+      : runtimeEndpoint && preferences.usageMode === 'official'
         ? 'warn'
         : providers.length && preferences.usageMode === 'official'
           ? 'warn'
           : 'pass',
-    summary: runtimeEndpoint
-      ? '当前进程使用自定义 API 地址'
-      : providers.length
-        ? '当前进程启用了云平台提供商'
-        : '未发现 API 地址覆盖',
+    summary: hostedProvider
+      ? '当前进程声明宿主管理 API 路由，实际地址需核对'
+      : runtimeEndpoint
+        ? '当前进程使用自定义 API 地址'
+        : providers.length
+          ? '当前进程启用了云平台提供商'
+          : '未发现 API 地址覆盖',
     evidence: [
+      ...(hostedProvider
+        ? [
+            {
+              label: 'CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST',
+              value: '声明已启用；设置字段未必参与宿主路由',
+            },
+          ]
+        : []),
       ...(runtimeEndpoint
         ? [{ label: 'ANTHROPIC_BASE_URL', value: endpointValue(runtimeEndpoint) }]
         : []),

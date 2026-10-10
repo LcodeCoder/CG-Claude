@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usageModeOptions } from '../../shared/usage-modes'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { Check, Info, Laptop, LoaderCircle, LockKeyhole, Network } from '@lucide/vue'
 import type { Preferences } from '../../shared/types'
@@ -28,10 +29,9 @@ const emit = defineEmits<{ save: [preferences: Preferences] }>()
         <label for="usage-mode"
           >Claude 使用方式<span>自定义或云平台模式会保留相关 API 配置。</span></label
         ><select id="usage-mode" v-model="draft.usageMode">
-          <option value="official">官方默认 API</option>
-          <option value="custom">自定义 API / 网关</option>
-          <option value="bedrock">Amazon Bedrock</option>
-          <option value="vertex">Google Vertex</option>
+          <option v-for="option in usageModeOptions" :key="option.value" :value="option.value">
+            {{ option.title }}
+          </option>
         </select>
       </div>
     </div>

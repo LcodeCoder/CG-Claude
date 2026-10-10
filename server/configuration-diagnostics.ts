@@ -3,26 +3,18 @@ import path from 'node:path'
 import type { CheckResult, Evidence, Preferences } from '../shared/types.js'
 import type { EnvironmentSources } from './environment-sources.js'
 import { isEnabledEnvironmentFlag } from '../shared/environment-values.js'
+import {
+  credentialKeys,
+  cloudKeys,
+  authenticationEnvironmentKeys,
+  authenticationContextKeys,
+} from '../shared/authentication.js'
 import { endpointValue } from './safety.js'
 
 const networkSource = 'https://code.claude.com/docs/en/network-config'
 const proxyOrder = ['https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY'] as const
 const proxyNames = /^(?:https?_proxy|all_proxy|no_proxy)$/i
-const authNames =
-  /^(?:ANTHROPIC_(?:AUTH_TOKEN|API_KEY|AWS_API_KEY|PROFILE|FEDERATION_RULE_ID|ORGANIZATION_ID)|CLAUDE_CODE_OAUTH_(?:TOKEN|REFRESH_TOKEN|SCOPES)|CLAUDE_CODE_USE_(?:BEDROCK|VERTEX|FOUNDRY|ANTHROPIC_AWS))$/
-const credentialKeys = [
-  'ANTHROPIC_AUTH_TOKEN',
-  'ANTHROPIC_API_KEY',
-  'ANTHROPIC_AWS_API_KEY',
-  'CLAUDE_CODE_OAUTH_TOKEN',
-  'ANTHROPIC_PROFILE',
-]
-const cloudKeys = [
-  'CLAUDE_CODE_USE_BEDROCK',
-  'CLAUDE_CODE_USE_VERTEX',
-  'CLAUDE_CODE_USE_FOUNDRY',
-  'CLAUDE_CODE_USE_ANTHROPIC_AWS',
-]
+const authNames = new RegExp('^(?:' + authenticationEnvironmentKeys.join('|') + ')$')
 const certificateKeys = [
   'NODE_EXTRA_CA_CERTS',
   'CLAUDE_CODE_CLIENT_CERT',
@@ -169,6 +161,9 @@ export function authenticationSources(
   check.sourceUrl = 'https://code.claude.com/docs/en/iam'
   const methods = new Set<string>()
   const providers = new Set<string>()
+  const resourceWarnings: Evidence[] = []
+  let hosted = false
+  let foundry = false
   for (const source of input.sources) {
     for (const key of credentialKeys)
       if (source.values[key]?.trim()) {
@@ -180,6 +175,25 @@ export function authenticationSources(
         providers.add(key)
         check.evidence.push({ label: `${source.label} · ${key}`, value: '已启用' })
       }
+    for (const key of authenticationContextKeys) {
+      const value = source.values[key]
+      if (!value?.trim()) continue
+      check.evidence.push({
+        label: `${source.label} · ${key}`,
+        value: '已声明，值已隐藏；实际配置在客户端核对',
+      })
+      if (key === 'CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST' && isEnabledEnvironmentFlag(value))
+        hosted = true
+    }
+    foundry ||=
+      isEnabledEnvironmentFlag(source.values.CLAUDE_CODE_USE_FOUNDRY) ||
+      Boolean(source.values.ANTHROPIC_FOUNDRY_API_KEY || source.values.ANTHROPIC_FOUNDRY_AUTH_TOKEN)
+    const resource = source.values.ANTHROPIC_FOUNDRY_RESOURCE
+    if (resource?.trim() && !/[`$]/.test(resource) && /[./:]/.test(resource))
+      resourceWarnings.push({
+        label: source.label + ' · ANTHROPIC_FOUNDRY_RESOURCE',
+        value: '含 URL 或主机名形态；此字段需要资源名称，原值已隐藏',
+      })
     if (source.hasApiKeyHelper) {
       methods.add('apiKeyHelper')
       check.evidence.push({
@@ -210,20 +224,29 @@ export function authenticationSources(
     providers.size > 1 ||
     methods.size > 1 ||
     (providers.size > 0 && preferences.usageMode === 'official')
-  check.status = conflict
-    ? 'warn'
-    : incomplete.length || legacyOAuth.length || (!methods.size && !providers.size)
-      ? 'manual'
-      : 'pass'
-  check.summary = conflict
-    ? '存在多种认证配置或提供商选择，需核对实际选择'
-    : legacyOAuth.length
-      ? '存在版本相关 OAuth 变量，需在客户端复核'
-      : !methods.size && !providers.size
-        ? '未发现显式认证变量；登录方式需在客户端确认'
-        : incomplete.length
-          ? '部分认证配置无法静态确认'
-          : '已列出显式认证来源，实际选择以客户端为准'
+  check.evidence.push(...resourceWarnings)
+  if (hosted) {
+    check.status = 'manual'
+    check.summary = '存在宿主管理路由声明，实际提供商需在客户端核对'
+  } else if (resourceWarnings.length) {
+    check.status = 'warn'
+    check.summary = 'Foundry 资源名称声明需要核对'
+  } else if (conflict) {
+    check.status = 'warn'
+    check.summary = '存在多种认证配置或提供商选择，需核对实际选择'
+  } else if (legacyOAuth.length) {
+    check.status = 'manual'
+    check.summary = '存在版本相关 OAuth 变量，需在客户端复核'
+  } else if (!methods.size && !providers.size) {
+    check.status = 'manual'
+    check.summary = '未发现显式认证变量；登录方式需在客户端确认'
+  } else if (incomplete.length) {
+    check.status = 'manual'
+    check.summary = '部分认证配置无法静态确认'
+  } else {
+    check.status = 'pass'
+    check.summary = '已列出显式认证来源，实际选择以客户端为准'
+  }
   if (!check.evidence.length)
     check.evidence.push({
       label: '读取边界',
@@ -231,6 +254,12 @@ export function authenticationSources(
     })
   check.recommendation =
     '在 Claude Code 的 /status 查看 Login method、Login 或 Profile。API Key、Bearer Token、云平台与订阅登录有不同选择规则；组织策略、交互授权及应用托管会话会影响结果。按你的使用方式保留需要的配置。'
+  if (foundry)
+    check.recommendation +=
+      ' Foundry 支持 API Key、Entra ID 默认凭据链，以及 2.1.203 起的 Bearer Token；Token 优先于 API Key。未配置密钥不等于认证缺失。'
+  if (hosted)
+    check.recommendation +=
+      ' 官方说明宿主管理开关可使部分设置文件中的提供商、地址与认证变量不参与宿主路由；静态声明不能证明实际会话已经托管。'
   return check
 }
 

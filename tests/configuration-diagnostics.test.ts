@@ -3,7 +3,7 @@ import path from 'node:path'
 import { afterEach, expect, test } from 'vitest'
 import { defaultPreferences } from '../shared/types'
 import { diagnosticCheckIds } from '../shared/diagnostic-checks'
-import { readAllConfigs } from '../server/safety'
+import { maskedAssignment, readAllConfigs } from '../server/safety'
 import { collectEnvironmentSources } from '../server/environment-sources'
 import {
   authenticationSources,
@@ -203,4 +203,106 @@ test('tilde in a settings env path is not expanded into a false certificate pass
   const check = await certificateConfiguration(await item.sources())
   expect(check.status).toBe('manual')
   expect(check.evidence[0]?.value).toContain('不会展开')
+})
+
+test('Foundry token and key coexistence preserves the documented selection rule and masks both', async () => {
+  const item = await data({
+    CLAUDE_CODE_USE_FOUNDRY: '1',
+    ANTHROPIC_FOUNDRY_API_KEY: 'PRIVATE_FOUNDRY_KEY',
+    ANTHROPIC_FOUNDRY_AUTH_TOKEN: 'PRIVATE_FOUNDRY_TOKEN',
+    ANTHROPIC_FOUNDRY_RESOURCE: 'PRIVATE_RESOURCE_NAME',
+  })
+  const check = authenticationSources(await item.sources(), {
+    ...defaultPreferences,
+    usageMode: 'foundry',
+  })
+  expect(check.status).toBe('warn')
+  expect(check.recommendation).toContain('Token 优先于 API Key')
+  expect(check.recommendation).toContain('2.1.203')
+  expect(JSON.stringify(check)).not.toContain('PRIVATE_')
+  expect(check.fixIds).toEqual([])
+})
+
+test('Foundry default credentials are not reported as missing when no key is configured', async () => {
+  const item = await data({ CLAUDE_CODE_USE_FOUNDRY: '1' })
+  const check = authenticationSources(await item.sources(), {
+    ...defaultPreferences,
+    usageMode: 'foundry',
+  })
+  expect(check.status).toBe('pass')
+  expect(check.recommendation).toContain('默认凭据链')
+  expect(check.recommendation).toContain('未配置密钥不等于认证缺失')
+  expect(check.fixIds).toEqual([])
+})
+
+test.each([
+  'https://PRIVATE_HOST.services.ai.azure.com/anthropic',
+  'PRIVATE_HOST.services.ai.azure.com',
+])('Foundry resource rejects a URL or hostname shape without exposing it: %s', async (resource) => {
+  const item = await data({ CLAUDE_CODE_USE_FOUNDRY: '1', ANTHROPIC_FOUNDRY_RESOURCE: resource })
+  const check = authenticationSources(await item.sources(), {
+    ...defaultPreferences,
+    usageMode: 'foundry',
+  })
+  expect(check.status).toBe('warn')
+  expect(check.summary).toContain('资源名称')
+  expect(JSON.stringify(check)).not.toContain('PRIVATE_HOST')
+})
+
+test('dynamic shell resource and token declarations remain unresolved and do not run code', async () => {
+  const item = await data()
+  await item.write(
+    '.zshrc',
+    'export CLAUDE_CODE_USE_FOUNDRY=1\nexport ANTHROPIC_FOUNDRY_RESOURCE="${PRIVATE_RESOURCE}"\nexport ANTHROPIC_FOUNDRY_AUTH_TOKEN="$(touch PRIVATE_SENTINEL)"\n',
+  )
+  const input = await item.sources()
+  const shell = input.sources.find((source) => source.kind === 'shell')!
+  expect(shell.unresolved).toEqual(['ANTHROPIC_FOUNDRY_RESOURCE', 'ANTHROPIC_FOUNDRY_AUTH_TOKEN'])
+  const check = authenticationSources(input, { ...defaultPreferences, usageMode: 'foundry' })
+  expect(check.status).toBe('manual')
+  expect(JSON.stringify(check)).not.toContain('PRIVATE_')
+})
+
+test('AWS workspace and Foundry resource declarations are hidden in shell evidence and field previews', async () => {
+  const item = await data()
+  await item.write(
+    '.zshrc',
+    'export CLAUDE_CODE_USE_ANTHROPIC_AWS=1\nexport ANTHROPIC_AWS_WORKSPACE_ID="PRIVATE_WORKSPACE"\nexport ANTHROPIC_AWS_API_KEY="PRIVATE_AWS_KEY"\n',
+  )
+  const input = await item.sources()
+  expect(
+    input.sources.find((source) => source.kind === 'shell')?.values.ANTHROPIC_AWS_WORKSPACE_ID,
+  ).toBe('PRIVATE_WORKSPACE')
+  const check = authenticationSources(input, { ...defaultPreferences, usageMode: 'anthropic-aws' })
+  expect(check.status).toBe('pass')
+  expect(JSON.stringify(check)).not.toContain('PRIVATE_')
+  for (const key of [
+    'ANTHROPIC_AWS_WORKSPACE_ID',
+    'ANTHROPIC_FOUNDRY_RESOURCE',
+    'ANTHROPIC_PROFILE',
+  ]) {
+    expect(maskedAssignment(key, 'PRIVATE_VALUE')).not.toContain('PRIVATE_VALUE')
+  }
+})
+
+test('host-managed provider declaration requires client review for auth and the runtime endpoint', async () => {
+  const item = await data({
+    CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST: '1',
+    ANTHROPIC_BASE_URL: 'http://127.0.0.1:15721/private-token',
+    CLAUDE_CODE_USE_FOUNDRY: '1',
+  })
+  const report = await runDiagnostics(item.ctx, defaultPreferences, { network: false })
+  expect(report.checks.find((check) => check.id === 'runtime-endpoint')?.status).toBe('manual')
+  const auth = report.checks.find((check) => check.id === 'auth-sources')!
+  expect(auth.status).toBe('manual')
+  expect(auth.recommendation).toContain('宿主管理')
+  expect(JSON.stringify(report)).not.toContain('private-token')
+})
+
+test('a disabled host-managed flag does not suppress ordinary configuration warnings', async () => {
+  const item = await data({
+    CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST: '0',
+    CLAUDE_CODE_USE_FOUNDRY: '1',
+  })
+  expect(authenticationSources(await item.sources(), defaultPreferences).status).toBe('warn')
 })

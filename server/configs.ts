@@ -1,3 +1,4 @@
+import { authenticationEnvironmentKeys } from '../shared/authentication.js'
 import type { ChangePreview, FixId, Preferences, ConfigFileInfo } from '../shared/types.js'
 import { privacyState } from '../shared/privacy.js'
 import { configTargets } from './context.js'
@@ -5,8 +6,30 @@ import type { ConfigContent } from './safety.js'
 import { maskedAssignment, endpointValue } from './safety.js'
 
 export const proxyKeys = /^(?:https?_proxy|all_proxy|no_proxy)$/i
-export const relevantEnvKeys =
-  /^(?:https?_proxy|all_proxy|no_proxy|ANTHROPIC_BASE_URL|ANTHROPIC_AUTH_TOKEN|ANTHROPIC_API_KEY|ANTHROPIC_AWS_API_KEY|ANTHROPIC_PROFILE|ANTHROPIC_FEDERATION_RULE_ID|ANTHROPIC_ORGANIZATION_ID|CLAUDE_CODE_OAUTH_TOKEN|CLAUDE_CODE_OAUTH_REFRESH_TOKEN|CLAUDE_CODE_OAUTH_SCOPES|NODE_EXTRA_CA_CERTS|NODE_TLS_REJECT_UNAUTHORIZED|CLAUDE_CODE_CLIENT_CERT|CLAUDE_CODE_CLIENT_KEY|CLAUDE_CODE_CLIENT_KEY_PASSPHRASE|CLAUDE_CODE_CERT_STORE|CLAUDE_CODE_USE_BEDROCK|CLAUDE_CODE_USE_VERTEX|CLAUDE_CODE_USE_FOUNDRY|CLAUDE_CODE_USE_ANTHROPIC_AWS|DISABLE_TELEMETRY|DISABLE_ERROR_REPORTING|CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC|DO_NOT_TRACK|TZ)$/i
+export const relevantEnvKeys = new RegExp(
+  '^(?:' +
+    [
+      'https?_proxy',
+      'all_proxy',
+      'no_proxy',
+      'ANTHROPIC_BASE_URL',
+      ...authenticationEnvironmentKeys,
+      'NODE_EXTRA_CA_CERTS',
+      'NODE_TLS_REJECT_UNAUTHORIZED',
+      'CLAUDE_CODE_CLIENT_CERT',
+      'CLAUDE_CODE_CLIENT_KEY',
+      'CLAUDE_CODE_CLIENT_KEY_PASSPHRASE',
+      'CLAUDE_CODE_CERT_STORE',
+      'DISABLE_TELEMETRY',
+      'DISABLE_ERROR_REPORTING',
+      'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      'DO_NOT_TRACK',
+      'TZ',
+    ].join('|') +
+    ')$',
+  'i',
+)
+
 export interface Assignment {
   key: string
   value: string

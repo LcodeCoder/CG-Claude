@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usageModeOptions, usageModeLabel } from '../../shared/usage-modes'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { ref, reactive, computed, watch } from 'vue'
 import {
@@ -68,12 +69,7 @@ const eligible = (id: FixId) =>
       ? draft.usageMode === 'official'
       : true
 const routeNames = { system: '系统 / HTTP 代理', tun: 'TUN 全流量接管', custom: '自定义路由' }
-const usageNames = {
-  official: '官方默认 API',
-  custom: '自定义 API / 网关',
-  bedrock: 'Amazon Bedrock',
-  vertex: 'Google Vertex',
-}
+
 watch(
   () => props.open,
   (open) => {
@@ -226,28 +222,7 @@ const title = computed(() =>
           </div>
         </div>
         <label
-          v-for="option in [
-            {
-              value: 'official',
-              title: '官方默认 API',
-              description: '使用 Claude 官方服务；可以在下一步选择清理旧 API 地址。',
-            },
-            {
-              value: 'custom',
-              title: '自定义 API / 网关',
-              description: '保留 ANTHROPIC_BASE_URL 和已有密钥。',
-            },
-            {
-              value: 'bedrock',
-              title: 'Amazon Bedrock',
-              description: '保留 AWS、Bedrock 与认证配置。',
-            },
-            {
-              value: 'vertex',
-              title: 'Google Vertex',
-              description: '保留 Google Cloud、Vertex 与认证配置。',
-            },
-          ]"
+          v-for="option in usageModeOptions"
           :key="option.value"
           class="radio-card"
           :class="{ selected: draft.usageMode === option.value }"
@@ -340,7 +315,7 @@ const title = computed(() =>
         </div>
         <div class="setup-preferences">
           <span>{{ routeNames[draft.routeMode] }}</span
-          ><span>{{ usageNames[draft.usageMode] }}</span
+          ><span>{{ usageModeLabel(draft.usageMode) }}</span
           ><span>{{
             draft.privacy === 'minimal' ? '关闭全部非必要流量' : '关闭指标与错误报告'
           }}</span>
