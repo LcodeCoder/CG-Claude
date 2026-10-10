@@ -10,6 +10,7 @@ import {
   isNonEmptyEnvironmentValue,
 } from '../shared/environment-values.js'
 import { projectFiles, readProjectFiles } from './project-files.js'
+import { credentialField, inspectMcp } from './mcp-diagnostics.js'
 
 export async function scanProject(ctx: Context, supplied: string): Promise<ProjectReport> {
   const input = supplied.trim().replace(/^~(?=$|[\/\\])/, ctx.home)
@@ -241,6 +242,8 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     '启用证书校验；企业代理可配置可信 CA，避免忽略证书错误。',
   )
   let mcpCredentials = false
+  let mcpReferences = 0
+  let mcpDynamic = 0
   let mcpIncomplete = false
   const mcp = files.get('.mcp.json')!
   if (!mcp.exists)
@@ -255,35 +258,44 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     try {
       if (mcp.error) throw new Error(mcp.error)
       const parsed = JSON.parse(mcp.content ?? '') as unknown
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-        throw new Error('.mcp.json 必须是 JSON 对象')
-      const servers = (parsed as Record<string, unknown>).mcpServers
-      if (
-        servers !== undefined &&
-        (!servers || typeof servers !== 'object' || Array.isArray(servers))
-      )
-        throw new Error('mcpServers 必须是对象')
-      mcpCredentials = Object.values(servers ?? {}).some((server) => {
-        if (!server || typeof server !== 'object' || Array.isArray(server)) return false
-        const fields = server as Record<string, unknown>
-        return ['env', 'headers'].some((field) => {
-          const values = fields[field]
-          return (
-            values &&
-            typeof values === 'object' &&
-            !Array.isArray(values) &&
-            Object.keys(values).some((key) =>
-              /(?:TOKEN|API_KEY|PASSWORD|SECRET|AUTHORIZATION)/i.test(key),
-            )
-          )
-        })
-      })
+      const inspection = inspectMcp(parsed)
+      mcpCredentials = inspection.credentials.literal > 0
+      mcpReferences = inspection.credentials.reference
+      mcpDynamic = inspection.credentials.dynamic
+      mcpIncomplete = inspection.errors.length > 0
       add(
         'project-mcp',
         '项目 MCP 配置',
-        'manual',
-        `配置了 ${Object.keys(servers ?? {}).length} 个 MCP 服务`,
-        '逐项复核来源、命令和权限；扫描不会连接或启动 MCP 服务。',
+        mcpIncomplete ? 'fail' : inspection.serverCount ? 'manual' : 'pass',
+        mcpIncomplete
+          ? 'MCP 配置结构需要修正'
+          : inspection.serverCount
+            ? `配置了 ${inspection.serverCount} 个 MCP 服务`
+            : '未声明 MCP 服务',
+        '逐项复核来源、命令和权限；变量引用不展开，动态请求头命令不执行。扫描不会连接或启动 MCP 服务。',
+        [
+          ...inspection.errors.map((value) => ({ label: '结构检查', value })),
+          ...inspection.notes.map((value) => ({ label: '待确认', value })),
+          ...(mcpReferences
+            ? [
+                {
+                  label: '凭据变量引用',
+                  value: `${mcpReferences} 个字段；未解析变量值，不判断认证是否可用`,
+                },
+              ]
+            : []),
+          ...(inspection.credentials.literal
+            ? [
+                {
+                  label: '字面凭据候选',
+                  value: `${inspection.credentials.literal} 个非空字段；值已隐藏`,
+                },
+              ]
+            : []),
+          ...(mcpDynamic
+            ? [{ label: '动态凭据表达式', value: `${mcpDynamic} 个字段无法静态判断；值已隐藏` }]
+            : []),
+        ],
       )
     } catch (error) {
       mcpIncomplete = true
@@ -299,18 +311,27 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     }
   const secretsPresent =
     mcpCredentials ||
-    Object.keys(env).some((key) => /(?:API_KEY|TOKEN|PASSWORD|SECRET)/i.test(key)) ||
+    Object.entries(env).some(([key, value]) => credentialField.test(key) && value.trim()) ||
     /(?:_authToken|_password)\s*=/.test(npm.content ?? '')
   add(
     'project-secrets',
     '项目凭据存放',
-    secretsPresent ? 'warn' : envIncomplete || mcpIncomplete || npm.error ? 'manual' : 'pass',
     secretsPresent
-      ? '项目配置含凭据字段，值已隐藏'
-      : envIncomplete || mcpIncomplete || npm.error
-        ? '项目配置未完整读取，凭据字段待确认'
-        : '未在已读取项目配置中发现常见凭据字段',
-    '凭据留在本地未提交的设置或受管理的秘密存储中，不提交到 Git。这里只检查常见字段，不能证明仓库没有其他密钥。',
+      ? 'warn'
+      : envIncomplete || mcpIncomplete || mcpReferences || mcpDynamic || npm.error
+        ? 'manual'
+        : 'pass',
+    secretsPresent
+      ? '项目配置含非空字面凭据字段，值已隐藏'
+      : mcpDynamic
+        ? 'MCP 凭据表达式无法静态判断，需要人工确认'
+        : mcpReferences
+          ? 'MCP 凭据使用变量引用，未读取变量值'
+          : envIncomplete || mcpIncomplete || npm.error
+            ? '项目配置未完整读取，凭据字段待确认'
+            : '未在已读取项目配置中发现常见凭据字段',
+    '不要把字面凭据提交到 Git。MCP 支持 ${VAR} / ${VAR:-default}，非空默认值仍保存在文件中；引用不代表变量已设置或认证可用。这里只检查常见字段，不能证明仓库没有其他密钥。',
+    [{ label: '读取边界', value: '凭据值与变量值不展示；dotenv、登录凭据和秘密存储不读取' }],
   )
   const dotenv = ['.env', '.env.local'].filter((name) => files.get(name)!.exists)
   add(

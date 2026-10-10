@@ -32,4 +32,4 @@ export type DiagnosticCheckId = (typeof diagnosticCheckIds)[number]
 export const DIAGNOSTIC_CHECK_COUNT: number = diagnosticCheckIds.length
 
 // Bump when rule interpretation changes so history can distinguish software changes.
-export const DIAGNOSTIC_RULESET = '2026-10-11.3'
+export const DIAGNOSTIC_RULESET = '2026-10-11.4'

@@ -1,3 +1,5 @@
+import type { DiagnosticCheckId } from './diagnostic-checks.js'
+
 /** Sources are curated at build time. Opening this library makes no network requests. */
 export type ReferenceKind = 'official' | 'maintainer' | 'community' | 'tool'
 export type ReferenceTopic = 'network' | 'configuration' | 'privacy' | 'account' | 'engineering'
@@ -12,7 +14,7 @@ export interface ReferenceEntry {
   takeaway: string
   application: string
   boundary: string
-  checkIds: string[]
+  checkIds: DiagnosticCheckId[]
   projectCheckIds?: string[]
 }
 export type ReferenceTarget = { scope: 'environment' | 'project'; id: string }
@@ -31,6 +33,19 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 }
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
+  {
+    id: 'anthropic-system-trust',
+    title: 'Anthropic · 平台检测、处理与申诉的公开说明',
+    publisher: 'Anthropic',
+    url: 'https://www.anthropic.com/transparency/system-trust-reporting',
+    kind: 'official',
+    topic: 'account',
+    checkedAt,
+    takeaway: '官方公开使用政策执行、账号处理和申诉统计，没有提供本机配置与账号结果的确定映射。',
+    application: '说明环境检查的判断范围，账号警告或停用由官方渠道复核。',
+    boundary: '不能据此推算账号安全分数或保证任何配置不会触发账号处理。',
+    checkIds: ['public-ip', 'auth-sources'],
+  },
   {
     id: 'claude-permissions',
     title: 'Claude Code · 权限模式与规则',
@@ -71,9 +86,9 @@ export const references: ReferenceEntry[] = [
     kind: 'official',
     topic: 'configuration',
     checkedAt,
-    takeaway: '项目 .mcp.json 是共享配置；凭据字段可引用环境变量，服务使用仍需核对来源与信任。',
-    application: '检查 JSON 结构、凭据字段和项目自动启用声明；不连接、不启动 MCP 服务。',
-    boundary: 'enableAllProjectMcpServers 声明受版本与工作区信任影响，存在字段不等于服务已运行。',
+    takeaway: '项目 .mcp.json 支持 ${VAR} 与 ${VAR:-default}；非空默认值仍保存在配置文件中。',
+    application: '区分字面凭据、变量引用和动态表达式；检查结构和项目自动启用声明，不启动服务。',
+    boundary: '不展开变量；引用不代表变量已设置或认证可用。MCP 启用声明受版本与工作区信任影响。',
     checkIds: [],
     projectCheckIds: [
       'project-mcp',
@@ -147,7 +162,7 @@ export const references: ReferenceEntry[] = [
     takeaway: '展示桌面与网页检测的权限差异，列出网络、TLS、DNS、WebRTC 和出口的诊断范围。',
     application: '参考本机/浏览器分层展示与检测范围说明；优先保留可观测证据。',
     boundary: '社区环境评分不能证明平台内部风控规则，本工具不采用账号安全分数。',
-    checkIds: ['browser-egress', 'dns', 'webrtc'],
+    checkIds: ['route-consistency', 'dns', 'webrtc'],
   },
   {
     id: 'claude-network',
@@ -468,7 +483,7 @@ export const references: ReferenceEntry[] = [
   },
 ]
 export function referencesForCheck(checkId: string): ReferenceEntry[] {
-  return references.filter((entry) => entry.checkIds.includes(checkId))
+  return references.filter((entry) => entry.checkIds.some((id) => id === checkId))
 }
 
 export function referencesForProjectFinding(id: string): ReferenceEntry[] {
@@ -478,7 +493,7 @@ export function matchesReferenceTarget(entry: ReferenceEntry, target?: Reference
   return (
     !target ||
     (target.scope === 'environment'
-      ? entry.checkIds.includes(target.id)
+      ? entry.checkIds.some((id) => id === target.id)
       : Boolean(entry.projectCheckIds?.includes(target.id)))
   )
 }

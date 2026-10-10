@@ -190,3 +190,125 @@ test('Bun lockfiles count as lock metadata and invalid Git output is not called 
   expect(git.summary).toContain('未确认')
   expect(JSON.stringify(report)).not.toMatch(/PRIVATE_LOCK_CONTENT|PRIVATE_OUTPUT/)
 })
+
+test('MCP credential references and empty fields are distinguished from literal secrets', async () => {
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({
+      mcpServers: {
+        remote: {
+          type: 'http',
+          url: 'https://example.com/mcp',
+          headers: { Authorization: 'Bearer ${PROJECT_API_KEY}' },
+          env: { TOKEN: '', SECRET: '${PROJECT_SECRET:-}' },
+        },
+      },
+    }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  const secrets = report.findings.find((item) => item.id === 'project-secrets')!
+  expect(secrets.status).toBe('manual')
+  expect(secrets.summary).toContain('变量引用')
+  const mcp = report.findings.find((item) => item.id === 'project-mcp')!
+  expect(
+    mcp.evidence.some((entry) => entry.label === '凭据变量引用' && entry.value.includes('2')),
+  ).toBe(true)
+  expect(JSON.stringify(report)).not.toContain('PROJECT_SECRET')
+})
+
+test('nonempty MCP credential defaults are stored literals and do not appear in evidence', async () => {
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({
+      mcpServers: {
+        remote: {
+          type: 'http',
+          url: 'https://example.com',
+          headers: { Authorization: 'Bearer ${TOKEN:-PRIVATE_DEFAULT}' },
+        },
+      },
+    }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-secrets')?.status).toBe('warn')
+  expect(JSON.stringify(report)).not.toContain('PRIVATE_DEFAULT')
+})
+
+test('unsupported dynamic MCP credential expressions remain manual instead of guessed literals', async () => {
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({
+      mcpServers: {
+        local: {
+          command: 'do-not-run',
+          env: { TOKEN: '$PRIVATE_TOKEN', API_KEY: 'prefix-${PRIVATE_KEY}' },
+        },
+      },
+    }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-secrets')?.status).toBe('manual')
+  expect(report.findings.find((item) => item.id === 'project-secrets')?.summary).toContain(
+    '无法静态判断',
+  )
+  expect(JSON.stringify(report)).not.toMatch(/PRIVATE_TOKEN|PRIVATE_KEY|do-not-run/)
+})
+
+test('MCP credential URL fields are detected without exposing addresses, paths or values', async () => {
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({
+      mcpServers: {
+        remote: {
+          type: 'http',
+          url: 'https://private-user:private-pass@example.com/PRIVATE_PATH?api_key=PRIVATE_QUERY',
+        },
+      },
+    }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-secrets')?.status).toBe('warn')
+  expect(JSON.stringify(report)).not.toMatch(/private-user|private-pass|PRIVATE_PATH|PRIVATE_QUERY/)
+})
+
+test('MCP entry structure failures cannot make the credential finding look fully checked', async () => {
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({
+      mcpServers: {
+        PRIVATE_SERVER: { command: 'do-not-run', env: ['PRIVATE_VALUE'], args: 'PRIVATE_ARGS' },
+      },
+    }),
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-mcp')?.status).toBe('fail')
+  expect(report.findings.find((item) => item.id === 'project-secrets')?.status).toBe('manual')
+  expect(JSON.stringify(report)).not.toMatch(/PRIVATE_SERVER|PRIVATE_VALUE|PRIVATE_ARGS/)
+})
+
+test('an untyped remote MCP URL requires an explicit transport, while a placeholder URL stays manual', async () => {
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({ mcpServers: { remote: { url: 'https://example.com' } } }),
+  )
+  expect(
+    (await scanProject(data.ctx, data.home)).findings.find((item) => item.id === 'project-mcp')
+      ?.status,
+  ).toBe('fail')
+  await data.write(
+    '.mcp.json',
+    JSON.stringify({ mcpServers: { remote: { type: 'http', url: '' } } }),
+  )
+  expect(
+    (await scanProject(data.ctx, data.home)).findings.find((item) => item.id === 'project-mcp')
+      ?.status,
+  ).toBe('manual')
+})
+
+test('empty credentials in a project settings env do not produce a storage warning', async () => {
+  await data.write('.claude/settings.json', JSON.stringify({ env: { ANTHROPIC_API_KEY: '' } }))
+  expect(
+    (await scanProject(data.ctx, data.home)).findings.find((item) => item.id === 'project-secrets')
+      ?.status,
+  ).toBe('pass')
+})

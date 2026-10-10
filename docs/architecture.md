@@ -25,6 +25,7 @@ flowchart LR
 | 稳定检查 ID、检测规则版本                  | `shared/diagnostic-checks.ts`                                                               |
 | 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
 | 进程、Claude 用户设置与静态 shell 来源     | `server/environment-sources.ts`                                                             |
+| MCP 结构、字面凭据与变量引用               | `server/mcp-diagnostics.ts`、`server/projects.ts`                                           |
 | 代理、认证、证书及隐私规则                 | `server/configuration-diagnostics.ts`、`server/privacy-diagnostics.ts`、`shared/privacy.ts` |
 | 主动编辑连接设置与严格字段校验             | `shared/connections.ts`、`server/connections.ts`、`src/components/ConnectionEditor.vue`     |
 | 本地配置静态解析与选定字段修改             | `server/configs.ts`                                                                         |

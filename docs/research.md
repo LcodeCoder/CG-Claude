@@ -19,6 +19,14 @@
 
 新增项目配置核对依据：[权限规则](https://code.claude.com/docs/en/permissions)、[Hooks](https://code.claude.com/docs/en/hooks)、[MCP](https://code.claude.com/docs/en/mcp)、[Bun 锁文件](https://bun.sh/docs/pm/lockfile)。项目结果可按状态筛选、展开证据，并在对应文献与项目项之间跳转。权限检查区分配置声明和实际生效；Hooks 不执行或展示完整命令；MCP 自动启用声明仍受版本与工作区信任影响；Bun 两种锁文件只查元数据。
 
+新增 MCP 凭据核对：官方支持的变量引用与文件中的非空默认值分别显示；不解析变量、不执行 headersHelper，也不把空凭据字段视为明文秘密。文献库已补充 [Anthropic 平台检测与申诉公开说明](https://www.anthropic.com/transparency/system-trust-reporting)，共 32 条。
+
+## 本轮扩展检索
+
+继续搜索中文环境排查文章与开源项目，并逐一与当前官方说明对照。检索到的 [claude-cn-flag-check](https://github.com/shellus/claude-cn-flag-check)、[claude-code-guard](https://github.com/Echoxiawan/claude-code-guard) 和 [claude-ip-guard](https://github.com/cso1z/claude-ip-guard) 可作为版本特定的社区观察；没有独立验证其中的二进制规则与账号结果关系，因此没有导入其账号分数、隐藏标记推断、自动拦截或启动包装器。
+
+中文文章中的住宅 IP、支付、手机号、时区和“稳定使用即不会封禁”等归因，仍缺少可复验的官方映射。本轮可落地的新增内容是：连接配置编辑、MCP 结构与凭据存放区分、配置变化后复检和来源追踪。官方网络文档支持代理、网关与 CA 等企业场景，不能仅因设置了这些字段就判断账号异常。
+
 ## 保留为人工判断的内容
 
 住宅 IP、第三方 IP 评分、浏览器时区/语言、固定使用节奏、支付方式等社区描述，不能单独证明 Anthropic 内部风控规则。CG Claude 展示可观测差异和复核入口，不把它们转换为账号安全分数、自动购买建议或“保证不封”的结论。
