@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { projectFindingLabel } from '../lib/project-results'
 import { computed, ref, watch } from 'vue'
-import { BookOpen, ExternalLink, Search, X, ArrowUpRight } from '@lucide/vue'
+import { BookOpen, Search, X, Copy } from '@lucide/vue'
+import ReferenceCard from '../components/ReferenceCard.vue'
 import {
   references,
   referenceKindLabels,
   referenceTopicLabels,
   matchesReferenceTarget,
+  referenceMarkdown,
 } from '../../shared/references'
 import type { ReferenceKind, ReferenceTopic, ReferenceTarget } from '../../shared/references'
 import { manualItems } from '../../shared/types'
@@ -21,16 +23,19 @@ const emit = defineEmits<{
   check: [id: string]
   project: [id: string]
   manual: [id: string]
+  copy: [text: string]
 }>()
 const query = ref('')
 const kind = ref<ReferenceKind | 'all'>('all')
 const topic = ref<ReferenceTopic | 'all'>('all')
+const readingMode = ref<'summary' | 'full'>(props.target ? 'full' : 'summary')
 watch(
   () => props.target,
   () => {
     query.value = ''
     kind.value = 'all'
     topic.value = 'all'
+    readingMode.value = props.target ? 'full' : 'summary'
   },
 )
 const selectedTitle = computed(() => {
@@ -57,20 +62,11 @@ const filtered = computed(() =>
         .includes(query.value.trim().toLowerCase()),
   ),
 )
-function hostname(url: string) {
-  return new URL(url).hostname
-}
 function clearFilters() {
   query.value = ''
   kind.value = 'all'
   topic.value = 'all'
   emit('clear')
-}
-function relatedProjectFindings(ids?: string[]) {
-  return props.projectFindings?.filter((finding) => ids?.includes(finding.id)) ?? []
-}
-function relatedChecks(ids: string[]) {
-  return props.checks?.filter((check) => ids.includes(check.id)) ?? []
 }
 </script>
 <template>
@@ -120,6 +116,22 @@ function relatedChecks(ids: string[]) {
     <span>{{ target.scope === 'source' ? '正在阅读' : '正在查看依据' }}：{{ selectedTitle }}</span
     ><button class="text-link" @click="emit('clear')">查看全部文献<X :size="14" /></button>
   </div>
+  <div class="reference-reading-bar">
+    <div class="reference-reading-options" role="group" aria-label="文献阅读方式">
+      <span>阅读方式</span>
+      <button :aria-pressed="readingMode === 'summary'" @click="readingMode = 'summary'">
+        摘要浏览
+      </button>
+      <button :aria-pressed="readingMode === 'full'" @click="readingMode = 'full'">完整阅读</button>
+    </div>
+    <button
+      class="text-link"
+      :disabled="!filtered.length"
+      @click="emit('copy', referenceMarkdown(filtered))"
+    >
+      <Copy :size="14" />复制当前 {{ filtered.length }} 条文献
+    </button>
+  </div>
   <p class="reference-count" role="status">
     显示 {{ filtered.length }} / {{ references.length }} 条参考文献 ·
     摘要随应用保存在本机，原文链接在外部浏览器打开
@@ -131,71 +143,17 @@ function relatedChecks(ids: string[]) {
     <button class="text-link" @click="clearFilters">清除筛选</button>
   </section>
   <div class="reference-list">
-    <article
+    <ReferenceCard
       v-for="entry in filtered"
-      :id="'reference-' + entry.id"
       :key="entry.id"
-      class="reference-card data-panel"
-    >
-      <div class="reference-meta">
-        <span class="source-type" :class="{ official: entry.kind === 'official' }">{{
-          referenceKindLabels[entry.kind]
-        }}</span
-        ><span>{{ referenceTopicLabels[entry.topic] }}</span
-        ><span>核对于 {{ entry.checkedAt }}</span>
-      </div>
-      <h3>
-        <a :href="entry.url" target="_blank" rel="noopener noreferrer"
-          >{{ entry.title }}<ExternalLink :size="16"
-        /></a>
-      </h3>
-      <p class="reference-publisher">
-        {{ entry.publisher }} · <span>{{ hostname(entry.url) }}</span>
-      </p>
-      <p class="reference-takeaway">{{ entry.takeaway }}</p>
-      <dl class="reference-notes">
-        <div>
-          <dt>在工具中的用途</dt>
-          <dd>{{ entry.application }}</dd>
-        </div>
-        <div>
-          <dt>判断边界</dt>
-          <dd>{{ entry.boundary }}</dd>
-        </div>
-      </dl>
-      <div v-if="relatedChecks(entry.checkIds).length" class="reference-checks">
-        <span>相关检查</span
-        ><button
-          v-for="check in relatedChecks(entry.checkIds)"
-          :key="check.id"
-          class="text-link"
-          @click="emit('check', check.id)"
-        >
-          {{ check.title }}<ArrowUpRight :size="12" />
-        </button>
-      </div>
-      <div v-if="relatedProjectFindings(entry.projectCheckIds).length" class="reference-checks">
-        <span>相关项目检查</span>
-        <button
-          v-for="finding in relatedProjectFindings(entry.projectCheckIds)"
-          :key="finding.id"
-          class="text-link"
-          @click="emit('project', finding.id)"
-        >
-          {{ projectFindingLabel(finding) }}<ArrowUpRight :size="12" />
-        </button>
-      </div>
-      <div v-if="entry.manualItemIds?.length" class="reference-checks">
-        <span>关联人工复核</span>
-        <button
-          v-for="id in entry.manualItemIds"
-          :key="id"
-          class="text-link"
-          @click="emit('manual', id)"
-        >
-          {{ manualItems.find((item) => item.id === id)?.title }}<ArrowUpRight :size="13" />
-        </button>
-      </div>
-    </article>
+      :entry="entry"
+      :full="readingMode === 'full'"
+      :checks="checks"
+      :project-findings="projectFindings"
+      @check="emit('check', $event)"
+      @project="emit('project', $event)"
+      @manual="emit('manual', $event)"
+      @copy="emit('copy', $event)"
+    />
   </div>
 </template>

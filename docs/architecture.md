@@ -22,6 +22,7 @@ flowchart LR
 | 页面请求、服务连接与任务状态               | `src/composables/useGuard.ts`                                                               |
 | 本机配置、项目、记录、备份、偏好、使用说明 | `src/views/` 下对应视图                                                                     |
 | 一键配置向导和节点状态                     | `src/components/SetupWizard.vue`、`server/workflows.ts`                                     |
+| 文献搜索、阅读层次与关联导航               | `src/views/ReferencesView.vue`、`src/components/ReferenceCard.vue`                          |
 | 稳定检查 ID、检测规则版本                  | `shared/diagnostic-checks.ts`                                                               |
 | 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
 | 固定系统指令与 Windows .cmd 回退           | `server/commands.ts`                                                                        |

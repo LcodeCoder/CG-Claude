@@ -234,6 +234,14 @@ async function copyPath(value: string) {
     guard.notify('无法自动复制，请选中路径手动复制。', 'error')
   }
 }
+async function copyReferences(value: string) {
+  try {
+    await navigator.clipboard.writeText(value)
+    guard.notify('文献引用已复制，包含原文链接、采用方式与判断边界。')
+  } catch {
+    guard.notify('无法自动复制，请在文献卡片中手动选择内容。', 'error')
+  }
+}
 const commandForPlatform = computed(() =>
   boot.value?.machine.platform === 'win32' ? '.\\启动工具.cmd' : './启动工具.command',
 )
@@ -516,6 +524,7 @@ const commandForPlatform = computed(() =>
         <ReferencesView
           v-else-if="page === 'references'"
           :target="referenceTarget"
+          @copy="copyReferences"
           :project-findings="projectReport?.findings"
           :checks="report?.checks"
           @clear="referenceTarget = undefined"

@@ -213,3 +213,71 @@
   border-color: var(--accent);
   outline: 2px solid var(--accent-soft);
 }
+
+.reference-reading-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.reference-reading-options {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 13px;
+}
+.reference-reading-options > span {
+  margin-right: 8px;
+  color: var(--muted);
+}
+.reference-reading-options button {
+  padding: 7px 12px;
+  border-radius: 6px;
+  color: var(--muted);
+  min-height: 36px;
+}
+.reference-reading-options button[aria-pressed='true'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.reference-reading-bar > .text-link {
+  font-size: 13px;
+}
+.reference-details {
+  margin-top: 16px;
+}
+.reference-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  list-style: none;
+}
+.reference-details > summary::-webkit-details-marker {
+  display: none;
+}
+.reference-details > summary:hover {
+  color: var(--accent);
+}
+.reference-details[open] > summary > svg {
+  transform: rotate(180deg);
+}
+.reference-details .reference-notes {
+  margin-top: 4px;
+}
+.reference-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+.reference-actions .text-link {
+  font-size: 13px;
+}

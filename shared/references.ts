@@ -655,3 +655,19 @@ export function matchesReferenceTarget(entry: ReferenceEntry, target?: Reference
           : Boolean(entry.projectCheckIds?.includes(target.id)))
   )
 }
+
+/** Copy a source with its interpretation so citations retain the local tool's boundaries. */
+export function referenceMarkdown(entries: readonly ReferenceEntry[]): string {
+  return entries
+    .map((entry) =>
+      [
+        `### ${entry.title}`,
+        `${entry.publisher} · ${referenceKindLabels[entry.kind]} · 核对于 ${entry.checkedAt}`,
+        entry.url,
+        `摘要：${entry.takeaway}`,
+        `在工具中的用途：${entry.application}`,
+        `判断边界：${entry.boundary}`,
+      ].join('\n\n'),
+    )
+    .join('\n\n---\n\n')
+}
