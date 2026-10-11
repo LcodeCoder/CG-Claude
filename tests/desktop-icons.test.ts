@@ -46,7 +46,10 @@ test('small app icons preserve RGB channels and transparency in bundle-compatibl
     [16, 'is32', 's8mk'],
     [32, 'il32', 'l8mk'],
   ] as const) {
-    const pixels = new Resvg(svg, { fitTo: { mode: 'width', value: size } }).render().pixels
+    const pixels = new Resvg(svg, {
+      font: { loadSystemFonts: false },
+      fitTo: { mode: 'width', value: size },
+    }).render().pixels
     const channels = decodeRgb(chunks.get(rgbType)!)
     const mask = chunks.get(maskType)!
     const count = size * size
@@ -85,7 +88,7 @@ test('large and Retina slots contain PNGs at their declared resolution', async (
 
 test('the macOS icon body leaves balanced space around the Dock artwork', async () => {
   const svg = await readFile(new URL('../build/icon-mac.svg', import.meta.url))
-  const { pixels, width, height } = new Resvg(svg).render()
+  const { pixels, width, height } = new Resvg(svg, { font: { loadSystemFonts: false } }).render()
   const row = Math.floor(height / 2)
   const opaque = Array.from({ length: width }, (_, x) => x).filter(
     (x) => pixels[(row * width + x) * 4 + 3]! >= 128,

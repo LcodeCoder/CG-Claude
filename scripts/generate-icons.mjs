@@ -4,11 +4,13 @@ import { encodeIcns, encodeIco } from './lib/icon-formats.mjs'
 
 // Keep all desktop assets derived from the same editable vector mark.
 const svg = await readFile(new URL('../public/logo.svg', import.meta.url))
+// Every mark uses vector paths, so scanning the host's installed fonts is unnecessary.
+const font = { loadSystemFonts: false }
 const sizes = [16, 32, 64, 128, 256, 512, 1024]
 const images = new Map(
   sizes.map((size) => [
     size,
-    new Resvg(svg, { fitTo: { mode: 'width', value: size } }).render().asPng(),
+    new Resvg(svg, { font, fitTo: { mode: 'width', value: size } }).render().asPng(),
   ]),
 )
 await mkdir(new URL('../build/', import.meta.url), { recursive: true })
@@ -24,7 +26,7 @@ ${svg.toString().replace('<svg ', '<svg x="72" y="72" width="880" height="880" '
 const macImages = new Map(
   sizes.map((size) => [
     size,
-    new Resvg(macSvg, { fitTo: { mode: 'width', value: size } }).render(),
+    new Resvg(macSvg, { font, fitTo: { mode: 'width', value: size } }).render(),
   ]),
 )
 await writeFile(new URL('../build/icon-mac.png', import.meta.url), macImages.get(1024).asPng())
@@ -54,14 +56,14 @@ const trayImages = new Map()
 for (const size of [16, 32, 48, 64, 256]) {
   trayImages.set(
     size,
-    new Resvg(coloredTray, { fitTo: { mode: 'width', value: size } }).render().asPng(),
+    new Resvg(coloredTray, { font, fitTo: { mode: 'width', value: size } }).render().asPng(),
   )
   if (size === 16 || size === 32) {
     // Transparent gaps stay transparent in both macOS menu bar appearances.
     const template = traySvg.replaceAll('stroke="#FFFFFF"', 'stroke="none"')
     await writeFile(
       new URL(size === 16 ? 'trayTemplate.png' : 'trayTemplate@2x.png', trayRoot),
-      new Resvg(template, { fitTo: { mode: 'width', value: size } }).render().asPng(),
+      new Resvg(template, { font, fitTo: { mode: 'width', value: size } }).render().asPng(),
     )
   }
 }
