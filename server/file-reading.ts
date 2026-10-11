@@ -1,4 +1,5 @@
 import { constants, promises as fs } from 'node:fs'
+import type { BigIntStats } from 'node:fs'
 import { TextDecoder } from 'node:util'
 
 export class FileReadError extends Error {}
@@ -14,12 +15,31 @@ function decodeText(bytes: Buffer): string {
   }
 }
 
-/** Bound actual bytes, read one file descriptor, and reject observed changes. */
+function assertRegularFile(stat: BigIntStats): void {
+  if (stat.isSymbolicLink()) throw new FileReadError('含符号链接，未读取链接目标')
+  if (!stat.isFile()) throw new FileReadError('不是普通文件，请手动检查')
+}
+
+function sameFile(left: BigIntStats, right: BigIntStats): boolean {
+  return left.dev === right.dev && left.ino === right.ino
+}
+
+async function inspectOpenedPath(target: string): Promise<BigIntStats> {
+  const stat = await fs.lstat(target, { bigint: true }).catch(() => {
+    throw new FileReadError('文件在读取期间变化，请重新检测')
+  })
+  assertRegularFile(stat)
+  return stat
+}
+
+/** Bound actual bytes and verify the opened file and path on every platform. */
 export async function readBoundedText(
   target: string,
   limit: number,
 ): Promise<{ text: string; mode: number }> {
   if (!Number.isSafeInteger(limit) || limit < 0) throw new FileReadError('读取上限无效')
+  const inspected = await fs.lstat(target, { bigint: true })
+  assertRegularFile(inspected)
   const flags =
     constants.O_RDONLY |
     (process.platform === 'win32' ? 0 : constants.O_NOFOLLOW | constants.O_NONBLOCK)
@@ -27,6 +47,10 @@ export async function readBoundedText(
   try {
     const before = await handle.stat({ bigint: true })
     if (!before.isFile()) throw new FileReadError('不是普通文件，请手动检查')
+    // Windows cannot rely on O_NOFOLLOW; inspect the path again before reading bytes.
+    const openedPath = await inspectOpenedPath(target)
+    if (!sameFile(inspected, before) || !sameFile(before, openedPath))
+      throw new FileReadError('文件在读取期间变化，请重新检测')
     if (before.size > BigInt(limit)) throw new FileReadError('配置超过读取上限，请手动检查')
     const chunks: Buffer[] = []
     let total = 0
@@ -39,7 +63,9 @@ export async function readBoundedText(
       chunks.push(chunk.subarray(0, bytesRead))
     }
     const after = await handle.stat({ bigint: true })
+    const currentPath = await inspectOpenedPath(target)
     if (
+      !sameFile(after, currentPath) ||
       before.size !== after.size ||
       before.mtimeNs !== after.mtimeNs ||
       before.ctimeNs !== after.ctimeNs

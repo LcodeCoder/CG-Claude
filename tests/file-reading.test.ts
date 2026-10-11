@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs'
+import { constants, promises as fs } from 'node:fs'
 import path from 'node:path'
 import { afterEach, expect, test, vi } from 'vitest'
 import { readBoundedText, fileReadMessage } from '../server/file-reading'
@@ -74,27 +74,60 @@ test('an observed change during read returns no mixed content and closes the des
   expect(closeSpy).toHaveBeenCalledOnce()
 })
 
-test.skipIf(process.platform === 'win32')(
-  'a leaf swapped to a symlink between path inspection and open is refused',
-  async () => {
+test.each(['same-file', 'other-file'] as const)(
+  'a %s symlink swap is refused even when open does not support NOFOLLOW',
+  async (destination) => {
     const item = await data()
     await item.write('.zshrc', 'original')
     const outside = path.join(item.root, 'private-outside')
     const target = path.join(item.home, '.zshrc')
     await fs.writeFile(outside, 'PRIVATE_OUTSIDE_CONTENT')
     const realOpen = fs.open.bind(fs)
+    let readSpy: ReturnType<typeof vi.spyOn> | undefined
+    let closeSpy: ReturnType<typeof vi.spyOn> | undefined
     vi.spyOn(fs, 'open').mockImplementationOnce(async (...args: Parameters<typeof fs.open>) => {
-      await fs.unlink(target)
+      if (destination === 'same-file') await fs.rename(target, outside)
+      else await fs.unlink(target)
       await fs.symlink(outside, target)
-      return realOpen(...args)
+      const handle = await realOpen(
+        args[0],
+        Number(args[1]) & ~(constants.O_NOFOLLOW ?? 0),
+        args[2],
+      )
+      readSpy = vi.spyOn(handle, 'read')
+      closeSpy = vi.spyOn(handle, 'close')
+      return handle
     })
     const result = await readConfig(item.ctx, '.zshrc')
     expect(result.editable).toBe(false)
     expect(result.content).toBeNull()
     expect(result.error).toContain('符号链接')
     expect(JSON.stringify(result)).not.toContain('PRIVATE_OUTSIDE_CONTENT')
+    expect(readSpy).not.toHaveBeenCalled()
+    expect(closeSpy).toHaveBeenCalledOnce()
   },
 )
+
+test('a regular file replaced between inspection and open is refused before reading', async () => {
+  const item = await data()
+  await item.write('.zshrc', 'original')
+  const target = path.join(item.home, '.zshrc')
+  const replacement = path.join(item.home, 'replacement')
+  await item.write('replacement', 'PRIVATE_REPLACEMENT')
+  const realOpen = fs.open.bind(fs)
+  let readSpy: ReturnType<typeof vi.spyOn> | undefined
+  let closeSpy: ReturnType<typeof vi.spyOn> | undefined
+  vi.spyOn(fs, 'open').mockImplementationOnce(async (...args: Parameters<typeof fs.open>) => {
+    await fs.rename(replacement, target)
+    const handle = await realOpen(...args)
+    readSpy = vi.spyOn(handle, 'read')
+    closeSpy = vi.spyOn(handle, 'close')
+    return handle
+  })
+  await expect(readBoundedText(target, 1024)).rejects.toThrow('读取期间变化')
+  expect(readSpy).not.toHaveBeenCalled()
+  expect(closeSpy).toHaveBeenCalledOnce()
+})
 
 test('project lock and dotenv files are metadata only and never opened for content', async () => {
   const item = await data()
