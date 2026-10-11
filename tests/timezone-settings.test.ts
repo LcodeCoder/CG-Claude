@@ -106,9 +106,88 @@ test('denied administrator authorization retries three times then continues conf
 test('never treats a successful command without an OS readback change as a successful configuration', async () => {
   const unchanged = vi.spyOn(data.ctx, 'setSystemTimezone').mockResolvedValue()
   const job = await execute({ system: true, terminal: false })
-  expect(unchanged).toHaveBeenCalledTimes(4)
+  expect(unchanged).toHaveBeenCalledTimes(1)
   expect(job.nodes.find((node) => node.id === 'system-timezone')?.status).toBe('skipped')
   expect(data.ctx.env.TZ).toBeUndefined()
+})
+test('waits for delayed OS readback without misclassifying its own write or blocking terminal TZ', async () => {
+  const read = data.ctx.readSystemTimezone.bind(data.ctx)
+  const set = data.ctx.setSystemTimezone.bind(data.ctx)
+  let staleReads = 0
+  const writes = vi.spyOn(data.ctx, 'setSystemTimezone').mockImplementation(async (target) => {
+    await set(target)
+    staleReads = 2
+  })
+  vi.spyOn(data.ctx, 'readSystemTimezone').mockImplementation(async () =>
+    staleReads-- > 0 ? { timezone: 'Asia/Shanghai', source: 'delayed test OS' } : read(),
+  )
+  const job = await execute()
+  expect(job.nodes.find((node) => node.id === 'system-timezone')).toMatchObject({
+    status: 'succeeded',
+    attempts: 1,
+  })
+  expect(job.nodes.find((node) => node.id === 'terminal-timezone')?.status).toBe('succeeded')
+  expect(writes).toHaveBeenCalledTimes(1)
+  expect(data.ctx.env.TZ).toBe('Asia/Taipei')
+})
+test('recovers from a transient read error after an accepted system timezone write', async () => {
+  const read = data.ctx.readSystemTimezone.bind(data.ctx)
+  const set = data.ctx.setSystemTimezone.bind(data.ctx)
+  let failNextRead = false
+  const writes = vi.spyOn(data.ctx, 'setSystemTimezone').mockImplementation(async (target) => {
+    await set(target)
+    failNextRead = true
+  })
+  vi.spyOn(data.ctx, 'readSystemTimezone').mockImplementation(async () => {
+    if (failNextRead) {
+      failNextRead = false
+      throw new Error('temporary OS read failure')
+    }
+    return read()
+  })
+  const job = await execute()
+  expect(job.nodes.find((node) => node.id === 'system-timezone')?.status).toBe('succeeded')
+  expect(job.nodes.find((node) => node.id === 'terminal-timezone')?.status).toBe('succeeded')
+  expect(writes).toHaveBeenCalledTimes(1)
+})
+test('recognizes its reviewed target at the next retry without repeating administrator writes', async () => {
+  const read = data.ctx.readSystemTimezone.bind(data.ctx)
+  const set = data.ctx.setSystemTimezone.bind(data.ctx)
+  const save = data.storage.saveWorkflows.bind(data.storage)
+  let pending = false
+  const writes = vi.spyOn(data.ctx, 'setSystemTimezone').mockImplementation(async (target) => {
+    await set(target)
+    pending = true
+  })
+  vi.spyOn(data.ctx, 'readSystemTimezone').mockImplementation(async () =>
+    pending ? { timezone: 'Asia/Shanghai', source: 'delayed test OS' } : read(),
+  )
+  vi.spyOn(data.storage, 'saveWorkflows').mockImplementation(async (jobs) => {
+    if (jobs[0]?.nodes.some((node) => node.id === 'system-timezone' && node.status === 'retrying'))
+      pending = false
+    await save(jobs)
+  })
+  const job = await execute()
+  expect(job.nodes.find((node) => node.id === 'system-timezone')).toMatchObject({
+    status: 'succeeded',
+    attempts: 2,
+    retries: 1,
+  })
+  expect(job.nodes.find((node) => node.id === 'terminal-timezone')?.status).toBe('succeeded')
+  expect(writes).toHaveBeenCalledTimes(1)
+})
+test('does not accept an unrelated timezone or process TZ change as its own delayed write', async () => {
+  const set = data.ctx.setSystemTimezone.bind(data.ctx)
+  const writes = vi.spyOn(data.ctx, 'setSystemTimezone').mockImplementation(async () => {
+    await set('Asia/Tokyo')
+    data.ctx.env.TZ = 'Europe/London'
+  })
+  const job = await execute()
+  expect(job.nodes.find((node) => node.id === 'system-timezone')?.status).toBe('skipped')
+  expect(job.nodes.find((node) => node.id === 'terminal-timezone')?.status).toBe('skipped')
+  expect(writes).toHaveBeenCalledTimes(1)
+  expect((await data.ctx.readSystemTimezone()).timezone).toBe('Asia/Tokyo')
+  expect(data.ctx.env.TZ).toBe('Europe/London')
 })
 test('cancelled timezone scope and legacy requests leave both timezone layers untouched', async () => {
   const set = vi.spyOn(data.ctx, 'setSystemTimezone')

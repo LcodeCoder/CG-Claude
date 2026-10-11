@@ -498,7 +498,14 @@ const commandForPlatform = computed(() =>
           @copy="copyPath"
         />
 
-        <TranslationView v-else-if="page === 'translation'" />
+        <TranslationView
+          v-else-if="page === 'translation'"
+          :configuration="boot?.translation"
+          :busy="busy"
+          :connected="connected"
+          :save="guard.saveTranslation"
+          :test="guard.testTranslation"
+        />
         <HistoryView
           v-else-if="page === 'history'"
           :reports="boot?.reports ?? []"

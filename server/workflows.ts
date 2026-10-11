@@ -22,6 +22,8 @@ import type { Storage } from './storage.js'
 import { captureTimezoneState, requireTimezone } from './timezone-settings.js'
 import type { TimezoneState } from './timezone-settings.js'
 import { resolveTimezoneTarget } from './timezone-diagnostics.js'
+import { sameTimezone } from '../shared/timezones.js'
+import type { SystemTimezoneWrite } from './setup-timezone.js'
 import { applySystemTimezone, applyTerminalTimezone, timezoneSetupNodes } from './setup-timezone.js'
 import type { SnapshotEngine } from './snapshots.js'
 
@@ -106,6 +108,7 @@ interface PreparedSetup {
   jobId?: string
   timezoneState?: TimezoneState
   timezoneTarget?: string
+  systemTimezoneWrite?: SystemTimezoneWrite
 }
 function matchesBaseline(file: ConfigContent, baseline?: ConfigurationState): boolean {
   const current = configurationState(file)
@@ -390,12 +393,21 @@ export class SetupWorkflows {
           throw new Error(`${file.display} 被其他程序修改，请重新预览`)
     }
     const assertTimezone = async () => {
+      const expected = prepared.timezoneState
+      if (!expected) return
+      const current = await captureTimezoneState(this.ctx)
+      if (hash(JSON.stringify(current)) === hash(JSON.stringify(expected))) return
+      // Accept this workflow's delayed OS write only when all other layers are unchanged.
       if (
-        prepared.timezoneState &&
-        hash(JSON.stringify(await captureTimezoneState(this.ctx))) !==
-          hash(JSON.stringify(prepared.timezoneState))
-      )
-        throw new Error('时区被其他程序修改，请重新预览')
+        prepared.systemTimezoneWrite?.attempted &&
+        sameTimezone(current.system, prepared.timezoneTarget) &&
+        hash(JSON.stringify({ ...current, system: expected.system })) ===
+          hash(JSON.stringify(expected))
+      ) {
+        expected.system = prepared.timezoneTarget
+        return
+      }
+      throw new Error('时区被其他程序修改，请重新预览')
     }
     const requireSnapshot = () => {
       if (!job.snapshotId) throw new Error('配置前快照尚未保存，无法继续修改本机配置')
@@ -443,11 +455,21 @@ export class SetupWorkflows {
     operations['system-timezone'] = async (node) => {
       requireSnapshot()
       await assertTimezone()
-      if (!this.ctx.demo && prepared.timezoneState?.system !== prepared.timezoneTarget) {
+      prepared.systemTimezoneWrite ??= { attempted: false, acknowledged: false }
+      if (
+        !this.ctx.demo &&
+        !prepared.systemTimezoneWrite.acknowledged &&
+        !sameTimezone(prepared.timezoneState?.system, prepared.timezoneTarget)
+      ) {
         node.message = '请在系统授权窗口完成验证，正在等待授权'
         await this.publish()
       }
-      return applySystemTimezone(this.ctx, prepared.timezoneState!, prepared.timezoneTarget!)
+      return applySystemTimezone(
+        this.ctx,
+        prepared.timezoneState!,
+        prepared.timezoneTarget!,
+        prepared.systemTimezoneWrite,
+      )
     }
     operations['terminal-timezone'] = async (node) => {
       requireSnapshot()

@@ -41,6 +41,18 @@ flowchart LR
 
 页面通过带类型的 props、model 和事件与 App 交互；磁盘写入保留在服务端。`useGuard` 负责请求完成后的状态同步。新增视图不要复制本机 API、互斥、预览过期或快照恢复逻辑。
 
+## 翻译模型与浏览器语言
+
+翻译模型入口为 `src/views/TranslationView.vue` 和 `src/components/TranslationModelSettings.vue`；`shared/translation.ts` 定义有限字段、协议、规范化接口地址和固定测试示例。`server/translation.ts` 实现模型设置、凭据加密与双向测试，本机 API 复用 Host/Origin/token 和修改互斥。测试不保存草稿，也不安装 Claude Code 插件或钩子。
+
+密钥采用 AES-256-GCM，AAD 绑定协议和规范化接口地址；更换目标不会复用旧密钥。`Storage` 原子写入密文设置，主密钥以独占创建方式保存；读取拒绝符号链接、硬链接及不合适的 POSIX 权限。主密钥与密文都在用户数据目录中，不宣称是系统钥匙串。完整环境快照仍只涵盖固定用户配置位置、检测偏好和时区状态，不覆盖翻译服务设置。
+
+翻译测试通过服务进程的 HTTP(S)_PROXY 和 NO_PROXY，回环地址直连；证书校验启用，重定向拒绝。请求有整体超时，实际读取响应有 128 KB 上限；只提取正文、检测截断和目标语言，不重试可能计费的请求。结果仅验证接口与固定示例，不能证明翻译语义质量。
+
+浏览器语言由 `src/composables/browser.ts` 采集 `navigator.language` 和 `navigator.languages`，`server/browser-language.ts` 使用用户选择的目标独立判断，不能从时区通过推算语言通过。设置指引在 `src/components/BrowserLanguagePreferences.vue`。外部浏览器需要分别检查；不修改运行中的浏览器资料文件。
+
+系统时区写入由 `server/timezone-settings.ts` 进行有限等待复核。流程把本次写入尝试独立记录在预览状态中；仅当目标与本次已审阅操作一致且其他时区层未变化时同步基线。已获确认的命令在重试时只复核，不重复请求管理员授权。历史流程结果保留当时观察到的状态。
+
 ## 新增一项检查
 
 1. 先在官方或项目原文核对检查的依据、适用版本和读取范围。

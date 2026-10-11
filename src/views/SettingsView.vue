@@ -4,6 +4,7 @@ import { privacyCompatibilityNote } from '../../shared/privacy'
 import { Check, Info, Laptop, LoaderCircle, LockKeyhole, Network } from '@lucide/vue'
 import type { Preferences } from '../../shared/types'
 import TimezonePreferences from '../components/TimezonePreferences.vue'
+import BrowserLanguagePreferences from '../components/BrowserLanguagePreferences.vue'
 const draft = defineModel<Preferences>({ required: true })
 defineProps<{ busy: boolean; working: boolean; connected: boolean; changed: boolean }>()
 const emit = defineEmits<{ save: [preferences: Preferences] }>()
@@ -45,6 +46,7 @@ const emit = defineEmits<{ save: [preferences: Preferences] }>()
         </div>
       </div>
       <TimezonePreferences v-model="draft" prefix="settings" />
+      <BrowserLanguagePreferences v-model="draft" prefix="settings" />
       <div class="field-row">
         <label for="expected-country"
           >期望出口国家 / 地区<span>这是网络核对条件，与服务实际支持资格不同。</span></label

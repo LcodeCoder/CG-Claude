@@ -2,6 +2,19 @@
 import { computed, ref } from 'vue'
 import { ArrowRight, Languages } from '@lucide/vue'
 import BrandMark from '../components/BrandMark.vue'
+import TranslationModelSettings from '../components/TranslationModelSettings.vue'
+import type {
+  TranslationConfiguration,
+  TranslationRequest,
+  TranslationTestResult,
+} from '../../shared/translation'
+defineProps<{
+  configuration?: TranslationConfiguration
+  busy: boolean
+  connected: boolean
+  save: (request: TranslationRequest) => Promise<boolean>
+  test: (request: TranslationRequest) => Promise<TranslationTestResult | undefined>
+}>()
 import '../styles/translation.css'
 
 // Preview text stays in this view; it is never submitted to Claude or a translation service.
@@ -22,59 +35,70 @@ const displayedReply = computed(() =>
     <div class="translation-status" role="status">
       <Languages :size="18" aria-hidden="true" />
       <div>
-        <strong>原生 Claude Code</strong>
-        <p>当前为方案预览，翻译模型和终端接入尚未启用。</p>
+        <strong>Claude Code 接入</strong>
+        <p>尚未接入原生终端。可先配置模型并测试双向翻译。</p>
       </div>
-      <span class="translation-label">方案预览</span>
+      <span class="translation-label">未接入</span>
     </div>
 
-    <section class="translation-panel" aria-labelledby="translation-flow-title">
-      <div class="translation-section-heading">
-        <h2 id="translation-flow-title">主对话流程</h2>
-        <span class="translation-example-label">示例</span>
-      </div>
-      <ol class="translation-flow" aria-label="中文提问与回复的翻译流程">
-        <li>
-          <span class="translation-step-number" aria-hidden="true">1</span>
-          <h3>输入中文</h3>
-          <p lang="zh-CN">{{ example.chinesePrompt }}</p>
-          <ArrowRight class="translation-flow-arrow" :size="18" aria-hidden="true" />
-        </li>
-        <li>
-          <span class="translation-step-number" aria-hidden="true">2</span>
-          <h3>英文提交</h3>
-          <p lang="en">{{ example.englishPrompt }}</p>
-          <ArrowRight class="translation-flow-arrow" :size="18" aria-hidden="true" />
-        </li>
-        <li>
-          <span class="translation-step-number" aria-hidden="true">3</span>
-          <h3>中文展示</h3>
-          <p lang="zh-CN">{{ example.chineseReply }}</p>
-        </li>
-      </ol>
-      <p class="translation-flow-note">译文只用于显示，继续对话使用英文原文。</p>
-    </section>
+    <TranslationModelSettings
+      :configuration="configuration"
+      :busy="busy"
+      :connected="connected"
+      :save="save"
+      :test="test"
+    />
 
-    <section class="translation-panel" aria-labelledby="translation-preview-title">
-      <div class="translation-section-heading">
-        <h2 id="translation-preview-title">回复预览</h2>
-        <div class="translation-display-options" role="group" aria-label="示例回复显示语言">
-          <button type="button" :aria-pressed="!showOriginal" @click="showOriginal = false">
-            中文显示
-          </button>
-          <button type="button" :aria-pressed="showOriginal" @click="showOriginal = true">
-            英文原文
-          </button>
+    <details class="translation-example-details">
+      <summary>查看主对话翻译流程</summary>
+      <section class="translation-panel" aria-labelledby="translation-flow-title">
+        <div class="translation-section-heading">
+          <h2 id="translation-flow-title">主对话流程</h2>
+          <span class="translation-example-label">示例</span>
         </div>
-      </div>
-      <div class="translation-message">
-        <BrandMark />
-        <div>
-          <strong>Claude <span class="translation-example-label">对话示例</span></strong>
-          <p :lang="showOriginal ? 'en' : 'zh-CN'">{{ displayedReply }}</p>
+        <ol class="translation-flow" aria-label="中文提问与回复的翻译流程">
+          <li>
+            <span class="translation-step-number" aria-hidden="true">1</span>
+            <h3>输入中文</h3>
+            <p lang="zh-CN">{{ example.chinesePrompt }}</p>
+            <ArrowRight class="translation-flow-arrow" :size="18" aria-hidden="true" />
+          </li>
+          <li>
+            <span class="translation-step-number" aria-hidden="true">2</span>
+            <h3>英文提交</h3>
+            <p lang="en">{{ example.englishPrompt }}</p>
+            <ArrowRight class="translation-flow-arrow" :size="18" aria-hidden="true" />
+          </li>
+          <li>
+            <span class="translation-step-number" aria-hidden="true">3</span>
+            <h3>中文展示</h3>
+            <p lang="zh-CN">{{ example.chineseReply }}</p>
+          </li>
+        </ol>
+        <p class="translation-flow-note">译文只用于显示，继续对话使用英文原文。</p>
+      </section>
+
+      <section class="translation-panel" aria-labelledby="translation-preview-title">
+        <div class="translation-section-heading">
+          <h2 id="translation-preview-title">回复预览</h2>
+          <div class="translation-display-options" role="group" aria-label="示例回复显示语言">
+            <button type="button" :aria-pressed="!showOriginal" @click="showOriginal = false">
+              中文显示
+            </button>
+            <button type="button" :aria-pressed="showOriginal" @click="showOriginal = true">
+              英文原文
+            </button>
+          </div>
         </div>
-      </div>
-    </section>
+        <div class="translation-message">
+          <BrandMark />
+          <div>
+            <strong>Claude <span class="translation-example-label">对话示例</span></strong>
+            <p :lang="showOriginal ? 'en' : 'zh-CN'">{{ displayedReply }}</p>
+          </div>
+        </div>
+      </section>
+    </details>
 
     <section class="translation-panel translation-scope" aria-labelledby="translation-scope-title">
       <h2 id="translation-scope-title">翻译范围</h2>

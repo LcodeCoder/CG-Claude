@@ -30,6 +30,8 @@ import { SetupWorkflows } from './workflows.js'
 import { acquireServiceLock } from './lock.js'
 import { SnapshotEngine } from './snapshots.js'
 import { scanProject } from './projects.js'
+import { TranslationService } from './translation.js'
+import { translationRequestSchema } from '../shared/translation.js'
 
 import { connectionRequestSchema } from '../shared/connections.js'
 import { CONNECTION_FILE, describeConnectionConfiguration } from './connections.js'
@@ -50,6 +52,7 @@ export async function createAppServer(options: ServerOptions = {}) {
   const releaseLock = await acquireServiceLock(ctx)
   const repairs = new RepairEngine(ctx, storage)
   const snapshots = new SnapshotEngine(ctx, storage)
+  const translation = new TranslationService(storage)
   const workflows = new SetupWorkflows(ctx, storage, repairs, snapshots)
   try {
     await workflows.init()
@@ -224,7 +227,22 @@ export async function createAppServer(options: ServerOptions = {}) {
           snapshots: await snapshots.list(),
           projectRoot: ctx.demo ? ctx.home : process.cwd(),
           manualReviews: values[4],
+          translation: await translation.configuration(),
         })
+        return
+      }
+      if (req.method === 'GET' && url.pathname === '/api/translation/settings') {
+        send(res, 200, await translation.configuration())
+        return
+      }
+      if (req.method === 'PUT' && url.pathname === '/api/translation/settings') {
+        const request = translationRequestSchema.parse(await body(req))
+        send(res, 200, await mutation(() => translation.save(request)))
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/translation/test') {
+        const request = translationRequestSchema.parse(await body(req))
+        send(res, 200, await mutation(() => translation.test(request)))
         return
       }
       if (req.method === 'PUT' && url.pathname === '/api/manual-reviews') {

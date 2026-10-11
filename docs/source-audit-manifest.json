@@ -593,6 +593,105 @@
       "method": "web.run-rendered-content",
       "sha256": null,
       "auditScope": "Platform Considerations / click / setContextMenu / destroy"
+    },
+    {
+      "id": "browser-language",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Navigator/language",
+      "originalUrl": "https://developer.mozilla.org/en-US/docs/Web/API/Navigator/language",
+      "bytes": 168904,
+      "retrievedAt": "2026-10-11T04:53:38.285Z",
+      "result": "retrieved",
+      "sha256": "b373e93ac153314ba4e37fe959bb8ea7fc60380718e8655470135c185aee6ccf",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "chrome-language-settings",
+      "url": "https://support.google.com/chrome/answer/173424?hl=en",
+      "originalUrl": "https://support.google.com/chrome/answer/173424?hl=en",
+      "bytes": 1636595,
+      "retrievedAt": "2026-10-11T04:53:38.393Z",
+      "result": "retrieved",
+      "sha256": "2001c82232fddeafd2c70df4f492a63784a88ba4ebabcb79343377bdf521fa8f",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "edge-language-settings",
+      "url": "https://support.microsoft.com/en-us/edge/use-microsoft-edge-in-another-language",
+      "originalUrl": "https://support.microsoft.com/en-us/edge/use-microsoft-edge-in-another-language",
+      "bytes": 107939,
+      "retrievedAt": "2026-10-11T04:53:38.578Z",
+      "result": "retrieved",
+      "sha256": "e9a7763f608fee22e6f7b66d9f5ba49594006ee3960f98c4e69f152c671c0361",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "firefox-language-settings",
+      "url": "https://support.mozilla.org/en-US/kb/choose-display-languages-multilingual-web-pages",
+      "originalUrl": "https://support.mozilla.org/en-US/kb/choose-display-languages-multilingual-web-pages",
+      "result": "adopted-sections-read",
+      "sha256": null,
+      "method": "web.run-rendered-content",
+      "auditScope": "Set preferred website content languages / Move Up and Move Down / Website language",
+      "checkedAt": "2026-10-11",
+      "retrievalNote": "直接 HTTP 获取返回 Client Challenge，3038 字节不作为文章正文；采用段落通过网页读取渠道核对。"
+    },
+    {
+      "id": "apple-language-settings",
+      "url": "https://support.apple.com/guide/mac-help/change-the-system-language-mh26684/mac",
+      "originalUrl": "https://support.apple.com/guide/mac-help/change-the-system-language-mh26684/mac",
+      "bytes": 712139,
+      "retrievedAt": "2026-10-11T04:53:36.820Z",
+      "result": "retrieved",
+      "sha256": "ff97859eb0605203e15c42ef47bb774c15b1a9250ad034dde89adb737115dc1a",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "translation-chat-api",
+      "url": "https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create",
+      "originalUrl": "https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create",
+      "bytes": 1674088,
+      "retrievedAt": "2026-10-11T04:53:37.655Z",
+      "result": "retrieved",
+      "sha256": "2faf9bea1ab7c5985cacf9d5ba04b93c43b26ba694b482f85824d03be0798c0a",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "translation-messages-api",
+      "url": "https://platform.claude.com/docs/en/api/messages/create",
+      "originalUrl": "https://platform.claude.com/docs/en/api/messages/create",
+      "bytes": 1460256,
+      "retrievedAt": "2026-10-11T04:53:38.671Z",
+      "result": "retrieved",
+      "sha256": "c6b2ab5745e423a9c590c4f2eb4b26332a2a79924e1b2f24abdef0235e898b59",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "translation-proxy",
+      "url": "https://raw.githubusercontent.com/nodejs/undici/main/docs/docs/api/EnvHttpProxyAgent.md",
+      "originalUrl": "https://github.com/nodejs/undici/blob/main/docs/docs/api/EnvHttpProxyAgent.md",
+      "bytes": 5745,
+      "retrievedAt": "2026-10-11T04:53:37.313Z",
+      "result": "retrieved",
+      "sha256": "44a69d50d50489dd1dc91c27446eac34b3dedbaed239dd8c49ccea00f1a402a3",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "translation-key-encryption",
+      "url": "https://nodejs.org/api/crypto.html",
+      "originalUrl": "https://nodejs.org/api/crypto.html#class-cipher",
+      "bytes": 1190360,
+      "retrievedAt": "2026-10-11T04:53:38.584Z",
+      "result": "retrieved",
+      "sha256": "95a4f04a73cd44279a1f20f65a2d285b83f055074f8eac820b5e98650a0ba12d",
+      "method": "official-public-html-or-maintainer-markdown",
+      "auditScope": "adopted-sections"
     }
   ]
 }

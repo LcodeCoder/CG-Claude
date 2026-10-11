@@ -2,7 +2,9 @@ import { z } from 'zod'
 import { usageModeIds } from './usage-modes.js'
 import type { ConnectionConfiguration } from './connections.js'
 import type { ServiceStatus } from './service-status.js'
+import type { TranslationConfiguration } from './translation.js'
 import { normalizeTimezone, timezoneModes } from './timezones.js'
+import { browserLanguageTargets } from './browser-language.js'
 
 export { DIAGNOSTIC_CHECK_COUNT } from './diagnostic-checks.js'
 
@@ -14,6 +16,7 @@ export const preferencesSchema = z
       .string()
       .regex(/^$|^[A-Z]{2}$/)
       .default(''),
+    expectedBrowserLanguage: z.enum(browserLanguageTargets).default('en-US'),
     routeMode: z.enum(['system', 'tun', 'custom']).default('system'),
     usageMode: z.enum(usageModeIds).default('official'),
     privacy: z.enum(['balanced', 'minimal']).default('balanced'),
@@ -107,6 +110,7 @@ export const fixLabels: Record<FixId, string> = {
 export const browserSchema = z.object({
   timezone: z.string().max(80),
   language: z.string().max(80),
+  languages: z.array(z.string().max(80)).max(20).optional(),
   platform: z.string().max(200),
   publicIp: z.string().max(100).optional(),
   publicIpError: z.string().max(200).optional(),
@@ -214,6 +218,7 @@ export interface Bootstrap {
   snapshots: SnapshotSummary[]
   projectRoot: string
   manualReviews: ManualReview[]
+  translation?: TranslationConfiguration
   connection?: ConnectionConfiguration
   configurationFingerprint?: string
 }

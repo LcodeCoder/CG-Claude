@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { randomUUID, randomBytes } from 'node:crypto'
 import { z } from 'zod'
 import {
   preferencesSchema,
@@ -19,6 +19,8 @@ import type {
 import type { Context } from './context.js'
 import type { SnapshotRecord } from './snapshots.js'
 import { readBoundedText } from './file-reading.js'
+import { translationRecordSchema } from './translation.js'
+import type { TranslationRecord } from './translation.js'
 import {
   backupRecordsSchema,
   snapshotRecordsSchema,
@@ -94,6 +96,52 @@ export class Storage {
     } finally {
       await fs.unlink(temporary).catch(() => {})
     }
+  }
+  async translationSettings(): Promise<TranslationRecord | undefined> {
+    return (
+      (await this.records('translation-settings.json', translationRecordSchema.nullable(), null)) ??
+      undefined
+    )
+  }
+  async saveTranslationSettings(value: TranslationRecord) {
+    await this.write('translation-settings.json', translationRecordSchema.parse(value))
+  }
+  /** The encryption key stays in the private local data directory, never in API responses. */
+  async translationEncryptionKey(create: boolean): Promise<Buffer> {
+    await this.assertDirectory()
+    const target = path.join(this.ctx.dataDir, 'translation-key.json')
+    const read = async () => {
+      const stat = await fs.lstat(target)
+      if (
+        stat.isSymbolicLink() ||
+        !stat.isFile() ||
+        stat.nlink !== 1 ||
+        (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)
+      )
+        throw new Error('翻译加密密钥文件需要是仅当前用户可读写的普通文件')
+      const { text } = await readBoundedText(target, 1024)
+      await this.assertDirectory()
+      const value = z
+        .string()
+        .regex(/^[a-f\d]{64}$/)
+        .parse(JSON.parse(text))
+      return Buffer.from(value, 'hex')
+    }
+    try {
+      return await read()
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+        throw new Error('本机翻译加密密钥无法读取，请检查记录目录与权限；原记录已保留')
+      if (!create) throw new Error('本机翻译加密密钥缺失，请重新填写 API 密钥后保存')
+    }
+    const value = randomBytes(32).toString('hex')
+    try {
+      await fs.writeFile(target, JSON.stringify(value) + '\n', { mode: 0o600, flag: 'wx' })
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST')
+        throw new Error('本机翻译加密密钥无法保存，请检查记录目录与权限')
+    }
+    return read()
   }
   async preferences(): Promise<Preferences> {
     return this.records('preferences.json', preferencesSchema, defaultPreferences)

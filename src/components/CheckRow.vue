@@ -109,11 +109,13 @@ async function copy() {
           >
         </div>
         <button
-          v-if="['timezone', 'browser-timezone', 'timezone-env'].includes(check.id)"
+          v-if="
+            ['timezone', 'browser-timezone', 'timezone-env', 'browser-language'].includes(check.id)
+          "
           class="text-link"
           @click="emit('settings')"
         >
-          选择目标时区
+          {{ check.id === 'browser-language' ? '查看语言设置' : '选择目标时区' }}
         </button>
         <button
           v-if="check.id === 'timezone-followup'"

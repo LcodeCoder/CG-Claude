@@ -12,7 +12,7 @@ import {
 export const workspacePages = {
   overview: { title: '环境检测', description: '本机状态与待处理项。' },
   configs: { title: '本机配置', description: '查看配置文件与连接设置。' },
-  translation: { title: '双向翻译', description: '中文提问，中文阅读；主对话保留英文。' },
+  translation: { title: '双向翻译', description: '配置翻译模型，测试中文与英文互译。' },
   projects: {
     title: '项目扫描',
     description: '检查项目配置、权限与 Git 状态。',

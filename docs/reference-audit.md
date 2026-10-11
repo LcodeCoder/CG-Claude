@@ -1,8 +1,152 @@
 # 参考来源逐项审计
 
-核对日期：2026-10-11。文献库共 55 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
+核对日期：2026-10-11。文献库共 64 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
 
 官方配置名称、取值和版本条件优先以当前官方说明为准；社区项目只采用注明的方法与限制。外部泄漏页面只核对用途，本轮未替用户进行公网泄漏检测。完整正文不进入源代码仓库，读取渠道和正文哈希见 [来源读取记录](source-audit-manifest.json)。
+
+## MDN · 浏览器语言与 BCP 47 标签
+
+官方文档 · Mozilla · [原文](https://developer.mozilla.org/en-US/docs/Web/API/Navigator/language) · ID：`browser-language`。
+
+采用段落：Value / navigator.languages / BCP 47 language tag。
+
+项目应用：按用户选择的英文目标检查当前窗口语言，并展示 navigator.languages 优先顺序。
+
+核对结论：独立核对当前窗口首选语言、地区标记与优先列表；缺失或无效读数不能判为通过。
+
+判断边界：检查当前窗口，不推断国籍或外部浏览器配置；没有把英语设为原文防封要求。
+
+对应实现：[server/browser-language.ts](../server/browser-language.ts)。
+
+关联：环境 `browser-language`。
+
+## Chrome · 首选网页语言与界面语言
+
+官方文档 · Google · [原文](https://support.google.com/chrome/answer/173424?hl=en) · ID：`chrome-language-settings`。
+
+采用段落：Add preferred languages / Change the language of your Chrome browser / Mac or Linux。
+
+项目应用：提供添加、调整英文首选网页语言与重开后复检的指引。
+
+核对结论：首选网页语言与界面语言分别说明，指导添加英文、调整顺序和重开后外部复检。
+
+判断边界：一键时区配置不会修改外部浏览器语言；未编辑运行中的浏览器资料文件。
+
+对应实现：[src/components/BrowserLanguagePreferences.vue](../src/components/BrowserLanguagePreferences.vue)。
+
+关联：环境 `browser-language`。
+
+## Edge · 首选语言设置
+
+官方文档 · Microsoft · [原文](https://support.microsoft.com/en-us/edge/use-microsoft-edge-in-another-language) · ID：`edge-language-settings`。
+
+采用段落：To change the language / Languages / Preferred languages。
+
+项目应用：提供对应浏览器的英文设置入口与复检说明。
+
+核对结论：提供 Edge 设置 → 语言路径，实际地区标记由复检确认；未编辑浏览器资料。
+
+判断边界：不同平台的界面语言选项不同，实际语言标记需由浏览器重新采样。
+
+对应实现：[src/components/BrowserLanguagePreferences.vue](../src/components/BrowserLanguagePreferences.vue)。
+
+关联：环境 `browser-language`。
+
+## Firefox · 网页语言优先顺序
+
+官方文档 · Mozilla · [原文](https://support.mozilla.org/en-US/kb/choose-display-languages-multilingual-web-pages) · ID：`firefox-language-settings`。
+
+采用段落：Change the display languages / Move Up and Move Down / Website language。
+
+项目应用：提供网页内容语言与新版 Website language 设置路径。
+
+核对结论：指引修改网页语言的优先顺序，兼顾旧版与新版设置路径。
+
+判断边界：不把 Firefox 的界面语言当作网页语言设置结果。
+
+对应实现：[src/components/BrowserLanguagePreferences.vue](../src/components/BrowserLanguagePreferences.vue)。
+
+关联：环境 `browser-language`。
+
+## Apple · 系统和应用语言
+
+官方文档 · Apple · [原文](https://support.apple.com/guide/mac-help/change-the-system-language-mh26684/mac) · ID：`apple-language-settings`。
+
+采用段落：Change the system language / Choose the language you use for individual apps。
+
+项目应用：Safari 指引区分系统语言、地区和应用显示语言，并要求重新检测。
+
+核对结论：说明系统、地区、应用语言的区别与影响；Safari 需独立复检。
+
+判断边界：修改系统语言可能影响其他应用；CG Claude 不自动改写系统语言。
+
+对应实现：[src/components/BrowserLanguagePreferences.vue](../src/components/BrowserLanguagePreferences.vue)。
+
+关联：环境 `browser-language`。
+
+## OpenAI · Chat Completions 请求与回复
+
+官方文档 · OpenAI · [原文](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) · ID：`translation-chat-api`。
+
+采用段落：messages / choices.message.content / max_tokens / max_completion_tokens。
+
+项目应用：实现固定示例的中英双向翻译测试，并提供输出上限参数选择。
+
+核对结论：固定正文示例双向请求，提取助手正文、检查目标语言与截断；输出上限参数可选。
+
+判断边界：服务需实际支持所选协议；连接测试不代表翻译语义质量或 Claude Code 已接入。
+
+对应实现：[server/translation.ts](../server/translation.ts)。
+
+关联：仅来源说明。
+
+## Anthropic · Messages 请求与正文块
+
+官方文档 · Anthropic · [原文](https://platform.claude.com/docs/en/api/messages/create) · ID：`translation-messages-api`。
+
+采用段落：POST /v1/messages / system / content blocks / max_tokens。
+
+项目应用：支持 Messages 翻译模型，测试只读取 text 块；思考与其他内容不展示为译文。
+
+核对结论：采用独立 system 和固定用户文本，只读取 text 块；忽略思考与其他块。
+
+判断边界：仅发送两段固定示例；未安装 Claude Code 的 Mods 或显示钩子。
+
+对应实现：[server/translation.ts](../server/translation.ts)。
+
+关联：仅来源说明。
+
+## Undici · 环境代理与 NO_PROXY
+
+项目文档 · Node.js / Undici · [原文](https://github.com/nodejs/undici/blob/main/docs/docs/api/EnvHttpProxyAgent.md) · ID：`translation-proxy`。
+
+采用段落：httpProxy / httpsProxy / noProxy / dispatch。
+
+项目应用：翻译测试使用服务进程继承的代理环境，本机地址直连；拒绝重定向并保留 TLS 校验。
+
+核对结论：明确传入 ctx 环境，保留 NO_PROXY 通配符，本机回环直连；禁止重定向，强制证书校验。
+
+判断边界：不读取或修改代理软件设置；不自动重试可能收费的翻译请求。
+
+对应实现：[server/translation.ts](../server/translation.ts)。
+
+关联：仅来源说明。
+
+## Node.js · AES-GCM 与认证标签
+
+官方文档 · Node.js · [原文](https://nodejs.org/api/crypto.html#class-cipher) · ID：`translation-key-encryption`。
+
+采用段落：createCipheriv / setAAD / getAuthTag / setAuthTag。
+
+项目应用：密钥密文绑定协议与接口地址；加密主密钥单独保存在本机私有记录目录。
+
+核对结论：随机 96-bit IV 与 AES-256-GCM；AAD 绑定协议和规范化接口地址；界面返回配置元数据。
+
+判断边界：主密钥与密文仍在本机，不是系统钥匙串；拥有该目录访问权限的人可读取与解密。
+
+对应实现：[server/translation.ts](../server/translation.ts)。
+
+关联：仅来源说明。
 
 ## Chrome · 可自定义的原生下拉框
 

@@ -27,6 +27,7 @@ import {
   certificateConfiguration,
 } from './configuration-diagnostics.js'
 import type { Context, CommandResult } from './context.js'
+import { browserLanguageCheck } from './browser-language.js'
 import { machineInfo } from './context.js'
 import type { SystemTimezone } from './system-timezone.js'
 import {
@@ -665,6 +666,7 @@ export async function runDiagnostics(
   add(privacyConfiguration(environment, preferences))
   add(await cliInstallation(ctx, cli, machine.nodeVersion))
   add(browserTimezoneCheck(system.timezone, timezoneTarget, browser))
+  add(browserLanguageCheck(preferences, browser))
   const network = probe.info
     ? {
         ...probe.info,

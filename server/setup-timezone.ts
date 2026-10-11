@@ -2,7 +2,11 @@ import type { Context } from './context.js'
 import type { Preferences, SetupNode, SetupPreview, SetupRequest } from '../shared/types.js'
 import { sameTimezone } from '../shared/timezones.js'
 import { NoRepairChangesError, RepairEngine } from './repairs.js'
-import { requireTimezone, systemTimezoneSupport } from './timezone-settings.js'
+import {
+  requireTimezone,
+  systemTimezoneSupport,
+  verifySystemTimezone,
+} from './timezone-settings.js'
 import type { TimezoneState } from './timezone-settings.js'
 import { safeValue } from './safety.js'
 
@@ -53,21 +57,36 @@ export async function timezoneSetupNodes(
   }
   return nodes
 }
+/** Kept per preview, separately from the immutable before-setup snapshot. */
+export interface SystemTimezoneWrite {
+  attempted: boolean
+  acknowledged: boolean
+}
 export async function applySystemTimezone(
   ctx: Context,
   state: TimezoneState,
   value: string,
+  write: SystemTimezoneWrite,
 ): Promise<string> {
   const target = systemTimezoneSupport(ctx.platform, value)
   if (!state?.system) throw new Error('原系统时区未读取，不能安全配置与还原')
-  if (sameTimezone(state.system, target)) return `系统时区已是 ${target}，无需写入`
-  try {
-    await ctx.setSystemTimezone(target)
-  } finally {
-    if (sameTimezone((await ctx.readSystemTimezone()).timezone, target)) state.system = target
+  if (sameTimezone(state.system, target))
+    return write.attempted ? `系统时区已复核为 ${target}` : `系统时区已是 ${target}，无需写入`
+  if (!write.acknowledged) {
+    write.attempted = true
+    try {
+      await ctx.setSystemTimezone(target)
+      write.acknowledged = true
+    } catch (error) {
+      // A command can fail after changing the OS. Only actual readback can confirm that case.
+      const current = await ctx.readSystemTimezone().catch(() => undefined)
+      if (!sameTimezone(current?.timezone, target)) throw error
+      write.acknowledged = true
+    }
   }
-  if (!sameTimezone((await ctx.readSystemTimezone()).timezone, target))
-    throw new Error('系统时区设置后复核失败')
+  // Retries verify an accepted write instead of reopening the administrator prompt.
+  await verifySystemTimezone(ctx, target)
+  state.system = target
   return `系统时区已设为 ${target}${ctx.demo ? '（隔离模拟）' : ''}`
 }
 export async function applyTerminalTimezone(

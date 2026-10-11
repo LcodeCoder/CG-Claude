@@ -93,6 +93,7 @@ export function markdownReport(report: ScanReport): string {
     `- 时区检测依据：${report.preferences.timezoneMode ? timezoneModeLabels[report.preferences.timezoneMode] : '旧记录未保存时区依据'}`,
     `- 手动期望时区：${report.preferences.expectedTimezone.replace(/[\r\n]/g, ' ') || '未指定'}`,
     `- 期望出口地区：${report.preferences.expectedCountry || '未指定'}`,
+    `- 浏览器语言目标：${report.preferences.expectedBrowserLanguage || '旧记录未保存'}`,
     '',
     `通过 ${report.counts.pass} 项；需关注 ${report.counts.warn} 项；需处理 ${report.counts.fail} 项；待确认 ${report.counts.manual} 项；未检测 ${report.counts.skipped} 项。`,
     '',

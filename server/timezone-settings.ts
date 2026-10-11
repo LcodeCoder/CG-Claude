@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { setTimeout as delay } from 'node:timers/promises'
 import type { ChangePreview } from '../shared/types.js'
 import { normalizeTimezone, sameTimezone } from '../shared/timezones.js'
 import type { Context } from './context.js'
@@ -138,6 +139,19 @@ export function timezoneChanges(before: TimezoneState, after: TimezoneState): Ch
       : []),
   ]
 }
+/** OS services may acknowledge a write before their independent readback settles. */
+export async function verifySystemTimezone(ctx: Context, target: string): Promise<void> {
+  for (let sample = 0; sample < 8; sample++) {
+    try {
+      if (sameTimezone((await ctx.readSystemTimezone()).timezone, target)) return
+    } catch {
+      // A temporary read error does not prove that an acknowledged write failed.
+    }
+    if (sample < 7) await delay(250)
+  }
+  throw new Error('系统时区设置后复核失败：尚未读到目标时区')
+}
+
 /** Each write is reread. Restoring a snapshot uses the same adapters as one-click setup. */
 export async function restoreTimezoneState(ctx: Context, state: TimezoneState) {
   if (state.platform !== ctx.platform) throw new Error('快照平台与本机不同，不能还原系统时区')
@@ -146,8 +160,7 @@ export async function restoreTimezoneState(ctx: Context, state: TimezoneState) {
     !sameTimezone((await ctx.readSystemTimezone()).timezone, state.system)
   ) {
     await ctx.setSystemTimezone(requireTimezone(state.system))
-    if (!sameTimezone((await ctx.readSystemTimezone()).timezone, state.system))
-      throw new Error('系统时区写入后复核失败')
+    await verifySystemTimezone(ctx, state.system)
   }
   if (state.user !== undefined && (await ctx.readUserTimezone()) !== state.user) {
     await ctx.setUserTimezone(state.user)

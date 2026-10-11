@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import TimezonePreferences from './TimezonePreferences.vue'
+import BrowserLanguagePreferences from './BrowserLanguagePreferences.vue'
 import { usageModeOptions, usageModeLabel } from '../../shared/usage-modes'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { ref, reactive, computed, watch } from 'vue'
@@ -206,6 +207,7 @@ const title = computed(() =>
           ></label
         >
         <TimezonePreferences v-model="draft" prefix="setup" configure />
+        <BrowserLanguagePreferences v-model="draft" prefix="setup" />
         <div class="wizard-fields">
           <label
             >期望出口地区<select v-model="draft.expectedCountry">

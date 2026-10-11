@@ -20,6 +20,7 @@ import { browserSnapshot } from './browser'
 import { createLocalApi } from '../lib/local-api'
 import type { ScanJob, ServiceStatus } from '../../shared/service-status'
 import type { ConnectionRequest } from '../../shared/connections'
+import type { TranslationRequest, TranslationTestResult } from '../../shared/translation'
 export function useGuard() {
   const boot = shallowRef<Bootstrap>()
   const report = shallowRef<ScanReport>()
@@ -336,6 +337,34 @@ export function useGuard() {
       working.value = false
     }
   }
+  async function saveTranslation(value: TranslationRequest): Promise<boolean> {
+    if (busy.value || !connected.value) return false
+    working.value = true
+    try {
+      return await finishWrite(
+        () => api('/translation/settings', { method: 'PUT', body: JSON.stringify(value) }),
+        () => '翻译模型设置已保存。',
+      )
+    } finally {
+      working.value = false
+    }
+  }
+  async function testTranslation(
+    value: TranslationRequest,
+  ): Promise<TranslationTestResult | undefined> {
+    if (busy.value || !connected.value) return
+    working.value = true
+    try {
+      return await api<TranslationTestResult>('/translation/test', {
+        method: 'POST',
+        body: JSON.stringify(value),
+      })
+    } catch (error) {
+      notify((error as Error).message, 'error')
+    } finally {
+      working.value = false
+    }
+  }
   async function savePreferences(value: Preferences): Promise<boolean> {
     if (busy.value || !connected.value) return false
     working.value = true
@@ -554,6 +583,8 @@ export function useGuard() {
     apply,
     restore,
     savePreferences,
+    saveTranslation,
+    testTranslation,
     notify,
     toggleFix,
   }

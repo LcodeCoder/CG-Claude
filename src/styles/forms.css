@@ -104,3 +104,41 @@ select option {
     transition: none;
   }
 }
+
+.browser-language-preferences {
+  margin-top: 16px;
+}
+.browser-language-help {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.browser-language-help > summary {
+  padding: 12px 14px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.browser-language-help-content {
+  display: grid;
+  gap: 10px;
+  padding: 0 14px 14px;
+}
+.browser-language-help-content select {
+  justify-self: start;
+  min-width: min(240px, 100%);
+}
+.browser-language-help-content ol {
+  padding-left: 20px;
+  margin: 4px 0;
+}
+.browser-language-help-content li + li {
+  margin-top: 6px;
+}
+.browser-language-help-content a {
+  justify-self: start;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

@@ -6,6 +6,51 @@ export interface ReferenceAudit {
   finding: string
 }
 export const referenceAudits: Record<string, ReferenceAudit> = {
+  'browser-language': {
+    section: 'Value / navigator.languages / BCP 47 language tag',
+    code: 'server/browser-language.ts',
+    finding: '独立核对当前窗口首选语言、地区标记与优先列表；缺失或无效读数不能判为通过。',
+  },
+  'chrome-language-settings': {
+    section: 'Add preferred languages / Change the language of your Chrome browser / Mac or Linux',
+    code: 'src/components/BrowserLanguagePreferences.vue',
+    finding: '首选网页语言与界面语言分别说明，指导添加英文、调整顺序和重开后外部复检。',
+  },
+  'edge-language-settings': {
+    section: 'To change the language / Languages / Preferred languages',
+    code: 'src/components/BrowserLanguagePreferences.vue',
+    finding: '提供 Edge 设置 → 语言路径，实际地区标记由复检确认；未编辑浏览器资料。',
+  },
+  'firefox-language-settings': {
+    section: 'Change the display languages / Move Up and Move Down / Website language',
+    code: 'src/components/BrowserLanguagePreferences.vue',
+    finding: '指引修改网页语言的优先顺序，兼顾旧版与新版设置路径。',
+  },
+  'apple-language-settings': {
+    section: 'Change the system language / Choose the language you use for individual apps',
+    code: 'src/components/BrowserLanguagePreferences.vue',
+    finding: '说明系统、地区、应用语言的区别与影响；Safari 需独立复检。',
+  },
+  'translation-chat-api': {
+    section: 'messages / choices.message.content / max_tokens / max_completion_tokens',
+    code: 'server/translation.ts',
+    finding: '固定正文示例双向请求，提取助手正文、检查目标语言与截断；输出上限参数可选。',
+  },
+  'translation-messages-api': {
+    section: 'POST /v1/messages / system / content blocks / max_tokens',
+    code: 'server/translation.ts',
+    finding: '采用独立 system 和固定用户文本，只读取 text 块；忽略思考与其他块。',
+  },
+  'translation-proxy': {
+    section: 'httpProxy / httpsProxy / noProxy / dispatch',
+    code: 'server/translation.ts',
+    finding: '明确传入 ctx 环境，保留 NO_PROXY 通配符，本机回环直连；禁止重定向，强制证书校验。',
+  },
+  'translation-key-encryption': {
+    section: 'createCipheriv / setAAD / getAuthTag / setAuthTag',
+    code: 'server/translation.ts',
+    finding: '随机 96-bit IV 与 AES-256-GCM；AAD 绑定协议和规范化接口地址；界面返回配置元数据。',
+  },
   'chrome-customizable-select': {
     section:
       'Meet appearance: base-select / Completely customizable / Unchanged JavaScript interfaces',

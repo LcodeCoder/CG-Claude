@@ -3,6 +3,7 @@ export async function browserSnapshot(network: boolean): Promise<BrowserSnapshot
   const snapshot: BrowserSnapshot = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     language: navigator.language,
+    languages: [...navigator.languages].slice(0, 20),
     platform: navigator.platform,
   }
   if (!network) return snapshot
