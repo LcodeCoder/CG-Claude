@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+<svg x="72" y="72" width="880" height="880" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none">
+  <title>CG Claude · 交织星环</title>
+  <defs>
+    <path id="cg-loop" d="M64 42C74 29 90 25 103 32C115 39 116 54 105 64C98 70 89 73 80 71L74 61C84 64 94 62 99 56C104 50 102 43 96 40C89 36 80 40 75 48L69 57Z" />
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="30" fill="#D97757" />
+  <g fill="#FFF9F2" stroke="#D97757" stroke-width="1.6" stroke-linejoin="round" transform="translate(6.4 6.4) scale(.9)">
+    <use href="#cg-loop" />
+    <use href="#cg-loop" transform="rotate(90 64 64)" />
+    <use href="#cg-loop" transform="rotate(180 64 64)" />
+    <use href="#cg-loop" transform="rotate(270 64 64)" />
+    <path d="M64 51L67 58L73 55L70 61L77 64L70 67L73 73L67 70L64 77L61 70L55 73L58 67L51 64L58 61L55 55L61 58Z" stroke-width="2.5" />
+  </g>
+</svg>
+
+</svg>

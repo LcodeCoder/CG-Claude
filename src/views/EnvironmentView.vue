@@ -17,6 +17,7 @@ import {
   History,
   LoaderCircle,
   LockKeyhole,
+  Puzzle,
   ScanLine,
   Search,
   ShieldCheck,
@@ -196,6 +197,14 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
         <p v-else>{{ t('检查配置、时区与连接状态。') }}</p>
       </div>
       <div class="overview-links">
+        <a
+          class="button secondary browser-plugin-entry"
+          href="https://github.com/LcodeCoder/LC-time"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Puzzle :size="16" />{{ t('浏览器环境配置插件') }}
+        </a>
         <span class="overview-mode">{{ t(usageModeLabel(reportedUsageMode)) }}</span>
         <button class="text-link" @click="emit('source', 'ayi-guide')">
           {{ t('原文对照') }}<ArrowUpRight :size="13" />

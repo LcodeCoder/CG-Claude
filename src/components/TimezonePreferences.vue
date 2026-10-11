@@ -32,11 +32,24 @@ function selectMode() {
 </script>
 <template>
   <div class="field-row">
-    <label :for="`${prefix}-timezone-mode`"
-      >{{ configure ? t('目标时区依据') : t('时区检测依据')
-      }}<span>{{ configure ? t('用于配置与复检。') : t('选择比较目标。') }}</span></label
+    <label :for="`${prefix}-timezone-mode`">
+      {{ configure ? t('目标时区依据') : t('时区检测依据') }}
+      <span :id="`${prefix}-timezone-help`">
+        <template v-if="draft.timezoneMode === 'article'">
+          {{ t('原文目标：') }}{{ ARTICLE_TIMEZONE }}{{ t('。上海与台北按不同名称判断。') }}
+        </template>
+        <template v-else-if="draft.timezoneMode === 'exit'">
+          {{ t('按 IP 出口返回的时区；查询失败时需确认。') }}
+        </template>
+        <template v-else>{{ t('按所选目标核对，报告标明“手动选择”。') }}</template>
+      </span>
+    </label>
+    <select
+      :id="`${prefix}-timezone-mode`"
+      v-model="draft.timezoneMode"
+      :aria-describedby="`${prefix}-timezone-help ${prefix}-timezone-scope`"
+      @change="selectMode"
     >
-    <select :id="`${prefix}-timezone-mode`" v-model="draft.timezoneMode" @change="selectMode">
       <option v-for="mode in timezoneModes" :key="mode" :value="mode">
         {{ t(timezoneModeLabels[mode]) }}
       </option>
@@ -64,18 +77,11 @@ function selectMode() {
       />
     </div>
   </template>
-  <p class="timezone-guidance">
-    <template v-if="draft.timezoneMode === 'article'"
-      >{{ t('原文目标：') }}{{ ARTICLE_TIMEZONE }}{{ t('。上海与台北按不同名称判断。') }}</template
-    >
-    <template v-else-if="draft.timezoneMode === 'exit'">{{
-      t('需开启公网检测。使用出口返回的时区；查询失败、缺少时区或出口不一致时待确认。')
-    }}</template>
-    <template v-else>{{ t('按所选目标核对，报告标明“手动选择”。') }}</template>
-    <span>{{
+  <p :id="`${prefix}-timezone-scope`" class="timezone-guidance">
+    {{
       configure
         ? t('系统时区与终端 TZ 默认自动配置，可在修改范围取消。')
         : t('保存此页只更新检测目标；一键配置可设置系统时区与终端 TZ。')
-    }}</span>
+    }}
   </p>
 </template>

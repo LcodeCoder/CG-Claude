@@ -110,33 +110,29 @@
   color: var(--ink);
 }
 
-.wizard-fields {
+.wizard-section .field-row {
   display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  gap: 16px;
-  margin-top: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  align-items: start;
+  gap: 12px 24px;
+  margin-left: 0;
+  padding: 16px 0;
 }
 
-.wizard-fields label {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.wizard-fields input {
-  display: block;
-  border: 1px solid var(--border);
-  background: var(--paper);
-  border-radius: 6px;
-  width: 100%;
-  margin-top: 7px;
-  padding: 10px 12px;
+.wizard-section .field-row label {
+  min-width: 0;
   color: var(--ink);
+  line-height: 1.5;
 }
 
-.wizard-fields select {
-  display: block;
+.wizard-section .field-row :is(select, input) {
   width: 100%;
-  margin-top: 7px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.wizard-section .timezone-guidance {
+  margin: 0 0 8px;
 }
 
 .wizard-hint {
@@ -577,8 +573,9 @@
     font-size: 9px;
     gap: 6px;
   }
-  .wizard-fields {
-    grid-template-columns: 1fr;
+  .wizard-section .field-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
   }
   .setup-summary > div + div {
     padding-left: 15px;

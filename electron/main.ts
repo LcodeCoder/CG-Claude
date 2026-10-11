@@ -66,7 +66,11 @@ async function createWindow() {
         : appearance.theme === 'eye-care'
           ? '#e8e0ce'
           : '#f8f6f2',
-    icon: path.join(app.getAppPath(), 'build', 'icon.png'),
+    icon: path.join(
+      app.getAppPath(),
+      'build',
+      process.platform === 'darwin' ? 'icon-mac.png' : 'icon.png',
+    ),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'electron', 'preload.cjs'),
       sandbox: true,
@@ -182,7 +186,7 @@ if (!app.requestSingleInstanceLock()) {
     .then(async () => {
       if (process.platform === 'darwin')
         app.dock?.setIcon(
-          nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png')),
+          nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon-mac.png')),
         )
       function syncAppearance() {
         nativeTheme.themeSource = appearance.theme === 'dark' ? 'dark' : 'light'

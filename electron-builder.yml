@@ -12,6 +12,7 @@ files:
   - electron/preload.cjs
   - build/tray/**/*
   - build/icon.png
+  - build/icon-mac.png
   - package.json
   - '!dist-server/**/*.map'
 mac:

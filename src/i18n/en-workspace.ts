@@ -220,6 +220,11 @@ export const englishWorkspace: Record<string, string> = {
   浏览器: 'Browser',
   浏览器与用户配置: 'Browser & profile',
   浏览器语言备份: 'Browser language backups',
+  浏览器环境配置插件: 'Browser environment extension',
+  '按 IP 出口返回的时区；查询失败时需确认。':
+    'Use the exit IP timezone. Confirm manually if the lookup fails.',
+  '仅用于检测对照，不会切换代理出口。':
+    'Used for comparison only. Does not change your proxy exit.',
   浏览器语言目标: 'Browser language target',
   添加备注: 'Add note',
   清除文献搜索: 'Clear reference search',

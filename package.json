@@ -1,6 +1,6 @@
 {
   "name": "cg-claude",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "private": true,
   "type": "module",
   "description": "本地 Claude 环境检测、配置修复与备份恢复工具",

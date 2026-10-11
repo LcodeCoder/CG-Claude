@@ -2,13 +2,15 @@
 
 本地环境工作台，支持 Electron 桌面版和本机浏览器版。根据 AYi 参考文章逐项整理可检测的环境配置，并核对 Claude Code 官方配置说明。提供 31 项环境检查、连续三遍复检、配置向导、项目配置扫描、字段修复、本地连接设置编辑与完整快照还原。
 
+首页「浏览器环境配置插件」可打开 [LC-time 项目](https://github.com/LcodeCoder/LC-time)，查看浏览器插件和安装说明。
+
 一键配置结束会集中展示剩余事项：设置页跳转、操作步骤、可复制命令和打开终端。Mac 的电脑自动时区、定位服务与手机时区分别核对；外部浏览器语言可独立预览、保存和还原。
 
-本轮变化与成品校验见 [1.2.6 交付记录](docs/release-1.2.6.md)。实际验证与截图见 [验证记录](docs/validation.md)，43 项原文对照见 [逐项审计](docs/article-audit.md)，69 条文献的采用段落见 [来源审计](docs/reference-audit.md)。
+本轮变化与成品校验见 [1.2.7 交付记录](docs/release-1.2.7.md)。实际验证与截图见 [验证记录](docs/validation.md)，43 项原文对照见 [逐项审计](docs/article-audit.md)，69 条文献的采用段落见 [来源审计](docs/reference-audit.md)。
 
 ## 启动桌面版
 
-macOS arm64 成品位于 `release/1.2.6/mac-arm64/CG Claude.app`，直接打开，无需另外安装 Node.js。构建产物尚未签名或公证。其他平台配置了打包目标，本次没有在真实 Windows/Linux 桌面实测。
+macOS arm64 成品位于 `release/1.2.7-final/mac-arm64/CG Claude.app`，直接打开，无需另外安装 Node.js。构建产物尚未签名或公证。其他平台配置了打包目标，本次没有在真实 Windows/Linux 桌面实测。
 
 从源码启动需要 Node.js **22.12 或更新版本**：
 
@@ -122,7 +124,7 @@ npm run doctor -- --json
 
 代码入口、扩展检查与样式结构见 [项目结构](docs/architecture.md)，参与开发见 [CONTRIBUTING](CONTRIBUTING.md)。
 
-1.2.6 的本地产物、校验值与已验证范围见 [交付记录](docs/release-1.2.6.md)。
+1.2.7 的本地产物、校验值与已验证范围见 [交付记录](docs/release-1.2.7.md)。
 
 Vue 3 Composition API、TypeScript、Vite、Electron 与 Node 原生 HTTP，Zod 校验输入，前后端共享类型。配置使用同目录临时文件、权限恢复与原子替换，预览校验变化，异常时回退已写入文件。
 

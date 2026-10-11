@@ -39,11 +39,16 @@ select option {
     appearance: base-select;
   }
   select {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 12px;
     padding-right: 13px;
     background-image: none;
   }
   select::picker-icon {
+    flex: 0 0 auto;
+    margin-inline-start: auto;
     color: var(--muted);
     font-size: 12px;
   }

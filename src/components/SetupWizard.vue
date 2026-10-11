@@ -251,22 +251,26 @@ const title = computed(() =>
         >
         <TimezonePreferences v-model="draft" prefix="setup" configure />
         <BrowserLanguagePreferences v-model="draft" prefix="setup" />
-        <div class="wizard-fields">
-          <label
-            >{{ t('期望出口地区')
-            }}<select v-model="draft.expectedCountry">
-              <option value="">{{ t('不指定') }}</option>
-              <option
-                v-for="country in ['US', 'TW', 'SG', 'JP', 'GB', 'DE', 'CA', 'AU', 'CN', 'HK']"
-                :key="country"
-                :value="country"
-              >
-                {{ country }}
-              </option>
-            </select></label
+        <div class="field-row">
+          <label for="setup-expected-country">
+            {{ t('期望出口地区') }}
+            <span id="setup-country-help">{{ t('仅用于检测对照，不会切换代理出口。') }}</span>
+          </label>
+          <select
+            id="setup-expected-country"
+            v-model="draft.expectedCountry"
+            aria-describedby="setup-country-help"
           >
+            <option value="">{{ t('不指定') }}</option>
+            <option
+              v-for="country in ['US', 'TW', 'SG', 'JP', 'GB', 'DE', 'CA', 'AU', 'CN', 'HK']"
+              :key="country"
+              :value="country"
+            >
+              {{ country }}
+            </option>
+          </select>
         </div>
-        <p class="wizard-hint">{{ t('出口地区用于检测对照；网络接入需提前在代理软件中启用。') }}</p>
       </div>
       <div v-else-if="step === 1" class="wizard-section">
         <div class="wizard-section-heading">
