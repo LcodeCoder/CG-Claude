@@ -36,6 +36,23 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'ipinfo-legacy',
+    title: 'IPinfo · Legacy Free API 与 Lite 的响应差异',
+    publisher: 'IPinfo',
+    url: 'https://support.ipinfo.io/hc/en-us/articles/34121895556242-Legacy-Free-API-vs-IPinfo-Lite',
+    kind: 'official',
+    topic: 'network',
+    checkedAt,
+    takeaway:
+      'Legacy /json 响应包含城市、组织与 IANA 时区；Lite 使用另一种结构，且没有城市或时区。',
+    application:
+      '公网检测仅解析现有 /json 的顶层字段；按出口匹配时区只采用有效 timezone，缺失时保持待确认。',
+    boundary:
+      '地理数据是服务商对出口的估计，不证明本人所在地或地区资格。未接入 Lite、付费 Core 的嵌套结构或 ASN 类型查询，也不按国家猜时区。',
+    checkIds: ['public-ip', 'timezone', 'route-consistency'],
+    manualItemIds: ['asn', 'fixed-route'],
+  },
+  {
     id: 'claude-user-faq',
     title: 'Claude Code · 用户常见问题与登录后错误',
     publisher: 'Anthropic · Claude Help Center',
@@ -61,7 +78,7 @@ export const references: ReferenceEntry[] = [
     topic: 'network',
     checkedAt,
     takeaway:
-      '结合客户端状态、目标主机、出口观测与代理连接日志核对路由；设置了代理不能证明具体请求已走该路径。',
+      '项目验证器结合监听端口、出口、TLS 链和 Squid CONNECT 日志核对路由；设置了代理不能证明具体请求已走该路径。',
     application: '在连接排查中提示结合出错时间查看本人代理日志，解释出口一致性检查的局限。',
     boundary:
       '只采用排查方法，不运行项目脚本、不部署服务器或改写 hosts。浏览器、MCP 与云平台端点需各自核对，路由证据不能证明账号状态。',
@@ -491,7 +508,7 @@ export const references: ReferenceEntry[] = [
   },
   {
     id: 'claude-appeals',
-    manualItemIds: ['account-notice'],
+    manualItemIds: ['account-notice', 'account-export', 'account-ownership'],
     title: 'Claude · 警告、限制与申诉',
     publisher: 'Claude Help Center',
     url: 'https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals',
@@ -553,7 +570,7 @@ export const references: ReferenceEntry[] = [
     topic: 'configuration',
     checkedAt,
     takeaway: '说明 proxy、https-proxy、strict-ssl 以及配置来源。',
-    application: '区分文件中的代理与命令读取的生效值；保留 registry 和认证设置。',
+    application: '区分文件中的代理与本工具环境下的命令查询结果；保留 registry 和认证设置。',
     boundary: 'npm 的网络配置不等于 Claude Code 或浏览器的实际出口。',
     checkIds: ['npm-proxy', 'npm-effective-proxy', 'tls-verification'],
     projectCheckIds: ['project-tool-proxy'],
@@ -567,10 +584,11 @@ export const references: ReferenceEntry[] = [
     topic: 'configuration',
     checkedAt,
     takeaway: '说明不同配置作用域、http.proxy 与 http.sslVerify 等选项。',
-    application: '检查 Git 的持久代理、实际生效值和 TLS 配置，项目扫描核对有效提交。',
+    application:
+      '检查 Git 的用户代理、全局查询结果、http.sslVerify 与 GIT_SSL_NO_VERIFY；项目层另行扫描。Git TLS 项仅检测并引导手动复核。',
     boundary: '工具不会执行项目脚本，也不会替用户创建或上传项目提交。',
     checkIds: ['git-proxy', 'git-effective-proxy', 'tls-verification'],
-    projectCheckIds: ['project-tool-proxy'],
+    projectCheckIds: ['project-tool-proxy', 'project-tls', 'project-git'],
   },
   {
     id: 'mihomo-tun',
@@ -629,6 +647,11 @@ export const references: ReferenceEntry[] = [
       'cloud-privacy',
       'usage',
       'billing',
+      'contact',
+      'account-ownership',
+      'account-export',
+      'sessions',
+      'account-notice',
     ],
     title: 'AYi · 2026 年 10 月 Claude 使用环境指南',
     publisher: 'AYi_AInotes',
@@ -636,10 +659,22 @@ export const references: ReferenceEntry[] = [
     kind: 'community',
     topic: 'network',
     checkedAt,
-    takeaway: '用户指定的原始文章，提供环境检查、终端配置和人工复核的组织线索。',
-    application: '逐节映射时区、代理、DNS、API 覆盖、隐私和本地备份检查。',
+    takeaway:
+      '原文第 2.2 / 6.1 / 9 节明确建议电脑和手机设为台北，并关闭自动时区及定位服务中的设定时区。',
+    application:
+      '默认以 Asia/Taipei 对照系统、Node 进程和浏览器；也可明确选择按当前出口或手动目标。自动时区、定位和手机端列为待确认。',
     boundary: '社区归因、养号节奏和风控权重缺乏公开可复验依据，不转换为自动结论。',
-    checkIds: ['timezone', 'system-proxy', 'tun', 'dns', 'shell-proxy', 'claude-endpoint'],
+    checkIds: [
+      'timezone',
+      'browser-timezone',
+      'timezone-env',
+      'timezone-followup',
+      'system-proxy',
+      'tun',
+      'dns',
+      'shell-proxy',
+      'claude-endpoint',
+    ],
   },
   {
     id: 'proxy-regression',

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usageModeLabel } from '../../shared/usage-modes'
+import { DIAGNOSTIC_RULESET } from '../../shared/diagnostic-checks'
 import { computed, ref, nextTick } from 'vue'
 import {
   Activity,
@@ -12,7 +13,6 @@ import {
   CircleHelp,
   FolderCog,
   History,
-  Info,
   LoaderCircle,
   LockKeyhole,
   ScanLine,
@@ -52,11 +52,12 @@ const emit = defineEmits<{
   scan: []
   latest: []
   settings: []
-  manual: []
+  manual: [id?: string]
   help: []
   preview: []
   fix: [id: FixId]
   references: [id: string]
+  source: [id: string]
   copyError: []
 }>()
 const resultsPanel = ref<HTMLElement>()
@@ -113,15 +114,14 @@ const reportPreferencesChanged = computed(
     Boolean(props.report && props.preferences) &&
     JSON.stringify(props.report?.preferences) !== JSON.stringify(props.preferences),
 )
+const reportRulesChanged = computed(() =>
+  Boolean(props.report && props.report.ruleset !== DIAGNOSTIC_RULESET),
+)
 const reportedUsageMode = computed(
   () => props.report?.preferences.usageMode ?? props.preferences?.usageMode ?? 'official',
 )
 const stateHeading = computed(() =>
-  !props.report
-    ? '先做一次检查，了解当前环境'
-    : issueCount.value
-      ? `有 ${issueCount.value} 项配置值得关注`
-      : '已检查的配置符合当前偏好',
+  !props.report ? '尚未检测' : issueCount.value ? `${issueCount.value} 项需要关注` : '检测完成',
 )
 
 function selectAll() {
@@ -143,11 +143,6 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
 }
 </script>
 <template>
-  <div v-if="demo" class="notice info-notice">
-    <Info :size="16" /><span
-      >正在检测隔离测试目录。这里的配置可用于验证修复流程，你的日常配置不会被修改。</span
-    >
-  </div>
   <div v-if="isHistorical" class="notice info-notice">
     <History :size="16" /><span>正在查看 {{ formatDate(report!.completedAt) }} 的历史检测。</span
     ><button class="text-link" @click="emit('latest')"><ArrowLeft :size="13" />返回最新结果</button>
@@ -157,6 +152,12 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
       >检测偏好已变化，当前结果仍使用检测时的偏好。重新检测后才能预览修复。</span
     >
     <button class="text-link" :disabled="busy" @click="emit('scan')">重新检测</button>
+  </div>
+  <div v-if="reportRulesChanged" class="notice info-notice">
+    <CircleHelp :size="16" /><span
+      >这份报告使用旧版检测规则。时区、WebRTC 和 TLS 等检查已修正，请重新检测以获取当前结果。</span
+    >
+    <button class="text-link" :disabled="busy" @click="emit('scan')">按新规则检测</button>
   </div>
   <div v-if="reportConfigurationChanged && !isHistorical" class="notice info-notice">
     <FolderCog :size="16" /><span>{{
@@ -176,16 +177,21 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
     <div class="overview-intro">
       <div class="overview-symbol"><Activity :size="25" :stroke-width="1.6" /></div>
       <div>
-        <h2>{{ scanning ? '正在逐项检查你的环境' : stateHeading }}</h2>
+        <h2>{{ scanning ? '正在检测' : stateHeading }}</h2>
         <p v-if="report && !scanning">
-          最近检测 {{ formatDate(report.completedAt, true) }}<span class="inline-divider" />{{
-            report.networkEnabled ? '含公网检测' : '本机配置检测'
-          }}<span class="inline-divider" />{{ machine?.hostname }}
+          {{ formatDate(report.completedAt, true) }}<span class="inline-divider" />{{
+            report.networkEnabled ? '含公网检测' : '本机检测'
+          }}
         </p>
         <p v-else-if="scanning">{{ progress.current }}</p>
         <p v-else>本机配置先检查，网络出口按需开启。</p>
       </div>
-      <span class="overview-mode"><span />{{ usageModeLabel(reportedUsageMode) }}</span>
+      <div class="overview-links">
+        <span class="overview-mode">{{ usageModeLabel(reportedUsageMode) }}</span>
+        <button class="text-link" @click="emit('source', 'ayi-guide')">
+          原文对照<ArrowUpRight :size="13" />
+        </button>
+      </div>
     </div>
     <div
       v-if="scanning"
@@ -235,13 +241,9 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
         @click="openResults('manual')"
       >
         <CircleHelp :size="18" /><strong>{{ report ? pendingCount : '—' }}</strong
-        ><span>待确认 / 未检测</span><ChevronRight class="count-link-arrow" :size="14" />
+        ><span>待确认</span><ChevronRight class="count-link-arrow" :size="14" />
       </button>
-      <div class="count-note">
-        <LockKeyhole :size="16" /><span
-          >以实际检测结果为准<br /><small>环境检查不推算账号状态</small></span
-        >
-      </div>
+      <div class="count-note"><LockKeyhole :size="14" /><span>账号状态需人工核对</span></div>
     </div>
   </section>
   <NetworkPath :report="report" :machine="machine" :scanning="scanning" />
@@ -252,13 +254,7 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
           <h2>
             检测详情 <span v-if="report">{{ report.checks.length }}</span>
           </h2>
-          <p>
-            {{
-              report && scanning
-                ? '正在检测；下方保留最近已完成的结果。'
-                : '查看证据，再决定如何处理。'
-            }}
-          </p>
+          <p v-if="report && scanning">检测中 · 显示上次结果</p>
         </div>
         <button class="icon-button" aria-label="设置检测偏好" @click="emit('settings')">
           <SlidersHorizontal :size="17" />
@@ -336,6 +332,8 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
           :key="check.id"
           :check="check"
           :expanded="filters.expanded === check.id"
+          @manual="emit('manual', $event)"
+          @settings="emit('settings')"
           :selected="selected"
           :disabled="busy || !canRepair"
           :platform="machine?.platform"
@@ -346,7 +344,7 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
         />
       </div>
       <div v-if="report" class="results-footer">
-        <ShieldCheck :size="13" />配置来自本机读取；密钥与 URL 凭据已隐藏。
+        <ShieldCheck :size="13" />本机读取 · 凭据已隐藏
       </div>
     </section>
     <aside class="repair-sidebar">
@@ -356,7 +354,7 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
           <h2>配置修复</h2>
           <span class="small-count">{{ availableFixes.length }}</span>
         </div>
-        <p>选择需要修改的配置，<br />先预览，再执行。</p>
+        <p>选择配置后预览修改。</p>
         <div v-if="availableFixes.length" class="repair-options">
           <label v-for="id in availableFixes" :key="id"
             ><input
@@ -396,10 +394,10 @@ async function openResults(status: Exclude<ResultFilter, 'all'>) {
       </section>
       <section class="manual-tip">
         <span class="manual-tip-icon"><CircleHelp :size="19" /></span>
-        <h3>有些项目，需要你确认</h3>
-        <p>DNS 实际出口、登录设备和服务地区，需要结合外部结果与账号设置复核。</p>
+        <h3>人工复核</h3>
+        <p>DNS 出口、登录设备、服务地区。</p>
         <button class="text-link" @click="emit('manual')">
-          打开人工复核<ArrowUpRight :size="14" />
+          查看待确认项<ArrowUpRight :size="14" />
         </button>
         <button class="text-link help-entry" @click="emit('help')">
           按错误类型排查<ArrowUpRight :size="14" />

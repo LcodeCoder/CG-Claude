@@ -451,7 +451,10 @@ export async function createAppServer(options: ServerOptions = {}) {
         )
       res.writeHead(200, {
         'Content-Type': mime[path.extname(file)] || 'application/octet-stream',
-        'Cache-Control': path.extname(file) === '.html' ? 'no-cache' : 'public, max-age=86400',
+        // Stable public assets (logo, favicon) must revalidate after an app update.
+        'Cache-Control': file.startsWith(path.join(distDir, 'assets') + path.sep)
+          ? 'public, max-age=86400'
+          : 'no-cache',
       })
       res.end(bytes)
     } catch (error) {

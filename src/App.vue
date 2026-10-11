@@ -7,7 +7,6 @@ import {
   Laptop,
   Play,
   Download,
-  ChevronRight,
   CircleCheck,
   TriangleAlert,
   LockKeyhole,
@@ -16,7 +15,6 @@ import {
   BookOpen,
   LoaderCircle,
   WifiOff,
-  WandSparkles,
   Workflow,
   LibraryBig,
 } from '@lucide/vue'
@@ -77,7 +75,13 @@ async function openReferenceTarget(target?: ReferenceTarget) {
   referenceTarget.value = target
   page.value = 'references'
   await nextTick()
-  await focusResult(document.getElementById(target ? 'reference-context' : 'reference-intro'))
+  const focusId =
+    target?.scope === 'source' && target.id === 'ayi-guide'
+      ? 'article-audit'
+      : target
+        ? 'reference-context'
+        : 'reference-intro'
+  await focusResult(document.getElementById(focusId))
 }
 function openReferences(checkId?: string) {
   return openReferenceTarget(checkId ? { scope: 'environment', id: checkId } : undefined)
@@ -93,10 +97,10 @@ async function openHelp() {
 function openManualReferences(id: string) {
   return openReferenceTarget({ scope: 'manual', id })
 }
-async function openManualItem(id: string) {
+async function openManualItem(id?: string) {
   page.value = 'checklist'
   await nextTick()
-  await focusResult(document.getElementById('manual-item-' + id))
+  if (id) await focusResult(document.getElementById('manual-item-' + id))
 }
 function openProjectReferences(id: string) {
   return openReferenceTarget({ scope: 'project', id })
@@ -251,11 +255,8 @@ const commandForPlatform = computed(() =>
     <button class="skip-to-content" @click="focusResult(pageHeading)">跳到主要内容</button>
     <aside class="sidebar">
       <a class="brand" href="#" @click.prevent="page = 'overview'"
-        ><BrandMark /><span><strong>CG Claude</strong><small>本地环境工作台</small></span></a
+        ><BrandMark /><span><strong>CG Claude</strong><small>环境与配置</small></span></a
       >
-      <div class="workspace-label">
-        <span class="workspace-dot" />个人工作空间<LockKeyhole :size="12" />
-      </div>
       <nav aria-label="主导航" class="main-nav">
         <button
           v-for="item in primaryNavigation"
@@ -274,11 +275,6 @@ const commandForPlatform = computed(() =>
         </button>
       </nav>
       <div class="sidebar-bottom">
-        <div class="local-note">
-          <span class="local-note-icon"><LockKeyhole :size="17" /></span
-          ><strong>配置保留在本机</strong>
-          <p>按需检测，预览后修改。<br />每次修复都有原始备份。</p>
-        </div>
         <nav class="secondary-nav" aria-label="辅助导航">
           <button
             :class="{ active: page === 'settings' }"
@@ -310,11 +306,7 @@ const commandForPlatform = computed(() =>
 
     <main class="main-content">
       <header class="topbar">
-        <div class="breadcrumbs">
-          <span>工作空间</span><ChevronRight :size="13" /><strong>{{
-            workspacePages[page].title
-          }}</strong>
-        </div>
+        <span class="topbar-local"><LockKeyhole :size="13" />配置保存在本机</span>
         <div class="topbar-info">
           <span v-if="boot?.runtime === 'electron'" class="desktop-tag">Electron 桌面版</span>
           <span v-if="boot?.demo" class="demo-tag">隔离测试环境</span
@@ -329,7 +321,9 @@ const commandForPlatform = computed(() =>
         <div class="page-heading">
           <div>
             <h1 ref="pageHeading" tabindex="-1">{{ workspacePages[page].title }}</h1>
-            <p>{{ workspacePages[page].description }}</p>
+            <p v-if="!['overview', 'references'].includes(page)">
+              {{ workspacePages[page].description }}
+            </p>
           </div>
           <div class="heading-actions">
             <button
@@ -338,10 +332,10 @@ const commandForPlatform = computed(() =>
               :disabled="loading || !connected || (busy && setupJob?.status !== 'running')"
               @click="openSetup()"
             >
-              <Workflow v-if="setupJob?.status === 'running'" :size="16" /><WandSparkles
+              <Workflow v-if="setupJob?.status === 'running'" :size="16" /><Settings2
                 v-else
                 :size="16"
-              />{{ setupJob?.status === 'running' ? '查看配置进度' : '一键配置完成' }}
+              />{{ setupJob?.status === 'running' ? '查看配置进度' : '一键配置' }}
             </button>
             <details v-if="report && page === 'overview'" class="export-menu">
               <summary class="button secondary"><Download :size="15" />导出报告</summary>
@@ -448,11 +442,12 @@ const commandForPlatform = computed(() =>
           @scan="scanOpen = true"
           @latest="viewReport(boot!.reports[0]!)"
           @settings="page = 'settings'"
-          @manual="page = 'checklist'"
+          @manual="openManualItem"
           @help="openHelp"
           @preview="guard.preview"
           @fix="guard.toggleFix"
           @references="openReferences"
+          @source="openSource"
           @copy-error="guard.notify('无法自动复制，请手动选择命令。', 'error')"
         />
 
@@ -536,6 +531,8 @@ const commandForPlatform = computed(() =>
         <ReferencesView
           v-else-if="page === 'references'"
           :target="referenceTarget"
+          :report="report"
+          @settings="page = 'settings'"
           @copy="copyReferences"
           :project-findings="projectReport?.findings"
           :checks="report?.checks"

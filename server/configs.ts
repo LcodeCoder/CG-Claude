@@ -16,6 +16,7 @@ export const relevantEnvKeys = new RegExp(
       ...authenticationEnvironmentKeys,
       'NODE_EXTRA_CA_CERTS',
       'NODE_TLS_REJECT_UNAUTHORIZED',
+      'GIT_SSL_NO_VERIFY',
       'CLAUDE_CODE_CLIENT_CERT',
       'CLAUDE_CODE_CLIENT_KEY',
       'CLAUDE_CODE_CLIENT_KEY_PASSPHRASE',
@@ -100,6 +101,20 @@ export function gitAssignments(content: string): Assignment[] {
     if (!assignment || !/^https?(?:\s|$)/i.test(section)) return []
     return [
       { key: `${section}.proxy`, value: assignment[1]!, line: index, safe: !/\\\s*$/.test(line) },
+    ]
+  })
+}
+/** Include URL-specific HTTP sections; never expose the subsection's URL in evidence. */
+export function gitTlsAssignments(content: string): Assignment[] {
+  let httpSection = false
+  return content.split(/\r?\n/).flatMap((line, index) => {
+    if (/^\s*[#;]/.test(line)) return []
+    const header = line.match(/^\s*\[([^\]]+)\]/)
+    if (header) httpSection = /^http(?:\s|\.|$)/i.test(header[1]!)
+    const assignment = line.match(/^\s*sslVerify\s*=\s*(.*)$/i)
+    if (!httpSection || !assignment) return []
+    return [
+      { key: 'http.sslVerify', value: assignment[1]!, line: index, safe: !/\\\s*$/.test(line) },
     ]
   })
 }

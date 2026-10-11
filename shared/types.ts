@@ -1,19 +1,45 @@
 import { z } from 'zod'
 import { usageModeIds } from './usage-modes.js'
 import type { ConnectionConfiguration } from './connections.js'
+import { normalizeTimezone, timezoneModes } from './timezones.js'
 
 export { DIAGNOSTIC_CHECK_COUNT } from './diagnostic-checks.js'
 
-export const preferencesSchema = z.object({
-  expectedTimezone: z.string().max(80).default(''),
-  expectedCountry: z
-    .string()
-    .regex(/^$|^[A-Z]{2}$/)
-    .default(''),
-  routeMode: z.enum(['system', 'tun', 'custom']).default('system'),
-  usageMode: z.enum(usageModeIds).default('official'),
-  privacy: z.enum(['balanced', 'minimal']).default('balanced'),
-})
+export const preferencesSchema = z
+  .object({
+    timezoneMode: z.enum(timezoneModes).optional(),
+    expectedTimezone: z.string().max(80).default(''),
+    expectedCountry: z
+      .string()
+      .regex(/^$|^[A-Z]{2}$/)
+      .default(''),
+    routeMode: z.enum(['system', 'tun', 'custom']).default('system'),
+    usageMode: z.enum(usageModeIds).default('official'),
+    privacy: z.enum(['balanced', 'minimal']).default('balanced'),
+  })
+  .transform((value) => ({
+    ...value,
+    // Preserve explicit targets from old records; an old blank target now uses the article baseline.
+    timezoneMode: value.timezoneMode ?? (value.expectedTimezone ? 'manual' : 'article'),
+  }))
+  .superRefine((value, context) => {
+    if (
+      value.timezoneMode === 'manual' &&
+      value.expectedTimezone &&
+      !normalizeTimezone(value.expectedTimezone)
+    )
+      context.addIssue({
+        code: 'custom',
+        path: ['expectedTimezone'],
+        message: '期望时区不是有效的 IANA 时区',
+      })
+    if (value.timezoneMode === 'manual' && !value.expectedTimezone.trim())
+      context.addIssue({
+        code: 'custom',
+        path: ['expectedTimezone'],
+        message: '手动模式需要选择一个时区',
+      })
+  })
 export type Preferences = z.infer<typeof preferencesSchema>
 export const defaultPreferences: Preferences = preferencesSchema.parse({})
 
@@ -101,6 +127,8 @@ export interface Machine {
   arch: string
   osVersion: string
   timezone: string
+  /** A process may inherit TZ; this value is not evidence of the operating system's timezone. */
+  runtimeTimezone?: string
   nodeVersion: string
 }
 export interface NetworkInfo {
@@ -226,7 +254,8 @@ export const manualItems = [
   {
     id: 'timezone-auto',
     title: '复核自动时区和其他设备',
-    description: '原文 2.2 / 6.1：核对系统自动时区、定位服务与手机时区，按实际使用地区设置。',
+    description:
+      '原文 2.2 / 6.1 / 9 要求电脑和手机设为台北、关闭自动设定时区及定位服务中的设定时区。若选择按出口或手动目标，逐项核对该目标；本机读数不能证明这三项已完成。',
     url: 'https://x.com/AYi_AInotes/status/2106639522586829094',
     category: '系统',
   },
@@ -234,7 +263,7 @@ export const manualItems = [
     id: 'fixed-route',
     title: '确认固定路由与 DNS 接管',
     description:
-      '原文 2.4 / 6.2–4：在代理软件核对自动切换、TUN 路由、DNS 和 dns-hijack；接口存在不能证明全部接管。',
+      '原文 2.3–2.5 / 6.2–4：核对固定节点并关闭自动切换、服务模式、TUN（或增强模式）、关闭系统代理、全局路由、DNS 和 dns-hijack；接口存在不能证明全部接管。',
     url: 'https://browserleaks.com/dns',
     category: '网络',
   },
@@ -249,7 +278,8 @@ export const manualItems = [
   {
     id: 'browser-profile',
     title: '核对浏览器资料与登录环境',
-    description: '原文 2.6 / 6.6：使用本人管理的浏览器资料和邮箱，核对验证链接与日常登录的环境。',
+    description:
+      '原文 2.6 / 6.6：使用独立浏览器资料。需要时在实际终端运行 BROWSER=false claude，将授权链接复制到该资料；验证邮件也在同一环境打开。本应用浏览器检测不代表该资料。',
     url: 'https://support.claude.com/en/articles/13124001-managing-your-active-sessions',
     category: '浏览器',
   },
@@ -264,8 +294,32 @@ export const manualItems = [
     id: 'usage',
     title: '核对额度和使用方式',
     description:
-      '原文 4 / 6.7 / 9：检查实际额度、授权和客户端使用方式；本机工具无法判断账号限制状态。',
+      '原文 3.2 / 4 / 6.7 / 9：检查实际额度、重置时间、授权和客户端使用方式。Free → Pro → Max 的按周节奏是社区经验，不能证明账号状态，也不会自动操作订阅。',
     url: 'https://claude.ai/settings/usage',
+    category: '账号',
+  },
+  {
+    id: 'contact',
+    title: '核对本人邮箱与手机号',
+    description:
+      '原文 3.1：核对邮箱、手机号是否由本人长期控制，验证邮件是否在预期的浏览器和网络中打开；不读取邮件、手机号或验证链接。',
+    url: 'https://x.com/AYi_AInotes/status/2106639522586829094',
+    category: '账号',
+  },
+  {
+    id: 'account-ownership',
+    title: '核对账号与凭据使用人',
+    description:
+      '原文 1 / 2.6 / 4 / 9：账号和凭据由本人使用与保管，核对设备、共享和第三方授权情况；本机扫描无法证明账号未共享。',
+    url: 'https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals',
+    category: '账号',
+  },
+  {
+    id: 'account-export',
+    title: '受限后先核对数据导出与申诉',
+    description:
+      '原文 7：需要时由本人在官网登录后导出数据，再决定是否删除；申诉记录事实、时间和时区。退款与取消续费分别处理，本工具不提交申诉或删除账号。',
+    url: 'https://support.claude.com/en/articles/8241253-safeguards-warnings-and-appeals',
     category: '账号',
   },
   {

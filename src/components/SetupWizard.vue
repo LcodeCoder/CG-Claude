@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import TimezonePreferences from './TimezonePreferences.vue'
 import { usageModeOptions, usageModeLabel } from '../../shared/usage-modes'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { ref, reactive, computed, watch } from 'vue'
@@ -94,11 +95,15 @@ function toggle(id: FixId) {
 }
 async function next() {
   fieldError.value = ''
-  if (step.value === 0 && draft.expectedTimezone) {
+  if (step.value === 0 && draft.timezoneMode === 'manual') {
+    if (!draft.expectedTimezone.trim()) {
+      fieldError.value = '手动模式需要选择一个目标时区'
+      return
+    }
     try {
       new Intl.DateTimeFormat('en', { timeZone: draft.expectedTimezone })
     } catch {
-      fieldError.value = '请输入有效的 IANA 时区，例如 Asia/Shanghai'
+      fieldError.value = '请输入有效的 IANA 时区，例如 Asia/Taipei'
       return
     }
   }
@@ -156,7 +161,7 @@ const title = computed(() =>
         <div class="wizard-section-heading">
           <Network :size="24" />
           <div>
-            <h3>终端如何访问网络？</h3>
+            <h3>网络接入方式</h3>
             <p>选择当前已经启用的方式，工具会据此决定保留或移除代理字段。</p>
           </div>
         </div>
@@ -191,12 +196,9 @@ const title = computed(() =>
             ><small>{{ option.description }}</small></span
           ></label
         >
+        <TimezonePreferences v-model="draft" prefix="setup" />
         <div class="wizard-fields">
           <label
-            >期望时区（可留空）<input
-              v-model.trim="draft.expectedTimezone"
-              placeholder="例如 Asia/Shanghai" /></label
-          ><label
             >期望出口地区<select v-model="draft.expectedCountry">
               <option value="">不指定</option>
               <option

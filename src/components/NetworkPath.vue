@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Globe, Laptop, Network, Radio, Terminal, ArrowRight, LockKeyhole } from '@lucide/vue'
+import { Globe, Laptop, Network, Radio, Terminal, ArrowRight, ChevronDown } from '@lucide/vue'
 import { computed } from 'vue'
 import type { ScanReport, CheckStatus, Machine } from '../../shared/types'
 import StatusBadge from './StatusBadge.vue'
@@ -47,11 +47,10 @@ const nodes = computed(() => [
 ])
 </script>
 <template>
-  <section class="network-path-panel" aria-label="环境连接路径">
-    <div class="panel-caption">
-      <span><LockKeyhole :size="14" />环境连接路径</span
-      ><span class="quiet-text">从浏览器到客户端，逐段检查</span>
-    </div>
+  <details class="network-path-panel" aria-label="环境连接路径">
+    <summary class="panel-caption">
+      <span><Network :size="14" />连接路径</span><ChevronDown :size="15" />
+    </summary>
     <div class="network-path" :class="{ scanning: props.scanning }">
       <template v-for="(node, index) in nodes" :key="node.name">
         <div class="path-node">
@@ -70,5 +69,5 @@ const nodes = computed(() => [
         </div>
       </template>
     </div>
-  </section>
+  </details>
 </template>

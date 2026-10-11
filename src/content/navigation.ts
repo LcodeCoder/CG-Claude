@@ -2,18 +2,18 @@ import { ArchiveRestore, FileCode2, FolderCog, History, ListChecks, ScanLine } f
 
 /** Page copy lives beside navigation so new views have one clear registration point. */
 export const workspacePages = {
-  overview: { title: '环境检测', description: '检查本机配置，让每一次修改都有据可查。' },
-  configs: { title: '本机配置', description: '从真实配置文件开始，预览需要修改的部分。' },
+  overview: { title: '环境检测', description: '本机状态与待处理项。' },
+  configs: { title: '本机配置', description: '查看配置文件与连接设置。' },
   projects: {
     title: '项目扫描',
-    description: '扫描本地项目配置、权限、代理覆盖与 Git 提交，不执行项目脚本。',
+    description: '检查项目配置、权限与 Git 状态。',
   },
   history: { title: '检测记录', description: '保留最近 30 次检测，对照环境的变化。' },
-  backups: { title: '备份恢复', description: '每次修复前保存原始配置，随时回到修改之前。' },
-  checklist: { title: '人工复核', description: '把工具无法可靠自动判断的项目，逐项确认。' },
-  settings: { title: '检测偏好', description: '按照你的实际网络与使用方式检查，减少误报。' },
-  about: { title: '使用说明与来源', description: '了解检测范围、修复方式与参考来源。' },
-  references: { title: '参考文献', description: '查看建议的出处、采用方式与判断边界。' },
+  backups: { title: '备份恢复', description: '保存配置快照，或恢复修复前的备份。' },
+  checklist: { title: '人工复核', description: '复核网络出口与账号设置。' },
+  settings: { title: '检测偏好', description: '选择网络模式、时区目标与隐私设置。' },
+  about: { title: '使用说明与来源', description: '检测范围、修复流程与常见问题。' },
+  references: { title: '参考文献', description: '原文与扩展来源。' },
 }
 export type WorkspacePage = keyof typeof workspacePages
 export const primaryNavigation = [

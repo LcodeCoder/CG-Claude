@@ -12,7 +12,14 @@ const props = defineProps<{
   disabled: boolean
   platform?: string
 }>()
-const emit = defineEmits<{ toggle: []; fix: [id: FixId]; copyError: []; references: [] }>()
+const emit = defineEmits<{
+  toggle: []
+  fix: [id: FixId]
+  copyError: []
+  references: []
+  manual: [id: string]
+  settings: []
+}>()
 const copied = ref(false)
 const sources = computed(() => referencesForCheck(props.check.id))
 const commands: Record<string, string> = {
@@ -55,7 +62,7 @@ async function copy() {
       <StatusBadge :status="props.check.status" compact />
       <span class="check-title"
         ><strong>{{ props.check.title }}</strong
-        ><span>{{ props.check.summary }}</span></span
+        ><span v-if="props.check.status !== 'pass'">{{ props.check.summary }}</span></span
       >
       <Wrench
         v-if="props.check.fixIds.length"
@@ -66,16 +73,19 @@ async function copy() {
       <StatusBadge :status="props.check.status" /><ChevronDown class="chevron" :size="15" />
     </button>
     <div v-if="props.expanded" :id="'detail-' + props.check.id" class="check-detail">
-      <span class="detail-label">这项检查什么</span>
+      <p v-if="props.check.status === 'pass'" class="check-result-summary">
+        {{ props.check.summary }}
+      </p>
+      <span class="detail-label">检查范围</span>
       <p class="check-description">{{ props.check.description }}</p>
-      <span v-if="props.check.evidence.length" class="detail-label">本次检测证据</span>
+      <span v-if="props.check.evidence.length" class="detail-label">检测证据</span>
       <dl v-if="props.check.evidence.length" class="evidence-table">
         <div v-for="evidence in props.check.evidence" :key="evidence.label + evidence.value">
           <dt>{{ evidence.label }}</dt>
           <dd>{{ evidence.value }}</dd>
         </div>
       </dl>
-      <span class="detail-label">建议的下一步</span>
+      <span class="detail-label">下一步</span>
       <p class="recommendation">{{ props.check.recommendation }}</p>
       <div v-if="command" class="command-block">
         <code>{{ command }}</code
@@ -98,8 +108,22 @@ async function copy() {
             />{{ fixLabels[id] }}</label
           >
         </div>
+        <button
+          v-if="['timezone', 'browser-timezone', 'timezone-env'].includes(check.id)"
+          class="text-link"
+          @click="emit('settings')"
+        >
+          选择目标时区
+        </button>
+        <button
+          v-if="check.id === 'timezone-followup'"
+          class="text-link"
+          @click="emit('manual', 'timezone-auto')"
+        >
+          复核自动时区
+        </button>
         <button v-if="sources.length" class="text-link" @click="emit('references')">
-          <BookOpen :size="14" />依据与边界 · {{ sources.length }} 条来源
+          <BookOpen :size="14" />查看来源 · {{ sources.length }}
         </button>
         <a
           v-else-if="props.check.sourceUrl"

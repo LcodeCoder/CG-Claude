@@ -20,6 +20,7 @@ import { privacyConfiguration } from './privacy-diagnostics.js'
 import { cliInstallation } from './cli-diagnostics.js'
 import { cloudKeys } from '../shared/authentication.js'
 import { isEnabledEnvironmentFlag } from '../shared/environment-values.js'
+import { gitBoolean } from './git-tls.js'
 import {
   proxyCompatibility,
   authenticationSources,
@@ -27,6 +28,14 @@ import {
 } from './configuration-diagnostics.js'
 import type { Context, CommandResult } from './context.js'
 import { machineInfo } from './context.js'
+import type { SystemTimezone } from './system-timezone.js'
+import {
+  resolveTimezoneTarget,
+  systemTimezoneCheck,
+  browserTimezoneCheck,
+  runtimeTimezoneCheck,
+  timezoneFollowupCheck,
+} from './timezone-diagnostics.js'
 import {
   readAllConfigs,
   configurationFingerprint,
@@ -39,6 +48,7 @@ import {
   shellAssignments,
   npmAssignments,
   gitAssignments,
+  gitTlsAssignments,
   proxyKeys,
   parseClaude,
   claudeEnv,
@@ -50,7 +60,7 @@ const officialNetwork = 'https://code.claude.com/docs/en/network-config'
 interface SystemSnapshot {
   proxy: CommandResult
   dns: CommandResult
-  timezoneLink?: string
+  timezone: SystemTimezone
   interfaces: { name: string; family: string; address: string; internal: boolean }[]
 }
 async function systemSnapshot(ctx: Context): Promise<SystemSnapshot> {
@@ -80,7 +90,7 @@ async function systemSnapshot(ctx: Context): Promise<SystemSnapshot> {
       () => unsupported,
     )
   }
-  const results = await Promise.allSettled([proxyTask, dnsTask, fs.readlink('/etc/localtime')])
+  const results = await Promise.allSettled([proxyTask, dnsTask, ctx.readSystemTimezone()])
   const interfaces = Object.entries(os.networkInterfaces()).flatMap(([name, addresses]) =>
     (addresses ?? []).map((address) => ({
       name,
@@ -92,7 +102,10 @@ async function systemSnapshot(ctx: Context): Promise<SystemSnapshot> {
   return {
     proxy: results[0]?.status === 'fulfilled' ? (results[0].value as CommandResult) : unsupported,
     dns: results[1]?.status === 'fulfilled' ? (results[1].value as CommandResult) : unsupported,
-    timezoneLink: results[2]?.status === 'fulfilled' ? (results[2].value as string) : undefined,
+    timezone:
+      results[2]?.status === 'fulfilled'
+        ? (results[2].value as SystemTimezone)
+        : { source: '系统时区读取', error: '系统时区读取失败，需手动核对' },
     interfaces,
   }
 }
@@ -211,20 +224,37 @@ export function webrtcResult(
     (candidate) => isIP(candidate.address) || candidate.address.endsWith('.local'),
   )
   const publicCandidates = candidates.filter((candidate) => isPublicAddress(candidate.address))
-  const expected = [browser.publicIp, network?.ip].filter(Boolean)
-  const differs = publicCandidates.some((candidate) => !expected.includes(candidate.address))
+  // WebRTC belongs to this browser. Accepting the terminal's different IP can hide a bypass.
+  const expected = browser.publicIp && isIP(browser.publicIp) ? browser.publicIp : undefined
+  const differs = Boolean(
+    expected && publicCandidates.some((candidate) => candidate.address !== expected),
+  )
+  const completed = rtc.tested && !rtc.timedOut && !rtc.error
+  const comparable = Boolean(completed && publicCandidates.length && expected)
   return {
     ...base,
-    status: differs ? 'warn' : publicCandidates.length && expected.length ? 'pass' : 'manual',
+    status: differs ? 'warn' : comparable ? 'pass' : 'manual',
     summary: differs
-      ? '发现与 HTTP 出口不同的公网地址'
-      : publicCandidates.length && expected.length
-        ? '可见的公网候选与 HTTP 出口一致'
-        : '未获取可比较的公网候选，需外部复核',
-    evidence: candidates.map((candidate) => ({
-      label: candidate.type === 'srflx' ? 'STUN 公网候选' : '本机候选',
-      value: safeValue(candidate.address),
-    })),
+      ? '发现与浏览器 HTTPS 出口不同的公网地址'
+      : !completed
+        ? 'WebRTC 采样未完整完成，需外部复核'
+        : comparable
+          ? '本次可见公网候选与浏览器 HTTPS 出口一致'
+          : '未获取可比较的浏览器出口或公网候选，需外部复核',
+    evidence: [
+      ...candidates.map((candidate) => ({
+        label: candidate.type === 'srflx' ? 'STUN 公网候选' : '本机候选',
+        value: safeValue(candidate.address),
+      })),
+      ...(expected ? [{ label: '浏览器 HTTPS 出口', value: expected }] : []),
+      ...(network?.ip ? [{ label: '终端出口（不能替代浏览器比较基准）', value: network.ip }] : []),
+      {
+        label: '采样状态',
+        value: completed
+          ? '本次采样完成；其他浏览器资料仍需复核'
+          : '未完成、超时或遇到错误；不能证明无泄漏',
+      },
+    ],
   }
 }
 export const TOTAL_CHECKS = DIAGNOSTIC_CHECK_COUNT
@@ -261,6 +291,9 @@ export async function runDiagnostics(
       ? (results[3].value as { info?: NetworkInfo; error?: string })
       : { error: '网络检测未完成' }
   const machine = machineInfo(ctx)
+  const runtimeTimezone = machine.timezone
+  machine.runtimeTimezone = runtimeTimezone
+  machine.timezone = system.timezone.timezone ?? '未知'
   const browser = request.browser
   const checks: CheckResult[] = []
   function add(value: CheckResult) {
@@ -293,32 +326,8 @@ export async function runDiagnostics(
   )
   const runtimeEndpoint = ctx.env.ANTHROPIC_BASE_URL
   const proxy = parseSystemProxy(ctx, system.proxy)
-  const expectedTimezone = preferences.expectedTimezone
-  let zoneMatches = true
-  if (expectedTimezone) {
-    try {
-      zoneMatches =
-        new Intl.DateTimeFormat('en', { timeZone: expectedTimezone }).resolvedOptions().timeZone ===
-        machine.timezone
-    } catch {
-      zoneMatches = false
-    }
-  }
-  add({
-    ...base('timezone', 'system', '系统时区', '读取实际时区并与自定义期望值核对。'),
-    status: zoneMatches ? 'pass' : 'warn',
-    summary: zoneMatches ? machine.timezone : '系统时区与期望值不同',
-    evidence: [
-      { label: '系统时区', value: machine.timezone },
-      ...(system.timezoneLink
-        ? [{ label: '时区文件', value: safeValue(system.timezoneLink) }]
-        : []),
-      { label: '期望时区', value: expectedTimezone || '未指定，按实际环境检查' },
-    ],
-    recommendation: zoneMatches
-      ? '无需修改。时区本身不代表服务可用地区。'
-      : '在系统日期与时间设置中核对实际时区，或调整工具的期望值。',
-  })
+  const timezoneTarget = resolveTimezoneTarget(preferences, request.network, probe.info, browser)
+  add(systemTimezoneCheck(system.timezone, timezoneTarget))
   add({
     ...base(
       'system-proxy',
@@ -655,29 +664,7 @@ export async function runDiagnostics(
   })
   add(privacyConfiguration(environment, preferences))
   add(await cliInstallation(ctx, cli, machine.nodeVersion))
-  add({
-    ...base(
-      'browser-timezone',
-      'browser',
-      '浏览器与本机时区',
-      '核对当前浏览器 Intl 时区与本机进程时区。',
-    ),
-    status: !browser ? 'skipped' : browser.timezone === machine.timezone ? 'pass' : 'warn',
-    summary: !browser
-      ? '从浏览器界面运行后检测'
-      : browser.timezone === machine.timezone
-        ? '浏览器与本机时区一致'
-        : '浏览器与本机时区不同',
-    evidence: browser
-      ? [
-          { label: '浏览器时区', value: safeValue(browser.timezone) },
-          { label: '本机时区', value: machine.timezone },
-          { label: '浏览器语言', value: safeValue(browser.language) },
-        ]
-      : [],
-    recommendation:
-      '时区差异可能来自 TZ 变量、浏览器设置或扩展；按真实环境核对。语言不作为问题判定。',
-  })
+  add(browserTimezoneCheck(system.timezone, timezoneTarget, browser))
   const network = probe.info
     ? {
         ...probe.info,
@@ -798,36 +785,37 @@ export async function runDiagnostics(
       ...base(
         `${tool}-effective-proxy`,
         'terminal',
-        `${tool} 实际生效代理`,
-        '调用只读配置命令，补充文件扫描无法覆盖的环境、include 和优先级。',
+        tool === 'git' ? 'Git 全局查询代理' : 'npm 查询代理',
+        tool === 'git'
+          ? '调用 --global 查询 HTTP 与 HTTPS 代理；包含全局 include，但不证明项目或请求的最终配置。'
+          : '在此工具的启动环境中查询 proxy 与 https-proxy；不代表其他终端或项目的配置。',
       ),
       status: active.length
         ? preferences.routeMode === 'tun'
           ? 'warn'
           : 'manual'
-        : values.some((result) => result.ok)
+        : values.every((result) => result.ok)
           ? 'pass'
           : 'manual',
       summary: active.length
-        ? '命令读取到生效的代理配置'
-        : values.some((result) => result.ok)
-          ? '未读取到生效代理'
-          : '命令不可用或未提供配置，需在新终端复核',
-      evidence: active.map((result, index) => ({
-        label: index === 0 ? 'HTTP / 第一项' : 'HTTPS / 第二项',
-        value: endpointValue(result.stdout),
+        ? '查询读取到代理配置'
+        : values.every((result) => result.ok)
+          ? '两项查询均未读取到代理'
+          : '至少一项查询未成功，需在新终端复核',
+      evidence: values.map((result, index) => ({
+        label: index === 0 ? 'HTTP 查询' : 'HTTPS 查询',
+        value: !result.ok
+          ? '查询失败或命令不可用，需复核'
+          : !result.stdout || ['null', 'undefined'].includes(result.stdout)
+            ? '未设置'
+            : endpointValue(result.stdout),
       })),
       recommendation:
         '复核 npm config get proxy / https-proxy 或 git config --global --get http.proxy / https.proxy。环境变量和其他层级不会被本机文件修复清空。',
     })
   }
-  add({
-    ...base('timezone-env', 'system', '终端时区覆盖', '核对 TZ 环境变量是否覆盖系统时区。'),
-    status: ctx.env.TZ ? 'manual' : 'pass',
-    summary: ctx.env.TZ ? '存在 TZ 环境覆盖，需与系统时区对照' : '未检测到 TZ 环境覆盖',
-    evidence: ctx.env.TZ ? [{ label: 'TZ', value: safeValue(ctx.env.TZ) }] : [],
-    recommendation: '原文要求核对系统、终端和浏览器的一致性；在启动文件与系统设置中检查实际时区。',
-  })
+  add(runtimeTimezoneCheck(system.timezone, runtimeTimezone, timezoneTarget, environment))
+  add(timezoneFollowupCheck(timezoneTarget))
   add({
     ...base(
       'config-directory',
@@ -854,19 +842,43 @@ export async function runDiagnostics(
   const disabledNpmTls = /^\s*strict-ssl\s*=\s*(?:false|0)\s*(?:[#;].*)?$/im.test(
     npmFile?.content ?? '',
   )
+  const gitTls = gitFiles.flatMap((file) =>
+    gitTlsAssignments(file.content ?? '').map((item) => ({ ...item, file })),
+  )
+  const disabledGitTls = gitTls.filter((item) => item.safe && gitBoolean(item.value) === false)
+  const disabledGitEnvironment = environment.sources.filter(
+    (source) =>
+      source.values.GIT_SSL_NO_VERIFY !== undefined &&
+      gitBoolean(source.values.GIT_SSL_NO_VERIFY) === true,
+  )
+  const gitTlsIncomplete =
+    gitIncludes ||
+    gitFiles.some((file) => !file.editable) ||
+    gitTls.some((item) => !item.safe || gitBoolean(item.value) === undefined) ||
+    environment.sources.some(
+      (source) =>
+        source.unresolved.includes('GIT_SSL_NO_VERIFY') ||
+        (source.values.GIT_SSL_NO_VERIFY !== undefined &&
+          gitBoolean(source.values.GIT_SSL_NO_VERIFY) === undefined),
+    )
   const tlsIncomplete =
+    gitTlsIncomplete ||
     environment.unavailable.length > 0 ||
     environment.sources.some((source) =>
       source.unresolved.includes('NODE_TLS_REJECT_UNAUTHORIZED'),
     ) ||
     Boolean(npmFile && !npmFile.editable)
-  const tlsDisabled = disabledNodeTls.length > 0 || disabledNpmTls
+  const tlsDisabled =
+    disabledNodeTls.length > 0 ||
+    disabledNpmTls ||
+    disabledGitTls.length > 0 ||
+    disabledGitEnvironment.length > 0
   add({
     ...base(
       'tls-verification',
       'terminal',
       'TLS 证书验证',
-      '检查当前进程、用户配置和 npm 是否关闭证书验证。',
+      '检查当前进程、已读取用户配置、npm 和 Git 是否关闭证书验证；不证明所有请求的实际 TLS 状态。',
     ),
     status: tlsDisabled ? 'fail' : tlsIncomplete ? 'manual' : 'pass',
     fixIds: npmFile?.editable && disabledNpmTls ? ['npm-tls'] : [],
@@ -876,6 +888,14 @@ export async function runDiagnostics(
         ? '部分 TLS 配置无法静态确认'
         : '未在已读取配置中发现关闭验证',
     evidence: [
+      ...disabledGitTls.map((item) => ({
+        label: `${item.file.display}:${item.line + 1} · http.sslVerify`,
+        value: '声明关闭验证；URL 子节和原值不展示',
+      })),
+      ...disabledGitEnvironment.map((source) => ({
+        label: `${source.label} · GIT_SSL_NO_VERIFY`,
+        value: '声明关闭 Git 证书验证',
+      })),
       ...disabledNodeTls.map((source) => ({
         label: `${source.label} · NODE_TLS_REJECT_UNAUTHORIZED`,
         value: '0（关闭验证）',
@@ -893,7 +913,7 @@ export async function runDiagnostics(
         : []),
     ],
     recommendation:
-      '按证据中的来源恢复证书验证。企业代理需要配置可信 CA，可使用 NODE_EXTRA_CA_CERTS；在“自定义 CA 与客户端证书”检查中复核路径。',
+      '按证据中的来源恢复证书验证；Git 项与进程变量需在对应来源手动处理。企业代理需要配置可信 CA，可使用 NODE_EXTRA_CA_CERTS；在“自定义 CA 与客户端证书”检查中复核路径。',
     source: 'official',
     sourceUrl: 'https://nodejs.org/api/cli.html',
   })

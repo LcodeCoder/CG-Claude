@@ -27,7 +27,7 @@ test('local checks do not make outbound requests and mark unobserved network pat
   const report = await runDiagnostics(data.ctx, defaultPreferences, {
     network: false,
     browser: {
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: 'Asia/Taipei',
       language: 'zh-CN',
       platform: 'test',
     },
@@ -330,4 +330,130 @@ test('default-equivalent configuration directory remains in the detected scope',
   expect(report.checks.find((check) => check.id === 'claude-endpoint')?.fixIds).toEqual([
     'claude-endpoint',
   ])
+})
+
+test.each([
+  { tested: true, timedOut: true },
+  { tested: false, timedOut: false },
+  { tested: true, timedOut: false, error: 'fixture error' },
+])('never passes an incomplete WebRTC sample: %j', (state) => {
+  const result = webrtcResult(
+    {
+      timezone: 'UTC',
+      language: 'en',
+      platform: 'test',
+      publicIp: '8.8.8.8',
+      webrtc: { available: true, ...state, candidates: [{ address: '8.8.8.8', type: 'srflx' }] },
+    },
+    { ip: '8.8.8.8' },
+    true,
+  )
+  expect(result.status).toBe('manual')
+})
+test('a WebRTC address matching a different terminal route still warns', () => {
+  const result = webrtcResult(
+    {
+      timezone: 'UTC',
+      language: 'en',
+      platform: 'test',
+      publicIp: '8.8.8.8',
+      webrtc: {
+        available: true,
+        tested: true,
+        timedOut: false,
+        candidates: [{ address: '1.1.1.1', type: 'srflx' }],
+      },
+    },
+    { ip: '1.1.1.1' },
+    true,
+  )
+  expect(result.status).toBe('warn')
+})
+test('WebRTC cannot pass using only the terminal IP', () => {
+  const result = webrtcResult(
+    {
+      timezone: 'UTC',
+      language: 'en',
+      platform: 'test',
+      webrtc: {
+        available: true,
+        tested: true,
+        timedOut: false,
+        candidates: [{ address: '8.8.8.8', type: 'srflx' }],
+      },
+    },
+    { ip: '8.8.8.8' },
+    true,
+  )
+  expect(result.status).toBe('manual')
+})
+test('a completed comparable WebRTC sample can pass only for its observed candidates', () => {
+  const result = webrtcResult(
+    {
+      timezone: 'UTC',
+      language: 'en',
+      platform: 'test',
+      publicIp: '8.8.8.8',
+      webrtc: {
+        available: true,
+        tested: true,
+        timedOut: false,
+        candidates: [{ address: '8.8.8.8', type: 'srflx' }],
+      },
+    },
+    { ip: '1.1.1.1' },
+    true,
+  )
+  expect(result.status).toBe('pass')
+  expect(result.summary).toContain('本次可见')
+})
+test('one failed npm proxy query keeps the combined result unconfirmed', async () => {
+  const original = data.ctx.run
+  data.ctx.run = async (command, args) =>
+    command === 'npm' && args[2] === 'https-proxy'
+      ? { ok: false, stdout: '', stderr: 'fixture error' }
+      : original(command, args)
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  const check = report.checks.find((item) => item.id === 'npm-effective-proxy')!
+  expect(check.status).toBe('manual')
+  expect(check.evidence.find((item) => item.label === 'HTTPS 查询')?.value).toContain('失败')
+})
+test('detects URL-specific Git TLS disabling without exposing URLs or credentials', async () => {
+  await data.write(
+    '.gitconfig',
+    '[http "https://private-user:private-secret@private.example/path"]\nsslVerify = false\n',
+  )
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  const check = report.checks.find((item) => item.id === 'tls-verification')!
+  expect(check.status).toBe('fail')
+  expect(JSON.stringify(report)).not.toMatch(/private-secret|private\.example/)
+})
+test('Git TLS environment follows boolean values instead of treating 0 as enabled', async () => {
+  data.ctx.env.GIT_SSL_NO_VERIFY = '0'
+  expect(
+    (await runDiagnostics(data.ctx, defaultPreferences, { network: false })).checks.find(
+      (item) => item.id === 'tls-verification',
+    )?.status,
+  ).toBe('pass')
+  data.ctx.env.GIT_SSL_NO_VERIFY = 'true'
+  expect(
+    (await runDiagnostics(data.ctx, defaultPreferences, { network: false })).checks.find(
+      (item) => item.id === 'tls-verification',
+    )?.status,
+  ).toBe('fail')
+})
+test('Git include and malformed TLS booleans cannot silently pass', async () => {
+  await data.write('.gitconfig', '[include]\npath = private-config\n[http]\nsslVerify = unknown\n')
+  expect(
+    (await runDiagnostics(data.ctx, defaultPreferences, { network: false })).checks.find(
+      (item) => item.id === 'tls-verification',
+    )?.status,
+  ).toBe('manual')
+})
+
+test('legacy dotted Git HTTP subsections cannot hide a TLS disable declaration', async () => {
+  await data.write('.gitconfig', '[http.private.example]\nsslVerify = false\n')
+  const report = await runDiagnostics(data.ctx, defaultPreferences, { network: false })
+  expect(report.checks.find((item) => item.id === 'tls-verification')?.status).toBe('fail')
+  expect(JSON.stringify(report)).not.toContain('private.example')
 })

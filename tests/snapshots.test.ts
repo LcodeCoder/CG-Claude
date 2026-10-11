@@ -125,3 +125,23 @@ test('restoring an old snapshot keeps newer captures first in the visible timeli
   expect(list[2]?.id).toBe(before.id)
   expect(list[2]?.restoredAt).toBeTruthy()
 })
+
+test('restores the selected timezone basis and target together with the pre-restore preference snapshot', async () => {
+  const original = {
+    ...defaultPreferences,
+    timezoneMode: 'manual' as const,
+    expectedTimezone: 'Europe/Paris',
+  }
+  await data.storage.savePreferences(original)
+  const snapshot = await snapshots.capture()
+  const changed = { ...defaultPreferences, timezoneMode: 'exit' as const }
+  await data.storage.savePreferences(changed)
+  const preview = await snapshots.preview(snapshot.id)
+  expect(preview.preferencesChanged).toBe(true)
+  expect(preview.preferences).toEqual(original)
+  await snapshots.restore(preview.id)
+  expect(await data.storage.preferences()).toEqual(original)
+  const retained = (await snapshots.list()).find((item) => item.purpose === 'before-restore')!
+  await snapshots.restore((await snapshots.preview(retained.id)).id)
+  expect(await data.storage.preferences()).toEqual(changed)
+})

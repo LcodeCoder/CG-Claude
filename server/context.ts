@@ -2,6 +2,8 @@ import os from 'node:os'
 import path from 'node:path'
 import type { Machine } from '../shared/types.js'
 import { runSystemCommand } from './commands.js'
+import { readSystemTimezone } from './system-timezone.js'
+import type { SystemTimezone } from './system-timezone.js'
 
 export interface CommandResult {
   ok: boolean
@@ -15,6 +17,8 @@ export interface Context {
   env: NodeJS.ProcessEnv
   demo: boolean
   run: (command: string, args: string[], timeout?: number) => Promise<CommandResult>
+  readSystemTimezone: () => Promise<SystemTimezone>
+  readRuntimeTimezone: () => string
 }
 export function createContext(overrides: Partial<Context> = {}): Context {
   const home = path.resolve(process.env.CG_HOME || os.homedir())
@@ -25,6 +29,8 @@ export function createContext(overrides: Partial<Context> = {}): Context {
     env: { ...process.env },
     demo: process.env.CG_DEMO === '1',
     run: (command, args, timeout) => runSystemCommand(ctx, command, args, timeout),
+    readSystemTimezone: () => readSystemTimezone(ctx),
+    readRuntimeTimezone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
     ...overrides,
   }
   return ctx
@@ -37,7 +43,7 @@ export function machineInfo(ctx: Context): Machine {
     hostname: ctx.demo ? 'Guard-Test-Mac' : os.hostname(),
     arch: os.arch(),
     osVersion: os.release(),
-    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    timezone: ctx.readRuntimeTimezone(),
     nodeVersion: process.version,
   }
 }

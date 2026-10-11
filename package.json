@@ -1,6 +1,6 @@
 {
   "name": "cg-claude",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "private": true,
   "type": "module",
   "description": "本地 Claude 环境检测、配置修复与备份恢复工具",
@@ -24,7 +24,8 @@
     "pack": "npm run icons && npm run build && npm run desktop:prepare && electron-builder --dir --publish never",
     "dist": "npm run icons && npm run build && npm run desktop:prepare && electron-builder --publish never",
     "desktop:prepare": "node scripts/electron-runtime.mjs",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "docs:audit": "tsx scripts/generate-audit-docs.ts && prettier --write docs/article-audit.md docs/reference-audit.md"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",

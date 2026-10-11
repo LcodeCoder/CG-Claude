@@ -33,7 +33,7 @@ function formatFixes(ids: BackupSummary['fixIds']) {
     <div class="panel-heading">
       <div>
         <h2>完整配置快照</h2>
-        <p>一次保存本机配置与检测偏好，一次回到配置之前。</p>
+        <p>保存十个用户配置位置与检测偏好，恢复到修改之前；不包含钥匙串与会话历史。</p>
       </div>
       <div class="heading-actions">
         <button class="button secondary" :disabled="busy || !connected" @click="emit('capture')">

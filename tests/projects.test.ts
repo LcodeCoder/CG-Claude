@@ -333,3 +333,18 @@ test('scans sandbox declarations in both project scopes without executing or exp
   ).toBe('pass')
   expect(JSON.stringify(report)).not.toContain('must-not-run-secret')
 })
+
+test('project Git TLS declarations are checked and private subsections remain hidden', async () => {
+  await data.write(
+    '.git/config',
+    '[http "https://private-user:private-secret@private.example"]\nsslVerify = false\n',
+  )
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-tls')?.status).toBe('fail')
+  expect(JSON.stringify(report)).not.toMatch(/private-secret|private\.example/)
+})
+test('project Git include cannot be treated as fully checked TLS', async () => {
+  await data.write('.git/config', '[include]\npath = private-config\n')
+  const report = await scanProject(data.ctx, data.home)
+  expect(report.findings.find((item) => item.id === 'project-tls')?.status).toBe('manual')
+})

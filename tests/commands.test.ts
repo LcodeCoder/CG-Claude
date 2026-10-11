@@ -112,3 +112,33 @@ test.skipIf(process.platform !== 'win32')(
     }
   },
 )
+
+test.each(['http.proxy', 'https.proxy'])(
+  'recognizes absent fixed Git key %s without ignoring actual errors',
+  async (key) => {
+    const execute = vi
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error('key absent'), { code: 1, stdout: '', stderr: '' }),
+      )
+    expect(
+      await runSystemCommand(ctx, 'git', ['config', '--global', '--get', key], 3500, execute),
+    ).toEqual({ ok: true, stdout: '', stderr: '' })
+    execute.mockRejectedValue(
+      Object.assign(new Error('config error'), {
+        code: 1,
+        stdout: '',
+        stderr: 'private config error',
+      }),
+    )
+    const result = await runSystemCommand(
+      ctx,
+      'git',
+      ['config', '--global', '--get', key],
+      3500,
+      execute,
+    )
+    expect(result.ok).toBe(false)
+    expect(JSON.stringify(result)).not.toContain('private')
+  },
+)

@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 23px 26px;
+  padding: 19px 22px;
 }
 
 .overview-symbol {
@@ -48,8 +48,20 @@
   display: inline-block;
 }
 
-.overview-mode {
+.overview-links {
   margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.overview-links .text-link {
+  font-size: 13px;
+}
+
+.overview-mode {
   color: #80746b;
   display: inline-flex;
   align-items: center;
@@ -67,8 +79,8 @@
 
 .overview-counts {
   display: grid;
-  grid-template-columns: 1fr 1fr 1.25fr 1.35fr;
-  padding: 17px 26px;
+  grid-template-columns: 1fr 1fr 1fr 1.25fr;
+  padding: 14px 22px;
   background: #fefdfd;
   border-top: 1px solid #f5f2ef;
 }
@@ -188,16 +200,33 @@
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 11px;
-  padding: 16px 25px 23px;
-  margin-bottom: 24px;
+  padding: 0 22px;
+  margin-bottom: 18px;
 }
 
 .panel-caption {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 22px;
+  padding: 12px 0;
   gap: 10px;
+}
+
+details.network-path-panel > summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+details.network-path-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.network-path-panel[open] > summary > svg {
+  transform: rotate(180deg);
+}
+
+details.network-path-panel .network-path {
+  padding: 12px 0 20px;
 }
 
 .panel-caption > span:first-child {
@@ -325,7 +354,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 21px 15px;
+  padding: 17px 21px 13px;
 }
 
 .results-heading h2 {
@@ -498,6 +527,9 @@
 }
 
 .check-title > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
   color: #7e7269;
   line-height: 1.6;
@@ -726,7 +758,7 @@
 }
 
 .repair-panel > p {
-  font-size: 14px;
+  font-size: 13px;
   color: #80746a;
   line-height: 1.85;
   margin-bottom: 19px;

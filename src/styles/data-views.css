@@ -674,3 +674,14 @@
   background: #edf6f2;
   color: #55776a;
 }
+.timezone-guidance {
+  margin: 12px 0 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.timezone-guidance span {
+  display: block;
+  margin-top: 6px;
+}

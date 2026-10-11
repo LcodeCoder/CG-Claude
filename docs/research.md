@@ -102,3 +102,13 @@
 最后核对 [官方网络配置](https://code.claude.com/docs/en/network-config) 的证书确认规则：`/status` 的 Additional CA cert(s) 只显示 `NODE_EXTRA_CA_CERTS` 路径，不确认加载成功，实际加载需核对本机 debug 成功或失败记录。证书检查摘要改为“已列出证书配置”，覆盖只有 `CLAUDE_CODE_CERT_STORE` 声明、没有证书文件的情况，避免误报为文件可读。证书排查帮助同步补充该边界。
 
 继续检索防封类社区插件与网络错误记录，没有将按 403 自动拦截、住宅代理宣传或账号切换包装器纳入自动修复。现有逐项证据、服务方式保留与本人官方复核仍是采用方式；后续线索也按相同依据筛选。
+
+## 1.2.1 原文逐项审计与扩展来源（2026-10-11）
+
+本轮完整阅读 AYi 原文第 0–10 节及参考来源，将要求、采样限制与执行边界整理成 43 条稳定 ID；原文路线 B 的 TUN / minimal 与用户当前 system / balanced 偏好之间的差异明确保留。没有将当前偏好显示为完全符合原文，也没有把人工要求折算成通过项。完整映射见 [article-audit.md](article-audit.md)。
+
+时区以原文台北建议为默认目标；用户可按有效出口 IANA 时区或手动选择目标。操作系统、工具 Node 进程与浏览器分开取证。上海和台北相同 UTC 偏移不能证明符合所选目标；当前读数也不能证明自动时区、定位权限、手机端设置已经处理。独立取证与待确认条件见 [timezone-detection.md](timezone-detection.md)。
+
+46 条来源逐项写明采用段落与实现位置，来源清单只保留元数据和可用的内容摘要校验值，不提交来源全文或用户信息。新增 IPinfo 官方 Legacy Free API 与 Lite 响应差异来源：仅采用 Legacy /json 顶层时区，缺失或无效值保留待确认，不宣称支持 Lite/Core/ASN 时区查询。见 [reference-audit.md](reference-audit.md)与 source-audit-manifest.json。
+
+npm/Git 的有效代理查询须完整成功；Git 固定 key 的空输出 exit 1 与其他错误分开。Git http.sslVerify、URL 子节、旧式 dotted 子节及 GIT_SSL_NO_VERIFY 纳入 TLS 判断，include、复杂值与不可读来源保留待确认。WebRTC 的未完成、超时、异常和缺少当前浏览器公网基准也不报通过；终端不同出口不能代替浏览器基准。上述扩展都限定在实际能读取的配置与采样证据范围。

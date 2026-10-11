@@ -14,6 +14,8 @@ export async function fixture(overrides: Partial<Context> = {}) {
     env: {},
     platform: 'darwin',
     demo: true,
+    readSystemTimezone: async () => ({ timezone: 'Asia/Taipei', source: '隔离测试系统时区' }),
+    readRuntimeTimezone: () => 'Asia/Taipei',
     run: async (command, args): Promise<CommandResult> => {
       if (command === 'scutil' && args[0] === '--proxy')
         return {

@@ -68,6 +68,22 @@ export async function runSystemCommand(
     }
     return { ok: true, stdout: result.stdout.trim(), stderr: result.stderr.trim() }
   } catch (error) {
+    const failure = error as { code?: unknown; stdout?: string; stderr?: string }
+    // Git's fixed --get probes exit 1 for an absent key; an actual error stays unknown.
+    if (
+      command === 'git' &&
+      args.length === 4 &&
+      args[0] === 'config' &&
+      args[1] === '--global' &&
+      args[2] === '--get' &&
+      ['http.proxy', 'https.proxy'].includes(args[3]!) &&
+      failure.code === 1 &&
+      failure.stdout !== undefined &&
+      failure.stderr !== undefined &&
+      !failure.stdout.trim() &&
+      !failure.stderr.trim()
+    )
+      return { ok: true, stdout: '', stderr: '' }
     return commandFailure(error)
   }
 }

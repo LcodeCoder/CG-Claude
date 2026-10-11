@@ -110,3 +110,9 @@ flowchart LR
 App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog、SnapshotRestoreDialog、RestoreBackupDialog 负责各自的展示。弹窗只通过类型明确的事件请求操作，文件写入、任务互斥和冲突校验仍由 useGuard 与服务端承担。共同的模态行为由 GuardDialog 管理。修改文案或预览排版时可以只阅读对应组件，避免在 App 中查找多段事务模板。
 
 配置目录作用范围由 `server/configuration-scope.ts` 统一判断。仅比较当前进程和默认用户文件中的声明，不执行 shell、不扩展变量、不读取外部目录。检测来源、连接编辑和自动修复共用该判断；执行阶段再次校验，避免预览后目录范围改变。Windows 按自身路径语义比较大小写与分隔符。
+
+## 原文与文献审计
+
+`shared/article-audit.ts` 注册原文各节要求、自动覆盖范围、修复方式和稳定检查 ID。`shared/reference-audit.ts` 记录每条文献实际采用的段落及代码位置，`ArticleAuditPanel.vue` 展示当前模式与原文的差异并接入精确跳转。新增来源时同步这两份数据，再运行 `npm run docs:audit` 生成审计文档；不要把已有检查通过当成满足原文全文。
+
+系统时区取证在 `server/system-timezone.ts`，目标与证据判断在 `server/timezone-diagnostics.ts`。Git TLS 的布尔语义在 `server/git-tls.ts`，用户和项目作用域分别核对，include 与无效值保留未知；系统时区和 Git TLS 不自动改写。

@@ -3,7 +3,14 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { CheckStatus, ProjectFinding, ProjectReport } from '../shared/types.js'
 import type { Context } from './context.js'
-import { claudeEnv, parseClaude, npmAssignments, gitAssignments, proxyKeys } from './configs.js'
+import {
+  claudeEnv,
+  parseClaude,
+  npmAssignments,
+  gitAssignments,
+  gitTlsAssignments,
+  proxyKeys,
+} from './configs.js'
 import { endpointValue, safeValue } from './safety.js'
 import {
   isEnabledEnvironmentFlag,
@@ -11,6 +18,7 @@ import {
 } from '../shared/environment-values.js'
 import { projectFiles, readProjectFiles } from './project-files.js'
 import { credentialField, inspectMcp } from './mcp-diagnostics.js'
+import { gitBoolean } from './git-tls.js'
 import { sandboxFinding } from './sandbox-diagnostics.js'
 
 export async function scanProject(ctx: Context, supplied: string): Promise<ProjectReport> {
@@ -229,19 +237,27 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     '项目层的代理不会随用户级配置修复移除。',
     proxies.map((item) => ({ label: item.key, value: endpointValue(item.value) })),
   )
+  const gitTls = gitTlsAssignments(git.content ?? '')
+  const gitTlsIncomplete =
+    Boolean(git.error) ||
+    /\[include(?:If)?(?:\s|\])/im.test(git.content ?? '') ||
+    gitTls.some((item) => !item.safe || gitBoolean(item.value) === undefined) ||
+    (env.GIT_SSL_NO_VERIFY !== undefined && gitBoolean(env.GIT_SSL_NO_VERIFY) === undefined)
   const tlsDisabled =
+    gitTls.some((item) => item.safe && gitBoolean(item.value) === false) ||
+    (env.GIT_SSL_NO_VERIFY !== undefined && gitBoolean(env.GIT_SSL_NO_VERIFY) === true) ||
     String(env.NODE_TLS_REJECT_UNAUTHORIZED) === '0' ||
     /^\s*strict-ssl\s*=\s*(?:false|0)\s*(?:[#;].*)?$/im.test(npm.content ?? '')
   add(
     'project-tls',
     '项目 TLS 证书校验',
-    tlsDisabled ? 'fail' : envIncomplete || npm.error ? 'manual' : 'pass',
+    tlsDisabled ? 'fail' : envIncomplete || npm.error || gitTlsIncomplete ? 'manual' : 'pass',
     tlsDisabled
       ? '项目配置关闭了 TLS 证书校验'
-      : envIncomplete || npm.error
-        ? '项目配置未完整读取，证书校验待确认'
+      : envIncomplete || npm.error || gitTlsIncomplete
+        ? '项目 TLS 配置未完整读取或存在 include / 动态值，待确认'
         : '未在已读取配置中发现关闭校验',
-    '启用证书校验；企业代理可配置可信 CA，避免忽略证书错误。',
+    '核对项目 env、.npmrc 与 .git/config 的关闭校验声明；Git include 和其他配置层需另行复核。企业代理可配置可信 CA，避免忽略证书错误。',
   )
   let mcpCredentials = false
   let mcpReferences = 0

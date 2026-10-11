@@ -1,4 +1,6 @@
 import { get as httpGet } from 'node:http'
+import fs from 'node:fs/promises'
+import path from 'node:path'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { createAppServer } from '../server/index'
 import { defaultPreferences } from '../shared/types'
@@ -294,4 +296,20 @@ test('custom-directory bootstrap describes the blocked scope instead of claiming
   const denied = await post('/api/repairs/preview', { fixIds: ['claude-privacy'] })
   expect(denied.status).toBe(400)
   expect(await data.read('.claude/settings.json')).toBe(original)
+})
+
+test('public brand assets revalidate when the application is updated', async () => {
+  await app.close()
+  const distDir = path.join(data.home, 'ui-fixture')
+  await fs.mkdir(path.join(distDir, 'assets'), { recursive: true })
+  await fs.writeFile(path.join(distDir, 'logo.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
+  await fs.writeFile(path.join(distDir, 'assets', 'index-abcd1234.js'), 'export {}')
+  app = await createAppServer({ ctx: data.ctx, port: 0, dev: false, distDir })
+  base = `http://127.0.0.1:${await app.listen()}`
+  const logo = await fetch(base + '/logo.svg?v=1.2.1')
+  expect(logo.status).toBe(200)
+  expect(logo.headers.get('cache-control')).toBe('no-cache')
+  expect((await fetch(base + '/assets/index-abcd1234.js')).headers.get('cache-control')).toBe(
+    'public, max-age=86400',
+  )
 })

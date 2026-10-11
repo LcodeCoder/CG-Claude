@@ -1,5 +1,6 @@
 import { isIP } from 'node:net'
 import { usageModeLabel } from '../shared/usage-modes.js'
+import { timezoneModeLabels } from '../shared/timezones.js'
 import { categoryLabels, statusLabels } from '../shared/types.js'
 import type { ScanReport } from '../shared/types.js'
 /** Validate address candidates so versions and ordinary numbers remain readable. */
@@ -89,7 +90,8 @@ export function markdownReport(report: ScanReport): string {
     `- 服务方式：${usageModeLabel(report.preferences.usageMode)}`,
     `- 网络模式：${routeLabel}`,
     `- 隐私偏好：${report.preferences.privacy === 'minimal' ? '关闭全部非必要流量' : '关闭使用指标与错误报告'}`,
-    `- 期望时区：${report.preferences.expectedTimezone.replace(/[\r\n]/g, ' ') || '未指定'}`,
+    `- 时区检测依据：${report.preferences.timezoneMode ? timezoneModeLabels[report.preferences.timezoneMode] : '旧记录未保存时区依据'}`,
+    `- 手动期望时区：${report.preferences.expectedTimezone.replace(/[\r\n]/g, ' ') || '未指定'}`,
     `- 期望出口地区：${report.preferences.expectedCountry || '未指定'}`,
     '',
     `通过 ${report.counts.pass} 项；需关注 ${report.counts.warn} 项；需处理 ${report.counts.fail} 项；待确认 ${report.counts.manual} 项；未检测 ${report.counts.skipped} 项。`,

@@ -3,6 +3,7 @@ import { usageModeOptions } from '../../shared/usage-modes'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { Check, Info, Laptop, LoaderCircle, LockKeyhole, Network } from '@lucide/vue'
 import type { Preferences } from '../../shared/types'
+import TimezonePreferences from '../components/TimezonePreferences.vue'
 const draft = defineModel<Preferences>({ required: true })
 defineProps<{ busy: boolean; working: boolean; connected: boolean; changed: boolean }>()
 const emit = defineEmits<{ save: [preferences: Preferences] }>()
@@ -40,41 +41,10 @@ const emit = defineEmits<{ save: [preferences: Preferences] }>()
         <Laptop :size="20" />
         <div>
           <h2>环境期望值</h2>
-          <p>可留空，按实际环境检测；这里的选项不修改系统地区。</p>
+          <p>时区按明确目标检测，出口地区可另外选择。</p>
         </div>
       </div>
-      <div class="field-row">
-        <label for="expected-timezone">期望时区<span>发现差异后，先核对本机真实设置。</span></label
-        ><select id="expected-timezone" v-model="draft.expectedTimezone">
-          <option value="">不指定期望时区</option>
-          <option value="Asia/Shanghai">Asia/Shanghai</option>
-          <option value="Asia/Taipei">Asia/Taipei</option>
-          <option value="Asia/Singapore">Asia/Singapore</option>
-          <option value="Asia/Tokyo">Asia/Tokyo</option>
-          <option value="America/Los_Angeles">America/Los_Angeles</option>
-          <option value="America/New_York">America/New_York</option>
-          <option value="Europe/London">Europe/London</option>
-          <option value="UTC">UTC</option>
-          <option
-            v-if="
-              draft.expectedTimezone &&
-              ![
-                'Asia/Shanghai',
-                'Asia/Taipei',
-                'Asia/Singapore',
-                'Asia/Tokyo',
-                'America/Los_Angeles',
-                'America/New_York',
-                'Europe/London',
-                'UTC',
-              ].includes(draft.expectedTimezone)
-            "
-            :value="draft.expectedTimezone"
-          >
-            {{ draft.expectedTimezone }}
-          </option>
-        </select>
-      </div>
+      <TimezonePreferences v-model="draft" prefix="settings" />
       <div class="field-row">
         <label for="expected-country"
           >期望出口国家 / 地区<span>这是网络核对条件，与服务实际支持资格不同。</span></label

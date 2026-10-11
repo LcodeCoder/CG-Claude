@@ -13,7 +13,7 @@
 }
 
 .check-summary {
-  min-height: 76px;
+  min-height: 58px;
 }
 
 .detail-label {
@@ -22,6 +22,12 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--muted);
+}
+
+.check-result-summary {
+  font-size: 14px;
+  color: var(--green);
+  margin-bottom: 12px;
 }
 
 .check-detail > .detail-label:first-child {

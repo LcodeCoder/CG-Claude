@@ -2,6 +2,7 @@
 import { projectFindingLabel } from '../lib/project-results'
 import { computed, ref, watch } from 'vue'
 import { BookOpen, Search, X, Copy } from '@lucide/vue'
+import ArticleAuditPanel from '../components/ArticleAuditPanel.vue'
 import ReferenceCard from '../components/ReferenceCard.vue'
 import {
   references,
@@ -12,13 +13,15 @@ import {
 } from '../../shared/references'
 import type { ReferenceKind, ReferenceTopic, ReferenceTarget } from '../../shared/references'
 import { manualItems } from '../../shared/types'
-import type { CheckResult, ProjectFinding } from '../../shared/types'
+import type { CheckResult, ProjectFinding, ScanReport } from '../../shared/types'
 const props = defineProps<{
   target?: ReferenceTarget
+  report?: ScanReport
   checks?: CheckResult[]
   projectFindings?: ProjectFinding[]
 }>()
 const emit = defineEmits<{
+  settings: []
   clear: []
   check: [id: string]
   project: [id: string]
@@ -33,14 +36,14 @@ const latestReview =
 const query = ref('')
 const kind = ref<ReferenceKind | 'all'>('all')
 const topic = ref<ReferenceTopic | 'all'>('all')
-const readingMode = ref<'summary' | 'full'>(props.target ? 'full' : 'summary')
+const readingMode = ref<'compact' | 'full'>('compact')
 watch(
   () => props.target,
   () => {
     query.value = ''
     kind.value = 'all'
     topic.value = 'all'
-    readingMode.value = props.target ? 'full' : 'summary'
+    readingMode.value = 'compact'
   },
 )
 const selectedTitle = computed(() => {
@@ -78,15 +81,21 @@ function clearFilters() {
   <section id="reference-intro" tabindex="-1" class="reference-intro data-panel">
     <BookOpen :size="24" />
     <div>
-      <h2>每个建议，都可以追溯出处</h2>
-      <p>
-        优先采用当前官方说明，社区实践用于补充排查线索。查看采用方式与判断边界，再决定是否适合你的环境。
-      </p>
+      <strong>{{ references.length }} 条来源</strong>
+      <p>官方文档与社区记录</p>
     </div>
-    <span class="reference-updated"
-      >最近核对<br /><strong>{{ latestReview }}</strong></span
-    >
+    <span class="reference-updated">核对 {{ latestReview }}</span>
   </section>
+  <ArticleAuditPanel
+    v-if="!target || (target.scope === 'source' && target.id === 'ayi-guide')"
+    :report="report"
+    :project-findings="projectFindings"
+    :expanded="target?.scope === 'source' && target.id === 'ayi-guide'"
+    @check="emit('check', $event)"
+    @project="emit('project', $event)"
+    @manual="emit('manual', $event)"
+    @settings="emit('settings')"
+  />
   <div class="reference-toolbar" role="search" aria-label="文献检索工具">
     <label class="search-field"
       ><Search :size="16" /><input
@@ -125,23 +134,21 @@ function clearFilters() {
   </div>
   <div class="reference-reading-bar">
     <div class="reference-reading-options" role="group" aria-label="文献阅读方式">
-      <span>阅读方式</span>
-      <button :aria-pressed="readingMode === 'summary'" @click="readingMode = 'summary'">
-        摘要浏览
+      <button :aria-pressed="readingMode === 'compact'" @click="readingMode = 'compact'">
+        精简
       </button>
-      <button :aria-pressed="readingMode === 'full'" @click="readingMode = 'full'">完整阅读</button>
+      <button :aria-pressed="readingMode === 'full'" @click="readingMode = 'full'">详细</button>
     </div>
     <button
       class="text-link"
       :disabled="!filtered.length"
       @click="emit('copy', referenceMarkdown(filtered))"
     >
-      <Copy :size="14" />复制当前 {{ filtered.length }} 条文献
+      <Copy :size="14" />复制引用
     </button>
   </div>
   <p class="reference-count" role="status">
-    显示 {{ filtered.length }} / {{ references.length }} 条参考文献 ·
-    摘要随应用保存在本机，原文链接在外部浏览器打开
+    {{ filtered.length }} / {{ references.length }} 条来源
   </p>
   <section v-if="!filtered.length" class="data-panel result-empty">
     <BookOpen :size="26" />
