@@ -289,7 +289,7 @@ export class SetupWorkflows {
         '每个节点首次执行失败后最多重试 3 次，仍未成功就跳过，继续下一个节点。',
         '每次写入前保存原始备份。密钥、Hooks、权限与其他未选字段会保留。',
         '系统时区设置可能需要管理员授权。已有终端与 Claude Code 会话需重新打开。',
-        '自动时区与定位服务仍需人工复核；系统代理、TUN 与 DNS 由对应软件配置。',
+        'macOS 已读取的自动时区开关会随系统时区步骤关闭。定位服务、手机、系统代理、TUN 与 DNS 在完成页逐项复核。',
         `${privacyCompatibilityNote} 已有隐私设置保留。`,
       ],
     }
@@ -397,6 +397,16 @@ export class SetupWorkflows {
       if (!expected) return
       const current = await captureTimezoneState(this.ctx)
       if (hash(JSON.stringify(current)) === hash(JSON.stringify(expected))) return
+      // Accept our delayed automatic-timezone write only if every other layer is unchanged.
+      if (
+        prepared.systemTimezoneWrite?.automaticAttempted &&
+        current.automatic === false &&
+        hash(JSON.stringify({ ...current, automatic: expected.automatic })) ===
+          hash(JSON.stringify(expected))
+      ) {
+        expected.automatic = false
+        return
+      }
       // Accept this workflow's delayed OS write only when all other layers are unchanged.
       if (
         prepared.systemTimezoneWrite?.attempted &&

@@ -77,3 +77,145 @@
     max-width: none;
   }
 }
+
+.manual-instructions {
+  margin-top: 12px;
+}
+.manual-instructions > summary,
+.setup-execution-details > summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+  padding: 8px 0;
+}
+.manual-guide {
+  font-size: 13px;
+  line-height: 1.7;
+}
+.manual-guide ol {
+  padding-left: 22px;
+  margin: 12px 0;
+}
+.manual-guide li + li {
+  margin-top: 6px;
+}
+.guide-note {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 10px 0;
+}
+.guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 15px;
+  margin: 14px 0;
+}
+.guide-actions .text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.guide-command {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin: 12px 0;
+  overflow: hidden;
+}
+.guide-command > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.guide-command > div strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.guide-command pre {
+  margin: 0;
+  padding: 12px;
+  background: var(--canvas);
+  overflow-x: auto;
+  max-width: 100%;
+  font-size: 11px;
+  line-height: 1.8;
+  user-select: text;
+}
+.guide-command > p {
+  padding: 0 12px 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.guide-source {
+  color: var(--muted);
+  font-size: 11px;
+}
+.setup-followups {
+  margin: 24px 0 12px;
+}
+.followup-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.followup-heading > svg {
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.followup-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.followup-heading p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.followup-item {
+  border-bottom: 1px solid var(--border);
+}
+.followup-item > summary {
+  cursor: pointer;
+  padding: 15px 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.followup-item > summary > span {
+  margin-left: 4px;
+  font-weight: 600;
+}
+.followup-item > summary > small {
+  color: var(--muted);
+  margin-left: 12px;
+  font-size: 11px;
+  font-weight: 400;
+}
+.followup-body {
+  padding: 0 4px 10px 20px;
+  min-width: 0;
+}
+.followup-body > p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+.setup-followups > .button {
+  margin-top: 18px;
+}
+.setup-execution-details {
+  margin-top: 16px;
+}
+@media (max-width: 600px) {
+  .followup-body {
+    padding-left: 0;
+  }
+  .guide-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+}

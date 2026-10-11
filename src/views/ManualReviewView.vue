@@ -3,11 +3,17 @@ import { computed, ref, nextTick } from 'vue'
 import { ArrowUpRight, Check, Info, ListChecks, MessageSquareText } from '@lucide/vue'
 import { manualItems } from '../../shared/types'
 import type { ManualReview, ManualReviewRequest } from '../../shared/types'
+import ManualActionGuide from '../components/ManualActionGuide.vue'
+import { manualGuidance } from '../../shared/manual-guidance'
+import type { LocalActionId } from '../../shared/local-actions'
 import GuardDialog from '../components/GuardDialog.vue'
 import { referencesForManualItem } from '../../shared/references'
 const emit = defineEmits<{ references: [id: string] }>()
 const props = defineProps<{
   reviews: ManualReview[]
+  platform: string
+  timezone?: string
+  openAction: (action: LocalActionId) => Promise<boolean>
   busy: boolean
   save: (request: ManualReviewRequest) => Promise<boolean>
   reset: () => Promise<boolean>
@@ -91,6 +97,15 @@ async function resetReviews() {
         <span class="manual-category">{{ item.category }}</span>
         <h3>{{ item.title }}</h3>
         <p>{{ item.description }}</p>
+        <details class="manual-instructions">
+          <summary>配置方法与快捷入口</summary>
+          <ManualActionGuide
+            :guidance="manualGuidance(item.id, platform, timezone)"
+            :platform="platform"
+            :busy="busy"
+            :open-action="openAction"
+          />
+        </details>
         <p v-if="reviewFor(item.id)?.note" class="manual-note">
           <MessageSquareText :size="14" />{{ reviewFor(item.id)?.note }}
         </p>

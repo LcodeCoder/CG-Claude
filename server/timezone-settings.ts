@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import type { ChangePreview } from '../shared/types.js'
 import { normalizeTimezone, sameTimezone } from '../shared/timezones.js'
 import type { Context } from './context.js'
+import { verifyAutomaticTimezone } from './timezone-automation.js'
 import { windowsZones } from './system-timezone.js'
 
 export function requireTimezone(value: string): string {
@@ -109,17 +110,20 @@ export const timezoneStateSchema = z.object({
     'netbsd',
   ]),
   system: z.string().max(150).optional(),
+  automatic: z.boolean().optional(),
   runtime: z.string().max(4096).nullable(),
   user: z.string().max(4096).nullable().optional(),
 })
 export type TimezoneState = z.infer<typeof timezoneStateSchema>
 export async function captureTimezoneState(ctx: Context): Promise<TimezoneState> {
   const system = await ctx.readSystemTimezone().catch(() => undefined)
+  const automatic = await ctx.readAutomaticTimezone().catch(() => undefined)
   const user =
     ctx.platform === 'win32' ? await ctx.readUserTimezone().catch(() => undefined) : undefined
   return {
     platform: ctx.platform,
     system: normalizeTimezone(system?.timezone),
+    ...(automatic !== undefined ? { automatic } : {}),
     runtime: ctx.env.TZ ?? null,
     ...(user !== undefined ? { user } : {}),
   }
@@ -128,6 +132,15 @@ export function timezoneChanges(before: TimezoneState, after: TimezoneState): Ch
   const display = (value: string | null | undefined) =>
     value == null ? '未设置' : (normalizeTimezone(value) ?? '原值（已隐藏）')
   return [
+    ...(before.automatic !== after.automatic && after.automatic !== undefined
+      ? [
+          {
+            key: '自动设定时区',
+            before: before.automatic === undefined ? '未读取' : before.automatic ? '开启' : '关闭',
+            after: after.automatic ? '开启' : '关闭',
+          },
+        ]
+      : []),
     ...(after.system !== undefined && !sameTimezone(before.system, after.system)
       ? [{ key: '系统时区', before: display(before.system), after: display(after.system) }]
       : []),
@@ -162,6 +175,10 @@ export async function restoreTimezoneState(ctx: Context, state: TimezoneState) {
     await ctx.setSystemTimezone(requireTimezone(state.system))
     await verifySystemTimezone(ctx, state.system)
   }
+  if (state.automatic !== undefined && (await ctx.readAutomaticTimezone()) !== state.automatic) {
+    await ctx.setAutomaticTimezone(state.automatic)
+    await verifyAutomaticTimezone(ctx, state.automatic)
+  }
   if (state.user !== undefined && (await ctx.readUserTimezone()) !== state.user) {
     await ctx.setUserTimezone(state.user)
     if ((await ctx.readUserTimezone()) !== state.user)
@@ -192,5 +209,11 @@ export async function rollbackTimezoneState(
     current.user !== attempted.user
   )
     throw new Error('Windows 用户 TZ 又被其他程序修改，无法自动回退')
+  if (
+    original.automatic !== undefined &&
+    current.automatic !== original.automatic &&
+    current.automatic !== attempted.automatic
+  )
+    throw new Error('自动时区被其他程序修改，无法自动回退')
   await restoreTimezoneState(ctx, original)
 }

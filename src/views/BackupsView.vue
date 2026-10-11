@@ -1,10 +1,22 @@
 <script setup lang="ts">
+import type {
+  BrowserLanguageConfiguration,
+  BrowserLanguageRequest,
+  BrowserLanguagePreview,
+} from '../../shared/browser-configuration'
+import BrowserLanguageConfigurator from '../components/BrowserLanguageConfigurator.vue'
 import { computed } from 'vue'
 import { ArchiveRestore, Check, LockKeyhole, RotateCcw } from '@lucide/vue'
 import type { BackupSummary, SnapshotSummary } from '../../shared/types'
 import { fixLabels } from '../../shared/types'
 import { formatDate } from '../lib/format'
 const props = defineProps<{
+  browserLanguages?: BrowserLanguageConfiguration
+  previewBrowserLanguage: (
+    value: BrowserLanguageRequest,
+  ) => Promise<BrowserLanguagePreview | undefined>
+  applyBrowserLanguage: (id: string) => Promise<boolean>
+  restoreBrowserLanguage: (id: string) => Promise<boolean>
   snapshots: SnapshotSummary[]
   backups: BackupSummary[]
   busy: boolean
@@ -29,11 +41,21 @@ function formatFixes(ids: BackupSummary['fixIds']) {
 }
 </script>
 <template>
+  <BrowserLanguageConfigurator
+    backups-only
+    language="en-US"
+    :configuration="browserLanguages"
+    :busy="busy"
+    :connected="connected"
+    :preview="previewBrowserLanguage"
+    :apply="applyBrowserLanguage"
+    :restore="restoreBrowserLanguage"
+  />
   <section class="snapshot-panel data-panel">
     <div class="panel-heading">
       <div>
         <h2>完整配置快照</h2>
-        <p>保存本机配置、时区、TZ 与检测偏好，支持还原。</p>
+        <p>保存本机配置、时区、TZ、可读取的自动时区开关与检测偏好。</p>
       </div>
       <div class="heading-actions">
         <button class="button secondary" :disabled="busy || !connected" @click="emit('capture')">
@@ -59,7 +81,11 @@ function formatFixes(ids: BackupSummary['fixIds']) {
           {{ snapshot.status === 'restored' ? '已还原' : '可还原' }}
         </p>
         <small v-if="snapshot.timezone?.system"
-          >系统时区：{{ snapshot.timezone.system }} · 包含 TZ</small
+          >系统时区：{{ snapshot.timezone.system }} · 包含 TZ<span
+            v-if="snapshot.timezone.automatic !== undefined"
+          >
+            · 自动时区{{ snapshot.timezone.automatic ? '开启' : '关闭' }}</span
+          ></small
         >
         <small v-if="snapshot.restoredAt"
           >已在 {{ formatDate(snapshot.restoredAt, true) }} 还原</small

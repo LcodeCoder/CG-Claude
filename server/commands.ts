@@ -1,6 +1,8 @@
 import { execFile } from 'node:child_process'
 import type { ExecFileOptionsWithStringEncoding } from 'node:child_process'
 import { promisify } from 'node:util'
+import { promises as fs, constants } from 'node:fs'
+import path from 'node:path'
 import type { CommandResult, Context } from './context.js'
 
 const execFileAsync = promisify(execFile)
@@ -26,7 +28,12 @@ function commandFailure(error: unknown): CommandResult {
   return {
     ok: false,
     stdout: failure.stdout?.trim() ?? '',
-    stderr: failure.code === 'ENOENT' ? '未安装此命令' : '命令未完成或没有权限',
+    stderr:
+      failure.code === 'ENOENT'
+        ? '当前命令搜索路径中未找到此命令'
+        : failure.code === 'EACCES'
+          ? '命令没有执行权限'
+          : '命令未完成或超时',
   }
 }
 
@@ -38,6 +45,24 @@ export async function runSystemCommand(
   timeout = 5000,
   execute: Executor = execFileAsync,
 ): Promise<CommandResult> {
+  let executable = command
+  if (
+    ctx.platform !== 'win32' &&
+    ['claude', 'npm', 'node', 'git', 'curl', 'scutil'].includes(command)
+  ) {
+    for (const directory of (ctx.env.PATH ?? '').split(':')) {
+      if (!path.isAbsolute(directory) || /[\x00-\x1f]/.test(directory)) continue
+      const candidate = path.join(directory, command)
+      try {
+        if (!(await fs.stat(candidate)).isFile()) continue
+        await fs.access(candidate, constants.X_OK)
+        executable = candidate
+        break
+      } catch {
+        /* Try the next absolute PATH entry. */
+      }
+    }
+  }
   const options: ExecFileOptionsWithStringEncoding = {
     timeout,
     maxBuffer: 1024 * 1024,
@@ -54,7 +79,7 @@ export async function runSystemCommand(
   try {
     let result: { stdout: string; stderr: string }
     try {
-      result = await execute(command, args, options)
+      result = await execute(executable, args, options)
     } catch (error) {
       const script = ctx.platform === 'win32' ? windowsProbe(command, args) : undefined
       const code = (error as NodeJS.ErrnoException).code
@@ -66,7 +91,12 @@ export async function runSystemCommand(
         windowsVerbatimArguments: true,
       })
     }
-    return { ok: true, stdout: result.stdout.trim(), stderr: result.stderr.trim() }
+    return {
+      ok: true,
+      stdout: result.stdout.trim(),
+      stderr: result.stderr.trim(),
+      ...(executable !== command ? { executable } : {}),
+    }
   } catch (error) {
     const failure = error as { code?: unknown; stdout?: string; stderr?: string }
     // Git's fixed --get probes exit 1 for an absent key; an actual error stays unknown.

@@ -28,6 +28,7 @@ import {
 } from './configuration-diagnostics.js'
 import type { Context, CommandResult } from './context.js'
 import { browserLanguageCheck } from './browser-language.js'
+import { automaticTimezoneCheck, readLocationTimezone } from './timezone-automation.js'
 import { machineInfo } from './context.js'
 import type { SystemTimezone } from './system-timezone.js'
 import {
@@ -36,6 +37,7 @@ import {
   browserTimezoneCheck,
   runtimeTimezoneCheck,
   timezoneFollowupCheck,
+  locationTimezoneCheck,
 } from './timezone-diagnostics.js'
 import {
   readAllConfigs,
@@ -61,6 +63,8 @@ const officialNetwork = 'https://code.claude.com/docs/en/network-config'
 interface SystemSnapshot {
   proxy: CommandResult
   dns: CommandResult
+  automaticTimezone?: boolean
+  locationTimezone: string
   timezone: SystemTimezone
   interfaces: { name: string; family: string; address: string; internal: boolean }[]
 }
@@ -91,7 +95,13 @@ async function systemSnapshot(ctx: Context): Promise<SystemSnapshot> {
       () => unsupported,
     )
   }
-  const results = await Promise.allSettled([proxyTask, dnsTask, ctx.readSystemTimezone()])
+  const results = await Promise.allSettled([
+    proxyTask,
+    dnsTask,
+    ctx.readSystemTimezone(),
+    ctx.readAutomaticTimezone(),
+    readLocationTimezone(ctx),
+  ])
   const interfaces = Object.entries(os.networkInterfaces()).flatMap(([name, addresses]) =>
     (addresses ?? []).map((address) => ({
       name,
@@ -101,6 +111,10 @@ async function systemSnapshot(ctx: Context): Promise<SystemSnapshot> {
     })),
   )
   return {
+    automaticTimezone:
+      results[3]?.status === 'fulfilled' ? (results[3].value as boolean | undefined) : undefined,
+    locationTimezone:
+      results[4]?.status === 'fulfilled' ? (results[4].value as string) : '未读取到定位时区开关',
     proxy: results[0]?.status === 'fulfilled' ? (results[0].value as CommandResult) : unsupported,
     dns: results[1]?.status === 'fulfilled' ? (results[1].value as CommandResult) : unsupported,
     timezone:
@@ -198,6 +212,33 @@ export function isPublicAddress(address: string): boolean {
     return !/^(?:fc|fd|fe8|fe9|fea|feb|::1$|::$)/i.test(address)
   }
   return false
+}
+export function ipv6Result(
+  interfaces: { name: string; family: string; internal: boolean; address: string }[],
+): CheckResult {
+  const addresses = interfaces.filter((item) => item.family === 'IPv6' && !item.internal)
+  const publicAddresses = addresses.filter((item) => isPublicAddress(item.address))
+  return {
+    id: 'ipv6',
+    category: 'network',
+    title: 'IPv6 路由覆盖',
+    description: '区分公网候选与链路本地 / 私有 IPv6；接口不能证明实际请求路由。',
+    fixIds: [],
+    status: publicAddresses.length ? 'manual' : 'pass',
+    summary: publicAddresses.length
+      ? '存在 IPv6 公网候选，需确认代理覆盖'
+      : addresses.length
+        ? '仅观察到本地 IPv6 地址，未发现公网候选'
+        : '未发现非回环 IPv6 地址',
+    evidence: addresses.slice(0, 8).map((item) => ({
+      label: `${item.name} · ${isPublicAddress(item.address) ? '公网候选' : '本地地址'}`,
+      value: safeValue(item.address),
+    })),
+    recommendation:
+      '本机地址样本不等于泄漏测试。若代理仅覆盖 IPv4，核对 IPv6 路由；按网络需要选择是否关闭，并记录原配置以便恢复。',
+    source: 'community',
+    sourceUrl: 'https://x.com/AYi_AInotes/status/2106639522586829094?s=46',
+  }
 }
 export function webrtcResult(
   browser: BrowserSnapshot | undefined,
@@ -403,16 +444,7 @@ export async function runDiagnostics(
       '打开 DNS 泄漏测试，核对实际解析器及代理 DNS 接管情况；本机地址不足以判断地理泄漏。',
     sourceUrl: 'https://browserleaks.com/dns',
   })
-  const ipv6 = system.interfaces.filter((item) => item.family === 'IPv6' && !item.internal)
-  add({
-    ...base('ipv6', 'network', 'IPv6 路由覆盖', '检查非回环 IPv6 地址；网络接口不能证明代理覆盖。'),
-    status: ipv6.length ? 'manual' : 'pass',
-    summary: ipv6.length ? '存在 IPv6 接口，需确认代理覆盖' : '未发现非回环 IPv6 地址',
-    evidence: ipv6
-      .slice(0, 5)
-      .map((item) => ({ label: item.name, value: safeValue(item.address) })),
-    recommendation: '若代理仅覆盖 IPv4，核对 IPv6 路由。关闭 IPv6 应由你根据网络需要决定。',
-  })
+  add(ipv6Result(system.interfaces))
   add({
     ...base(
       'runtime-proxy',
@@ -817,6 +849,8 @@ export async function runDiagnostics(
     })
   }
   add(runtimeTimezoneCheck(system.timezone, runtimeTimezone, timezoneTarget, environment))
+  add(automaticTimezoneCheck(system.automaticTimezone))
+  add(locationTimezoneCheck(system.locationTimezone))
   add(timezoneFollowupCheck(timezoneTarget))
   add({
     ...base(

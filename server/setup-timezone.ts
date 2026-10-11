@@ -8,6 +8,7 @@ import {
   verifySystemTimezone,
 } from './timezone-settings.js'
 import type { TimezoneState } from './timezone-settings.js'
+import { verifyAutomaticTimezone } from './timezone-automation.js'
 import { safeValue } from './safety.js'
 
 export async function timezoneSetupNodes(
@@ -26,7 +27,9 @@ export async function timezoneSetupNodes(
       id,
       title: id === 'system-timezone' ? '设置系统时区' : '配置终端与 Claude Code TZ',
       description:
-        id === 'system-timezone' ? '写入操作系统时区并复核' : '保存启动配置，更新本工具进程 TZ',
+        id === 'system-timezone'
+          ? '关闭已读取的 macOS 自动时区，设置系统时区并复核'
+          : '保存启动配置，更新本工具进程 TZ',
       enabled,
       files: [],
     }
@@ -61,6 +64,8 @@ export async function timezoneSetupNodes(
 export interface SystemTimezoneWrite {
   attempted: boolean
   acknowledged: boolean
+  automaticAttempted?: boolean
+  automaticAcknowledged?: boolean
 }
 export async function applySystemTimezone(
   ctx: Context,
@@ -70,8 +75,25 @@ export async function applySystemTimezone(
 ): Promise<string> {
   const target = systemTimezoneSupport(ctx.platform, value)
   if (!state?.system) throw new Error('原系统时区未读取，不能安全配置与还原')
+  const disabledAutomatic = state.automatic === true
+  if (disabledAutomatic) {
+    if (!write.automaticAcknowledged) {
+      write.automaticAttempted = true
+      try {
+        await ctx.setAutomaticTimezone(false)
+        write.automaticAcknowledged = true
+      } catch (error) {
+        if ((await ctx.readAutomaticTimezone().catch(() => undefined)) !== false) throw error
+        write.automaticAcknowledged = true
+      }
+    }
+    await verifyAutomaticTimezone(ctx, false)
+    state.automatic = false
+  }
   if (sameTimezone(state.system, target))
-    return write.attempted ? `系统时区已复核为 ${target}` : `系统时区已是 ${target}，无需写入`
+    return write.attempted
+      ? `系统时区已复核为 ${target}`
+      : `系统时区已是 ${target}${disabledAutomatic ? '；自动设定时区已关闭' : '，无需写入'}`
   if (!write.acknowledged) {
     write.attempted = true
     try {
@@ -87,7 +109,7 @@ export async function applySystemTimezone(
   // Retries verify an accepted write instead of reopening the administrator prompt.
   await verifySystemTimezone(ctx, target)
   state.system = target
-  return `系统时区已设为 ${target}${ctx.demo ? '（隔离模拟）' : ''}`
+  return `系统时区已设为 ${target}${disabledAutomatic ? '；自动设定时区已关闭' : ''}${ctx.demo ? '（隔离模拟）' : ''}`
 }
 export async function applyTerminalTimezone(
   ctx: Context,

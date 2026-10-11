@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, inject } from 'vue'
+import { notificationKey } from '../lib/notifications'
 import { X } from '@lucide/vue'
 const props = defineProps<{
   open: boolean
@@ -11,6 +12,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: [] }>()
 const dialog = ref<HTMLDialogElement>()
+const notification = inject(notificationKey, undefined)
 function sync() {
   if (!dialog.value) return
   if (props.open && !dialog.value.open) dialog.value.showModal()
@@ -54,7 +56,17 @@ function cancel(event: Event) {
         </button>
       </div>
       <div class="dialog-body"><slot /></div>
-      <div class="dialog-footer"><slot name="footer" /></div>
+      <div class="dialog-footer">
+        <p
+          v-if="props.open && notification"
+          class="dialog-feedback"
+          :class="notification.kind"
+          :role="notification.kind === 'error' ? 'alert' : 'status'"
+        >
+          {{ notification.message }}
+        </p>
+        <slot name="footer" />
+      </div>
     </dialog>
   </Teleport>
 </template>

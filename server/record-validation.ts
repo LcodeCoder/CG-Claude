@@ -74,7 +74,12 @@ export const snapshotRecordsSchema: z.ZodType<SnapshotRecord[]> = z.array(
     excludedFiles: paths,
     preferences: preferencesSchema,
     timezone: z
-      .object({ system: text.optional(), terminal: z.boolean(), user: z.boolean() })
+      .object({
+        system: text.optional(),
+        terminal: z.boolean(),
+        user: z.boolean(),
+        automatic: z.boolean().optional(),
+      })
       .optional(),
     timezoneState: z.object({ state: timezoneStateSchema, hash: digest }).optional(),
     integrityHash: digest.optional(),

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu, shell, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, Menu, shell, ipcMain, nativeImage } from 'electron'
 import path from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { createAppServer } from '../server/index.js'
@@ -46,6 +46,7 @@ async function createWindow() {
     show: false,
     title: 'CG Claude · 本机环境配置',
     backgroundColor: '#f8f6f2',
+    icon: path.join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'electron', 'preload.cjs'),
       sandbox: true,
@@ -159,6 +160,10 @@ if (!app.requestSingleInstanceLock()) {
   app
     .whenReady()
     .then(async () => {
+      if (process.platform === 'darwin')
+        app.dock?.setIcon(
+          nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png')),
+        )
       Menu.setApplicationMenu(
         Menu.buildFromTemplate([
           ...(process.platform === 'darwin'

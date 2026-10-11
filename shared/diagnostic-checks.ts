@@ -24,6 +24,8 @@ export const diagnosticCheckIds = [
   'git-effective-proxy',
   'timezone-env',
   'timezone-followup',
+  'automatic-timezone',
+  'location-timezone',
   'config-directory',
   'tls-verification',
   'proxy-compatibility',
@@ -34,4 +36,4 @@ export type DiagnosticCheckId = (typeof diagnosticCheckIds)[number]
 export const DIAGNOSTIC_CHECK_COUNT: number = diagnosticCheckIds.length
 
 // Bump when rule interpretation changes so history can distinguish software changes.
-export const DIAGNOSTIC_RULESET = '2026-10-11.13'
+export const DIAGNOSTIC_RULESET = '2026-10-11.15'

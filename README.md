@@ -1,12 +1,14 @@
 # CG Claude
 
-本地中文环境工作台，支持 Electron 桌面版和本机浏览器版。根据 AYi 参考文章逐项整理可检测的环境配置，并核对 Claude Code 官方配置说明。提供 29 项环境检查、连续三遍复检、配置向导、项目配置扫描、字段修复、本地连接设置编辑与完整快照还原。
+本地中文环境工作台，支持 Electron 桌面版和本机浏览器版。根据 AYi 参考文章逐项整理可检测的环境配置，并核对 Claude Code 官方配置说明。提供 31 项环境检查、连续三遍复检、配置向导、项目配置扫描、字段修复、本地连接设置编辑与完整快照还原。
 
-实际验证与截图见 [验证记录](docs/validation.md)，43 项原文对照见 [逐项审计](docs/article-audit.md)，55 条文献的采用段落见 [来源审计](docs/reference-audit.md)。
+一键配置结束会集中展示剩余事项：设置页跳转、操作步骤、可复制命令和打开终端。Mac 的电脑自动时区、定位服务与手机时区分别核对；外部浏览器语言可独立预览、保存和还原。
+
+本轮变化与成品校验见 [1.2.5 交付记录](docs/release-1.2.5.md)。实际验证与截图见 [验证记录](docs/validation.md)，43 项原文对照见 [逐项审计](docs/article-audit.md)，67 条文献的采用段落见 [来源审计](docs/reference-audit.md)。
 
 ## 启动桌面版
 
-macOS arm64 成品位于 `release/1.2.4/mac-arm64/CG Claude.app`，直接打开，无需另外安装 Node.js。构建产物尚未签名或公证。其他平台配置了打包目标，本次没有在真实 Windows/Linux 桌面实测。
+macOS arm64 成品位于 `release/1.2.5/mac-arm64/CG Claude.app`，直接打开，无需另外安装 Node.js。构建产物尚未签名或公证。其他平台配置了打包目标，本次没有在真实 Windows/Linux 桌面实测。
 
 从源码启动需要 Node.js **22.12 或更新版本**：
 
@@ -36,7 +38,7 @@ macOS 可双击 `启动工具.command`，Windows 可双击 `启动工具.cmd`，
 
 ## 检测与写入范围
 
-29 项环境检查覆盖系统/浏览器时区、TZ、系统代理、虚拟接口、DNS、IPv6、进程与启动文件代理、npm 用户及当前查询代理、Git 用户及全局查询代理、API 地址、Claude 配置目录、隐私、CLI、TLS、代理兼容性、认证来源、自定义 CA/mTLS、公网出口与浏览器一致性。网络开启时对比历史 IP、国家、城市和网络组织。时区默认按原文台北建议核对，也支持当前出口或手动选择；系统、Node 进程和浏览器独立取证，自动时区、定位服务和手机端保持待确认。
+31 项环境检查覆盖系统/浏览器时区、TZ、系统代理、虚拟接口、DNS、IPv6、进程与启动文件代理、npm 用户及当前查询代理、Git 用户及全局查询代理、API 地址、Claude 配置目录、隐私、CLI、TLS、代理兼容性、认证来源、自定义 CA/mTLS、公网出口与浏览器一致性。网络开启时对比历史 IP、国家、城市和网络组织。时区默认按原文台北建议核对，也支持当前出口或手动选择；系统、Node 进程和浏览器独立取证，自动时区、定位服务和手机端保持待确认。
 
 可修改的 7 类字段：shell/npm/Git 用户代理、shell/Claude 自定义 API 地址、Claude 隐私变量、npm TLS 校验；一键配置另含系统时区与终端 TZ 两个节点，默认勾选，可取消。支持 `.zshrc`、`.zprofile`、`.zshenv`、`.bashrc`、`.bash_profile`、`.bash_login`、`.profile`、`.npmrc`、`.gitconfig`、`.config/git/config`、`.claude/settings.json` 这 11 个配置位置。
 

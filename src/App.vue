@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, nextTick } from 'vue'
+import { provide, computed, ref, watch, onMounted, nextTick } from 'vue'
 import {
   ShieldCheck,
   Settings2,
@@ -20,8 +20,10 @@ import {
   Minus,
 } from '@lucide/vue'
 import { defaultPreferences, samePreferences } from '../shared/types'
+import { guidanceTimezone, setupFollowupReport } from '../shared/manual-guidance'
 import type { Preferences, BackupSummary, ScanReport } from '../shared/types'
 import { useGuard } from './composables/useGuard'
+import { notificationKey } from './lib/notifications'
 import packageMetadata from '../package.json'
 import ScanOptionsDialog from './components/ScanOptionsDialog.vue'
 import SnapshotRestoreDialog from './components/SnapshotRestoreDialog.vue'
@@ -69,6 +71,7 @@ const {
   snapshotPlan,
   projectReport,
 } = guard
+provide(notificationKey, toast)
 const page = ref<WorkspacePage>('overview')
 const appVersion = packageMetadata.version
 watch(page, () => window.scrollTo({ top: 0, behavior: 'instant' }), { flush: 'post' })
@@ -138,8 +141,24 @@ function setupBackups() {
   page.value = 'backups'
 }
 function setupReport() {
+  if (setupJob.value) {
+    const latest = setupFollowupReport(setupJob.value, boot.value?.reports ?? [])
+    if (latest) report.value = latest
+  }
   setupOpen.value = false
   page.value = 'overview'
+}
+async function setupManual(id: string) {
+  setupOpen.value = false
+  await openManualItem(id)
+}
+async function setupCheck(id: string) {
+  setupReport()
+  await openCheck(id)
+}
+function setupRecheck() {
+  setupOpen.value = false
+  scanOpen.value = true
 }
 const networkEnabled = ref(false)
 const scanPasses = ref(3)
@@ -533,6 +552,10 @@ const commandForPlatform = computed(() =>
           v-else-if="page === 'backups'"
           :snapshots="boot?.snapshots ?? []"
           :backups="boot?.backups ?? []"
+          :browser-languages="boot?.browserLanguages"
+          :preview-browser-language="guard.previewBrowserLanguage"
+          :apply-browser-language="guard.applyBrowserLanguage"
+          :restore-browser-language="guard.restoreBrowserLanguage"
           :busy="busy"
           :connected="connected"
           @capture="guard.captureSnapshot"
@@ -544,6 +567,9 @@ const commandForPlatform = computed(() =>
         <ManualReviewView
           v-else-if="page === 'checklist'"
           :reviews="boot?.manualReviews ?? []"
+          :platform="boot?.machine.platform ?? ''"
+          :timezone="guidanceTimezone(boot?.preferences ?? defaultPreferences, report)"
+          :open-action="guard.openLocalAction"
           :busy="busy"
           :save="guard.saveManualReview"
           :reset="guard.resetManualReviews"
@@ -553,6 +579,10 @@ const commandForPlatform = computed(() =>
         <SettingsView
           v-else-if="page === 'settings'"
           v-model="draft"
+          :browser-languages="boot?.browserLanguages"
+          :preview-browser-language="guard.previewBrowserLanguage"
+          :apply-browser-language="guard.applyBrowserLanguage"
+          :restore-browser-language="guard.restoreBrowserLanguage"
           :busy="busy"
           :working="working"
           :connected="connected"
@@ -599,6 +629,10 @@ const commandForPlatform = computed(() =>
       :connected="connected"
       :prepare="guard.prepareSetup"
       :start="guard.startSetup"
+      :open-action="guard.openLocalAction"
+      @manual="setupManual"
+      @check="setupCheck"
+      @scan="setupRecheck"
       @close="setupOpen = false"
       @backups="setupBackups"
       @report="setupReport"

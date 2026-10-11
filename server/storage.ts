@@ -20,6 +20,9 @@ import type { Context } from './context.js'
 import type { SnapshotRecord } from './snapshots.js'
 import { readBoundedText } from './file-reading.js'
 import { translationRecordSchema } from './translation.js'
+import { browserLanguageBackupSchema } from '../shared/browser-configuration.js'
+import type { BrowserLanguageBackup } from '../shared/browser-configuration.js'
+import { sealBrowserBackup } from './browser-configuration.js'
 import type { TranslationRecord } from './translation.js'
 import {
   backupRecordsSchema,
@@ -96,6 +99,22 @@ export class Storage {
     } finally {
       await fs.unlink(temporary).catch(() => {})
     }
+  }
+  async browserLanguageBackups(): Promise<BrowserLanguageBackup[]> {
+    const records = await this.records(
+      'browser-language-backups.json',
+      z.array(browserLanguageBackupSchema).max(1000),
+    )
+    if (records.some((record) => sealBrowserBackup(record) !== record.integrity))
+      throw new Error('浏览器语言备份完整性校验失败；原记录已保留')
+    return records
+  }
+  async saveBrowserLanguageBackup(record: BrowserLanguageBackup) {
+    const records = await this.browserLanguageBackups()
+    await this.write('browser-language-backups.json', [
+      browserLanguageBackupSchema.parse(record),
+      ...records.filter((item) => item.id !== record.id),
+    ])
   }
   async translationSettings(): Promise<TranslationRecord | undefined> {
     return (

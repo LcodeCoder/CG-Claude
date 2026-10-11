@@ -2,11 +2,13 @@ import os from 'node:os'
 import path from 'node:path'
 import type { Machine } from '../shared/types.js'
 import { runSystemCommand } from './commands.js'
+import { readAutomaticTimezone, setAutomaticTimezone } from './timezone-automation.js'
 import { readSystemTimezone } from './system-timezone.js'
 import { setSystemTimezone, readUserTimezone, setUserTimezone } from './timezone-settings.js'
 import type { SystemTimezone } from './system-timezone.js'
 
 export interface CommandResult {
+  executable?: string
   ok: boolean
   stdout: string
   stderr: string
@@ -21,6 +23,8 @@ export interface Context {
   readSystemTimezone: () => Promise<SystemTimezone>
   readRuntimeTimezone: () => string
   setSystemTimezone: (timezone: string) => Promise<void>
+  readAutomaticTimezone: () => Promise<boolean | undefined>
+  setAutomaticTimezone: (enabled: boolean) => Promise<void>
   setRuntimeTimezone: (timezone: string | null) => void
   readUserTimezone: () => Promise<string | null>
   setUserTimezone: (timezone: string | null) => Promise<void>
@@ -29,6 +33,7 @@ export function createContext(overrides: Partial<Context> = {}): Context {
   const home = path.resolve(process.env.CG_HOME || os.homedir())
   let demoTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
   let demoUserTimezone: string | null = null
+  let demoAutomaticTimezone = false
   const ctx: Context = {
     home,
     dataDir: path.resolve(process.env.CG_DATA_DIR || path.join(home, '.claude-guard')),
@@ -36,6 +41,12 @@ export function createContext(overrides: Partial<Context> = {}): Context {
     env: { ...process.env },
     demo: process.env.CG_DEMO === '1',
     run: (command, args, timeout) => runSystemCommand(ctx, command, args, timeout),
+    readAutomaticTimezone: () =>
+      ctx.demo ? Promise.resolve(demoAutomaticTimezone) : readAutomaticTimezone(ctx),
+    setAutomaticTimezone: async (enabled) => {
+      if (ctx.demo) demoAutomaticTimezone = enabled
+      else await setAutomaticTimezone(ctx, enabled)
+    },
     readSystemTimezone: () =>
       ctx.demo
         ? Promise.resolve({ timezone: demoTimezone, source: '隔离环境模拟系统时区' })

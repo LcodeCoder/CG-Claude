@@ -2,6 +2,19 @@ import type { BrowserSnapshot } from '../../shared/types'
 export async function browserSnapshot(network: boolean): Promise<BrowserSnapshot> {
   const snapshot: BrowserSnapshot = {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    client: window.claudeGuardDesktop ? 'cg-chromium' : 'web-browser',
+    clientName: window.claudeGuardDesktop
+      ? 'CG Claude 内置 Chromium'
+      : /Edg\//.test(navigator.userAgent)
+        ? 'Microsoft Edge（当前窗口）'
+        : /Firefox\//.test(navigator.userAgent)
+          ? 'Firefox（当前窗口）'
+          : /Chrome\//.test(navigator.userAgent)
+            ? 'Chrome / Chromium（当前窗口）'
+            : /Safari\//.test(navigator.userAgent)
+              ? 'Safari（当前窗口）'
+              : '打开 CG 的浏览器窗口',
+    locale: Intl.DateTimeFormat().resolvedOptions().locale,
     language: navigator.language,
     languages: [...navigator.languages].slice(0, 20),
     platform: navigator.platform,

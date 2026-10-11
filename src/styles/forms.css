@@ -142,3 +142,92 @@ select option {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+.browser-configuration {
+  margin-top: 24px;
+}
+.browser-configuration .panel-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.browser-scope-note {
+  margin: 0 22px 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.browser-configuration .field-row {
+  padding: 16px 22px;
+}
+.browser-language-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin: 16px 22px;
+}
+.browser-language-values > div {
+  display: grid;
+  gap: 6px;
+}
+.browser-language-values span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.browser-language-values code {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.browser-app-language {
+  margin: 4px 22px 18px;
+}
+.browser-configuration-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-top: 1px solid var(--border);
+}
+.browser-configuration-actions > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.browser-language-backups article {
+  padding: 16px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-top: 1px solid var(--border);
+}
+.browser-language-backups article > div {
+  display: grid;
+  gap: 6px;
+}
+.browser-language-backups small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.browser-confirm-target {
+  font-weight: 650;
+}
+.browser-config-path {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  margin-top: 12px;
+}
+.guard-dialog .browser-language-values {
+  margin: 18px 0;
+}
+@media (max-width: 600px) {
+  .browser-configuration-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .browser-language-backups article {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -11,16 +11,19 @@ files:
   - dist-server/**/*
   - electron/preload.cjs
   - build/tray/**/*
+  - build/icon.png
   - package.json
   - '!dist-server/**/*.map'
 mac:
   category: public.app-category.developer-tools
+  icon: build/icon.icns
   identity: null
   target:
     - dir
     - dmg
     - zip
 win:
+  icon: build/icon.ico
   target:
     - nsis
     - portable
@@ -28,6 +31,7 @@ nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
 linux:
+  icon: build/icon.png
   category: Development
   target:
     - AppImage

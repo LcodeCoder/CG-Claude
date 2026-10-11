@@ -68,17 +68,20 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
       '一键配置写入可安全解析的 shell TZ 与 Claude env.TZ，并同步本工具进程；已有终端和 Claude Code 会话重开后复核。',
     code: 'server/timezone-diagnostics.ts',
     checkIds: ['timezone-env'],
+    manualIds: ['terminal-session'],
   },
   {
     id: 'automatic-timezone',
     section: '2.2 / 6.1 / 9',
     title: '关闭电脑自动设定时区',
     group: 'environment',
-    coverage: 'manual',
-    implementation: '始终待确认；当前读数正确不能证明自动设置已关闭。',
-    repair: '在系统日期与时间中修改并记录人工复核。',
-    code: 'server/timezone-diagnostics.ts',
-    checkIds: ['timezone-followup'],
+    coverage: 'partial',
+    implementation:
+      'macOS 独立读取自动选择时区偏好，开启为需关注、关闭为通过，无法读取为待确认；其他平台保留人工核对。',
+    repair:
+      '一键配置的系统时区步骤关闭已读取的 macOS 开关，保存原状态并独立复核。定位权限仍单独核对；失败在完成页提供日期与时间跳转。',
+    code: 'server/timezone-automation.ts',
+    checkIds: ['automatic-timezone'],
     manualIds: ['timezone-auto'],
   },
   {
@@ -87,10 +90,12 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     title: '关闭定位服务中的设定时区',
     group: 'environment',
     coverage: 'manual',
-    implementation: '未读取系统定位权限；人工复核单独说明该设置。',
-    repair: '提供 macOS 与 iPhone 的系统服务路径。',
-    code: 'shared/types.ts',
-    manualIds: ['timezone-auto'],
+    implementation:
+      '单独检测项；读取 macOS 时区定位记录，但未有可靠开关状态时始终待确认，不从时区或记录存在推断权限。',
+    repair: '完成页和人工复核提供定位服务跳转、系统服务（详细信息）及关闭设定时区的步骤。',
+    code: 'shared/manual-guidance.ts',
+    checkIds: ['location-timezone'],
+    manualIds: ['location-timezone'],
   },
   {
     id: 'phone-timezone',
@@ -102,7 +107,7 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     repair: '在手机日期与时间和定位服务中逐项复核。',
     code: 'server/timezone-diagnostics.ts',
     checkIds: ['timezone-followup'],
-    manualIds: ['timezone-auto'],
+    manualIds: ['phone-timezone'],
   },
   {
     id: 'exit-observation',
@@ -318,7 +323,7 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     implementation: '应用反复检测本机观察，但无法证明另一个已打开终端已经重启。',
     repair: '修复与向导明确提示重新启动相关会话。',
     code: 'server/repairs.ts',
-    manualIds: ['auth-method'],
+    manualIds: ['terminal-session'],
   },
   {
     id: 'browser-profile',
@@ -477,8 +482,9 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     title: 'IPv6 代理覆盖',
     group: 'boundary',
     coverage: 'partial',
-    implementation: '存在非回环 IPv6 时待确认；接口无法证明 IPv6 请求是否受代理覆盖。',
-    repair: '由本人按网络需求选择；不把关闭 IPv6 当作必选。',
+    implementation:
+      '区分公网候选与链路本地 / 私有 IPv6；有公网候选时待确认，接口不能证明请求已受代理覆盖。',
+    repair: '提供网络服务列表、可选关闭和恢复命令，由本人按网络需求选择；不把关闭 IPv6 当作必选。',
     code: 'server/diagnostics.ts',
     checkIds: ['ipv6'],
     manualIds: ['fixed-route'],

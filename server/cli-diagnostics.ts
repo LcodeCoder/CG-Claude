@@ -20,7 +20,7 @@ export async function cliInstallation(
     category: 'claude',
     title: 'Claude Code 安装',
     description:
-      '只运行 claude --version。未获得版本时，只核对固定原生安装路径的文件信息，不执行该候选文件。',
+      '通过本机命令搜索路径运行 claude --version，兼容终端登录环境、nvm、Homebrew 与原生安装。未获得版本时再核对固定原生安装路径的元数据。',
     status: version ? 'pass' : 'manual',
     summary: version || '当前服务未检测到可用的 Claude Code 版本',
     evidence: [{ label: 'CG Claude 服务运行时', value: `Node.js ${serviceNodeVersion}` }],
@@ -31,6 +31,13 @@ export async function cliInstallation(
     source: 'official',
     sourceUrl: 'https://code.claude.com/docs/en/setup',
   }
+  if (command.executable)
+    result.evidence.push({
+      label: '实际执行文件',
+      value: command.executable.startsWith(ctx.home + path.sep)
+        ? '~/' + path.relative(ctx.home, command.executable)
+        : command.executable,
+    })
   if (version) return result
   if (command.ok)
     result.evidence.push({

@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import SetupFollowupList from './SetupFollowupList.vue'
+import { setupFollowupReport } from '../../shared/manual-guidance'
+import type { LocalActionId } from '../../shared/local-actions'
 import TimezonePreferences from './TimezonePreferences.vue'
 import BrowserLanguagePreferences from './BrowserLanguagePreferences.vue'
 import { usageModeOptions, usageModeLabel } from '../../shared/usage-modes'
+import { articleModeDifferences } from '../../shared/article-audit'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { ref, reactive, computed, watch } from 'vue'
 import {
@@ -40,10 +44,18 @@ const props = defineProps<{
   job?: SetupJob
   working: boolean
   connected: boolean
+  openAction: (action: LocalActionId) => Promise<boolean>
   prepare: (request: SetupRequest) => Promise<boolean>
   start: () => Promise<boolean>
 }>()
-const emit = defineEmits<{ close: []; backups: []; report: [] }>()
+const emit = defineEmits<{
+  close: []
+  backups: []
+  report: []
+  manual: [id: string]
+  check: [id: string]
+  scan: []
+}>()
 const step = ref(0)
 const draft = reactive<Preferences>({ ...defaultPreferences })
 const selected = ref<FixId[]>([])
@@ -51,6 +63,9 @@ const timezone = reactive({ system: true, terminal: true })
 const steps = ['网络模式', 'Claude 服务', '隐私偏好', '修改范围', '确认并执行']
 const fieldError = ref('')
 const running = computed(() => props.job?.status === 'running')
+const followupReport = computed(
+  () => props.job && setupFollowupReport(props.job, props.boot?.reports ?? []),
+)
 const completed = computed(
   () =>
     props.job?.nodes.filter((node) => ['succeeded', 'skipped'].includes(node.status)).length ?? 0,
@@ -71,6 +86,16 @@ const eligible = (id: FixId) =>
     : /-endpoint$/.test(id)
       ? draft.usageMode === 'official'
       : true
+function useArticlePreset() {
+  Object.assign(draft, {
+    timezoneMode: 'article',
+    expectedTimezone: 'Asia/Taipei',
+    routeMode: 'tun',
+    privacy: 'minimal',
+  })
+  selected.value = [...new Set([...selected.value, ...fixIds.filter((id) => /-proxy$/.test(id))])]
+}
+const differences = computed(() => articleModeDifferences(draft))
 const routeNames = { system: '系统 / HTTP 代理', tun: 'TUN 全流量接管', custom: '自定义路由' }
 
 watch(
@@ -133,7 +158,7 @@ const title = computed(() =>
       ? '正在完成配置'
       : failedCount.value || props.job?.status === 'interrupted'
         ? '配置流程已结束'
-        : '配置完成'
+        : '自动配置完成'
     : '一键配置完成',
 )
 </script>
@@ -153,6 +178,10 @@ const title = computed(() =>
     @close="emit('close')"
   >
     <template v-if="step < 5">
+      <p v-if="step === 4 && differences.length" class="wizard-hint">
+        本次与原文方案有
+        {{ differences.length }} 项偏好差异；复检按你的选择判断，文献页保留原文对照。
+      </p>
       <ol class="wizard-steps" aria-label="配置步骤">
         <li
           v-for="(label, index) in steps"
@@ -174,6 +203,10 @@ const title = computed(() =>
             <h3>网络接入方式</h3>
             <p>选择当前已经启用的方式，工具会据此决定保留或移除代理字段。</p>
           </div>
+        </div>
+        <div class="article-preset">
+          <span>原文方案：台北 · TUN · 关闭非必要流量</span
+          ><button class="text-link" @click="useArticlePreset">按原文填入</button>
         </div>
         <label
           v-for="option in [
@@ -426,56 +459,71 @@ const title = computed(() =>
       >
         <span :style="{ width: `${(completed / props.job.nodes.length) * 100}%` }" />
       </div>
-      <ol class="setup-flow" aria-label="配置执行流程">
-        <li v-for="(node, index) in props.job.nodes" :key="node.id" :class="node.status">
-          <div class="flow-marker">
-            <LoaderCircle v-if="node.status === 'running'" class="spin" :size="17" /><RefreshCw
-              v-else-if="node.status === 'retrying'"
-              class="spin"
-              :size="17"
-            /><CircleCheck v-else-if="node.status === 'succeeded'" :size="18" /><SkipForward
-              v-else-if="node.status === 'skipped'"
-              :size="17"
-            /><CircleDashed v-else :size="18" />
-          </div>
-          <div class="flow-node">
-            <div class="flow-node-heading">
-              <span class="flow-number">{{ String(index + 1).padStart(2, '0') }}</span>
-              <h3>{{ node.title }}</h3>
-              <span class="flow-state">{{ setupNodeLabels[node.status] }}</span>
+      <details class="setup-execution-details" :open="running">
+        <summary>自动配置执行记录 · {{ completed }} / {{ props.job.nodes.length }}</summary>
+        <ol class="setup-flow" aria-label="配置执行流程">
+          <li v-for="(node, index) in props.job.nodes" :key="node.id" :class="node.status">
+            <div class="flow-marker">
+              <LoaderCircle v-if="node.status === 'running'" class="spin" :size="17" /><RefreshCw
+                v-else-if="node.status === 'retrying'"
+                class="spin"
+                :size="17"
+              /><CircleCheck v-else-if="node.status === 'succeeded'" :size="18" /><SkipForward
+                v-else-if="node.status === 'skipped'"
+                :size="17"
+              /><CircleDashed v-else :size="18" />
             </div>
-            <p>{{ node.message }}</p>
-            <div class="flow-meta">
-              <span v-if="node.attempts"
-                >尝试 {{ node.attempts }} / 4 · 重试 {{ node.retries }} / 3</span
-              ><span v-else>{{ node.enabled ? '按顺序执行' : '未选择此项' }}</span
-              ><button
-                v-if="node.backupId"
-                class="text-link"
-                :disabled="running"
-                @click="emit('backups')"
+            <div class="flow-node">
+              <div class="flow-node-heading">
+                <span class="flow-number">{{ String(index + 1).padStart(2, '0') }}</span>
+                <h3>{{ node.title }}</h3>
+                <span class="flow-state">{{ setupNodeLabels[node.status] }}</span>
+              </div>
+              <p>{{ node.message }}</p>
+              <div class="flow-meta">
+                <span v-if="node.attempts"
+                  >尝试 {{ node.attempts }} / 4 · 重试 {{ node.retries }} / 3</span
+                ><span v-else>{{ node.enabled ? '按顺序执行' : '未选择此项' }}</span
+                ><button
+                  v-if="node.backupId"
+                  class="text-link"
+                  :disabled="running"
+                  @click="emit('backups')"
+                >
+                  查看原始备份
+                </button>
+              </div>
+              <details
+                v-if="node.history.some((entry) => entry.result === 'failed')"
+                class="flow-log"
               >
-                查看原始备份
-              </button>
+                <summary>查看每次尝试</summary>
+                <ul>
+                  <li v-for="entry in node.history" :key="entry.attempt">
+                    <span
+                      >第 {{ entry.attempt }} 次 ·
+                      {{ entry.result === 'failed' ? '失败' : '成功' }}</span
+                    >
+                    <p>{{ entry.message }}</p>
+                  </li>
+                </ul>
+              </details>
             </div>
-            <details
-              v-if="node.history.some((entry) => entry.result === 'failed')"
-              class="flow-log"
-            >
-              <summary>查看每次尝试</summary>
-              <ul>
-                <li v-for="entry in node.history" :key="entry.attempt">
-                  <span
-                    >第 {{ entry.attempt }} 次 ·
-                    {{ entry.result === 'failed' ? '失败' : '成功' }}</span
-                  >
-                  <p>{{ entry.message }}</p>
-                </li>
-              </ul>
-            </details>
-          </div>
-        </li>
-      </ol>
+          </li>
+        </ol>
+      </details>
+      <SetupFollowupList
+        v-if="!running"
+        :job="props.job"
+        :report="followupReport"
+        :reviews="props.boot?.manualReviews ?? []"
+        :platform="props.boot?.machine.platform ?? ''"
+        :busy="props.working || !props.connected"
+        :open-action="props.openAction"
+        @manual="emit('manual', $event)"
+        @check="emit('check', $event)"
+        @scan="emit('scan')"
+      />
       <p class="wizard-hint">
         未选择的节点直接保留原配置；执行失败的节点重试 3 次后跳过。处理顺序由上到下。
       </p>

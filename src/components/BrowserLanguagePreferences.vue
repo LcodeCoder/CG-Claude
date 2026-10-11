@@ -45,7 +45,7 @@ const guide = computed(() => guides[browser.value])
   <div class="browser-language-preferences">
     <div class="field-row">
       <label :for="`${prefix}-browser-language`"
-        >浏览器语言目标<span>检测条件；一键配置不会修改外部浏览器语言。</span></label
+        >浏览器语言目标<span>检测目标；实际修改在“检测偏好”的外部浏览器配置中执行。</span></label
       >
       <select :id="`${prefix}-browser-language`" v-model="draft.expectedBrowserLanguage">
         <option v-for="option in browserLanguageOptions" :key="option.value" :value="option.value">

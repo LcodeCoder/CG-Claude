@@ -148,3 +148,15 @@ App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog�
 ## 桌面托盘
 
 `electron/tray.ts` 管理图标、菜单、任务状态和窗口隐藏规则。图标来自 `public/tray.svg`；生成脚本输出 macOS Template/Retina、Windows ICO 和 Linux PNG，并随应用打包。最小化和关闭窗口保留渲染器，新浏览器复检仍可回传；明确退出等待后台事务后销毁托盘。Linux 桌面不支持托盘时保留普通最小化与关闭行为。IPC 仅允许同一本机主窗口调用隐藏与目录选择。
+
+## 1.2.5 原文操作指引与独立配置目标
+
+`shared/manual-guidance.ts` 是人工复核页和一键配置完成页的共同指引来源，集中保存原文章节、操作步骤、固定设置动作和验证命令。`SetupFollowupList` 仅负责展示，`ManualActionGuide` 复用折叠详情和复制交互。完成页选择本次任务之后、检测偏好相同的最新报告；旧勾选不能消除本次任务，新的人工确认也不能隐藏机器观察到的告警。按出口选择时区却尚无有效出口证据时，指引提示先复检，不退回台北。
+
+`shared/local-actions.ts` 和 `server/local-actions.ts` 只接受日期与时间、定位服务、网络设置和空终端这四个固定 ID，不接收任意 URL、路径或命令。API 复用 Host / Origin / token 校验。定位跳转只保证进入可支持的上层页，系统服务详情由本人打开。命令只提供复制，不自动粘贴或执行。演示模式返回未打开，避免误报成功。
+
+`server/timezone-automation.ts` 单独读取 macOS 自动时区偏好。未知不视作关闭；定位记录存在不视作权限已关闭。配置步骤先确认可读的系统时区基线，再关闭已知开启的自动时区；写入回读容忍短暂延迟，授权成功时不因延迟重复弹授权。`timezoneState` 和快照摘要包含可读取的原开关；旧快照缺少该字段时不推断或修改它。
+
+`server/browser-configuration.ts` 根据当前用户目录下的固定 Chrome / Edge / Brave / Chromium 根目录重建可选资料，渲染端只能提交不透明资料 ID。写入前要求浏览器完全退出，校验文件内容和权限，原子替换并回读。仅备份语言字段，拒绝链接、异常类型和已观察到的强制语言；恢复保留无关配置与用户后续修改。macOS 可选应用语言影响该浏览器所有资料，网页首选语言只改选中资料。旧资料没有 `selected_languages` 时，同时备份 `accept_languages`，避免浏览器启动迁移破坏还原。写入结果只报告已保存，实际页面语言须重开同一浏览器复检。
+
+`server/command-environment.ts` 为从桌面启动的 macOS / Linux 补足命令查找 PATH。固定登录 shell 的有界输出只提取带标记 PATH，不导入其他变量或暴露启动日志；失败时保留已知安装目录回退。`server/commands.ts` 仍只执行固定命令，使用找到的绝对路径，已执行失败的命令不再次执行。

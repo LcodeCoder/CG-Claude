@@ -692,6 +692,47 @@
       "sha256": "95a4f04a73cd44279a1f20f65a2d285b83f055074f8eac820b5e98650a0ba12d",
       "method": "official-public-html-or-maintainer-markdown",
       "auditScope": "adopted-sections"
+    },
+    {
+      "id": "ayi-guide-user-text",
+      "url": "https://x.com/AYi_AInotes/status/2106639522586829094",
+      "bytes": 29822,
+      "lines": 698,
+      "sha256": "7aec24b04b213c3a37762deaffc7665beb1c0b4729ce648432f590000d6606f1",
+      "result": "read",
+      "method": "user-provided-full-text",
+      "auditScope": "sections-0-10-and-references",
+      "note": "用户提供正文；只保存来源与摘要，不发布全文、附件路径或推广码。"
+    },
+    {
+      "id": "apple-date-time-settings",
+      "url": "https://support.apple.com/guide/mac-help/set-the-date-and-time-automatically-mchlp2996/mac",
+      "bytes": 722568,
+      "retrievedAt": "2026-10-11T06:34:25.147Z",
+      "result": "retrieved",
+      "sha256": "b9659b7de9bcddd310c3ff4ccf10b3160247039c6a1566a2b1f149130ba1d25f",
+      "method": "official-source-html-or-source-code",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "apple-location-timezone-settings",
+      "url": "https://support.apple.com/en-us/101619",
+      "bytes": 164957,
+      "retrievedAt": "2026-10-11T06:34:25.130Z",
+      "result": "retrieved",
+      "sha256": "86b80b63f381a38a4ebc21b9afda99c3b66cae2a679014174f333e57b1856bce",
+      "method": "official-source-html-or-source-code",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "chromium-language-preferences",
+      "url": "https://raw.githubusercontent.com/chromium/chromium/main/components/language/core/browser/language_prefs.cc",
+      "bytes": 8431,
+      "retrievedAt": "2026-10-11T06:34:25.984Z",
+      "result": "retrieved",
+      "sha256": "818893bc661e5cdffdeff3277019c1b25b3a3a96791b4ebd3996edd7e2048171",
+      "method": "official-source-html-or-source-code",
+      "auditScope": "adopted-sections"
     }
   ]
 }

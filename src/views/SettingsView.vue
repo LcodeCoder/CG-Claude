@@ -3,10 +3,27 @@ import { usageModeOptions } from '../../shared/usage-modes'
 import { privacyCompatibilityNote } from '../../shared/privacy'
 import { Check, Info, Laptop, LoaderCircle, LockKeyhole, Network } from '@lucide/vue'
 import type { Preferences } from '../../shared/types'
+import type {
+  BrowserLanguageConfiguration,
+  BrowserLanguageRequest,
+  BrowserLanguagePreview,
+} from '../../shared/browser-configuration'
+import BrowserLanguageConfigurator from '../components/BrowserLanguageConfigurator.vue'
 import TimezonePreferences from '../components/TimezonePreferences.vue'
 import BrowserLanguagePreferences from '../components/BrowserLanguagePreferences.vue'
 const draft = defineModel<Preferences>({ required: true })
-defineProps<{ busy: boolean; working: boolean; connected: boolean; changed: boolean }>()
+defineProps<{
+  busy: boolean
+  working: boolean
+  connected: boolean
+  changed: boolean
+  browserLanguages?: BrowserLanguageConfiguration
+  previewBrowserLanguage: (
+    value: BrowserLanguageRequest,
+  ) => Promise<BrowserLanguagePreview | undefined>
+  applyBrowserLanguage: (id: string) => Promise<boolean>
+  restoreBrowserLanguage: (id: string) => Promise<boolean>
+}>()
 const emit = defineEmits<{ save: [preferences: Preferences] }>()
 </script>
 <template>
@@ -96,4 +113,13 @@ const emit = defineEmits<{ save: [preferences: Preferences] }>()
       </button>
     </div>
   </form>
+  <BrowserLanguageConfigurator
+    :configuration="browserLanguages"
+    :language="draft.expectedBrowserLanguage"
+    :busy="busy"
+    :connected="connected"
+    :preview="previewBrowserLanguage"
+    :apply="applyBrowserLanguage"
+    :restore="restoreBrowserLanguage"
+  />
 </template>

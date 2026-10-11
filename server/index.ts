@@ -1,3 +1,4 @@
+import { openLocalAction } from './local-actions.js'
 import { createServer } from 'node:http'
 import { execFile } from 'node:child_process'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -18,6 +19,7 @@ import {
 } from '../shared/types.js'
 import type { ScanJob, ServiceStatus } from '../shared/service-status.js'
 import { createContext, machineInfo } from './context.js'
+import { prepareCommandEnvironment } from './command-environment.js'
 import type { Context } from './context.js'
 import { describeConfigs } from './configs.js'
 import { claudeConfigurationScopeReason } from './configuration-scope.js'
@@ -32,6 +34,8 @@ import { SnapshotEngine } from './snapshots.js'
 import { scanProject } from './projects.js'
 import { TranslationService } from './translation.js'
 import { translationRequestSchema } from '../shared/translation.js'
+import { BrowserLanguageEngine } from './browser-configuration.js'
+import { browserLanguageRequestSchema } from '../shared/browser-configuration.js'
 
 import { connectionRequestSchema } from '../shared/connections.js'
 import { CONNECTION_FILE, describeConnectionConfiguration } from './connections.js'
@@ -45,6 +49,7 @@ export interface ServerOptions {
 }
 export async function createAppServer(options: ServerOptions = {}) {
   const ctx = options.ctx ?? createContext()
+  if (!options.ctx) await prepareCommandEnvironment(ctx)
   const port = options.port ?? Number(process.env.CG_PORT || 4318)
   if (!Number.isInteger(port) || port < 0 || port > 65535) throw new Error('CG_PORT 必须是有效端口')
   const storage = new Storage(ctx)
@@ -53,6 +58,7 @@ export async function createAppServer(options: ServerOptions = {}) {
   const repairs = new RepairEngine(ctx, storage)
   const snapshots = new SnapshotEngine(ctx, storage)
   const translation = new TranslationService(storage)
+  const browserLanguages = new BrowserLanguageEngine(ctx, storage)
   const workflows = new SetupWorkflows(ctx, storage, repairs, snapshots)
   try {
     await workflows.init()
@@ -190,6 +196,10 @@ export async function createAppServer(options: ServerOptions = {}) {
           return
         }
       }
+      if (req.method === 'POST' && url.pathname === '/api/local-actions') {
+        send(res, 200, await openLocalAction(ctx, await body(req)))
+        return
+      }
       if (req.method === 'GET' && url.pathname === '/api/status') {
         send(res, 200, serviceStatus())
         return
@@ -228,7 +238,27 @@ export async function createAppServer(options: ServerOptions = {}) {
           projectRoot: ctx.demo ? ctx.home : process.cwd(),
           manualReviews: values[4],
           translation: await translation.configuration(),
+          browserLanguages: await browserLanguages.configuration(),
         })
+        return
+      }
+      if (req.method === 'POST' && url.pathname === '/api/browser-language/preview') {
+        const request = browserLanguageRequestSchema.parse(await body(req))
+        send(res, 200, await mutation(() => browserLanguages.preview(request)))
+        return
+      }
+      const browserApply = url.pathname.match(/^\/api\/browser-language\/([\w-]+)\/apply$/)
+      if (req.method === 'POST' && browserApply) {
+        await body(req)
+        send(res, 200, await mutation(() => browserLanguages.apply(browserApply[1]!)))
+        return
+      }
+      const browserRestore = url.pathname.match(
+        /^\/api\/browser-language\/backups\/([\w-]+)\/restore$/,
+      )
+      if (req.method === 'POST' && browserRestore) {
+        await body(req)
+        send(res, 200, await mutation(() => browserLanguages.restore(browserRestore[1]!)))
         return
       }
       if (req.method === 'GET' && url.pathname === '/api/translation/settings') {

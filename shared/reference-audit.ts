@@ -6,6 +6,26 @@ export interface ReferenceAudit {
   finding: string
 }
 export const referenceAudits: Record<string, ReferenceAudit> = {
+  'apple-date-time-settings': {
+    section: 'General → Date & Time / Set time zone automatically using your current location',
+    code: 'server/timezone-automation.ts',
+    finding:
+      '区分自动时区与 NTP，独立读取 macOS 开关；配置后回读、快照保存原状态。官方页面不证明私有偏好键在所有版本一致。',
+  },
+  'apple-location-timezone-settings': {
+    section: 'Mac / iPhone / Location Services → System Services → Setting Time Zone',
+    code: 'shared/manual-guidance.ts',
+    finding:
+      '电脑定位、电脑自动和手机拆开复核；设置跳转仅请求上层页面，保留具体手动路径，未知权限不标通过。',
+  },
+  'chromium-language-preferences': {
+    section:
+      'LanguagePrefs constructor / InitializeSelectedLanguagesPref / UpdateAcceptLanguagesPref / policy languages',
+    code: 'server/browser-configuration.ts',
+    finding:
+      '保存 selected_languages，accept_languages 留给 Chromium 派生；拒绝已观察到的强制语言、运行中浏览器和预览冲突，备份只含语言字段。',
+  },
+
   'browser-language': {
     section: 'Value / navigator.languages / BCP 47 language tag',
     code: 'server/browser-language.ts',
@@ -19,7 +39,8 @@ export const referenceAudits: Record<string, ReferenceAudit> = {
   'edge-language-settings': {
     section: 'To change the language / Languages / Preferred languages',
     code: 'src/components/BrowserLanguagePreferences.vue',
-    finding: '提供 Edge 设置 → 语言路径，实际地区标记由复检确认；未编辑浏览器资料。',
+    finding:
+      '提供 Edge 路径和独立浏览器资料选择；完全退出后可预览配置，实际语言标记仍由重开后的采样确认。',
   },
   'firefox-language-settings': {
     section: 'Change the display languages / Move Up and Move Down / Website language',
@@ -298,7 +319,8 @@ export const referenceAudits: Record<string, ReferenceAudit> = {
   'ayi-guide': {
     section: '全文 0–10 与参考来源',
     code: 'shared/article-audit.ts',
-    finding: '完整正文逐项映射；原文默认 B 路线与用户选定模式分开，人工和不执行项不自动通过。',
+    finding:
+      '以用户提供的完整正文复核第 0–10 节；补齐自动时区、定位、手机、新终端与配置完成清单，B 路线和所选模式差异可查看。',
   },
   'proxy-regression': {
     section: 'Issue #39862 / Maintainer comment',

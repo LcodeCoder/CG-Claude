@@ -1,3 +1,4 @@
+import type { BrowserLanguageConfiguration } from './browser-configuration.js'
 import { z } from 'zod'
 import { usageModeIds } from './usage-modes.js'
 import type { ConnectionConfiguration } from './connections.js'
@@ -108,6 +109,9 @@ export const fixLabels: Record<FixId, string> = {
   'npm-tls': '启用 npm TLS 证书校验',
 }
 export const browserSchema = z.object({
+  client: z.enum(['cg-chromium', 'web-browser']).optional(),
+  clientName: z.string().max(80).optional(),
+  locale: z.string().max(80).optional(),
   timezone: z.string().max(80),
   language: z.string().max(80),
   languages: z.array(z.string().max(80)).max(20).optional(),
@@ -205,6 +209,7 @@ export interface BackupSummary {
   restoredAt?: string
 }
 export interface Bootstrap {
+  browserLanguages?: BrowserLanguageConfiguration
   service?: ServiceStatus
   machine: Machine
   preferences: Preferences
@@ -268,11 +273,35 @@ export const manualItems = [
   },
   {
     id: 'timezone-auto',
-    title: '复核自动时区和其他设备',
+    title: '复核电脑自动设定时区',
     description:
-      '原文 2.2 / 6.1 / 9 要求电脑和手机设为台北、关闭自动设定时区及定位服务中的设定时区。若选择按出口或手动目标，逐项核对该目标；本机读数不能证明这三项已完成。',
+      '日期与时间中关闭自动设定时区。macOS 可单独检测和配置；其他系统或读取失败时请在设置中核对。网络自动校时可以保持开启。',
     url: 'https://x.com/AYi_AInotes/status/2106639522586829094',
     category: '系统',
+  },
+  {
+    id: 'location-timezone',
+    title: '关闭定位服务中的设定时区',
+    description:
+      'Mac：隐私与安全性 → 定位服务 → 系统服务（详细信息），关闭“设定时区”。这是独立开关，不能由当前时区或自动时区读数代替。',
+    url: 'https://support.apple.com/en-us/101619',
+    category: '系统',
+  },
+  {
+    id: 'phone-timezone',
+    title: '核对手机时区和两个自动开关',
+    description:
+      '在实际登录 Claude 的手机上核对日期与时间、自动设置及定位服务中的设定时区；不使用手机端也可备注说明。',
+    url: 'https://support.apple.com/en-us/101619',
+    category: '系统',
+  },
+  {
+    id: 'terminal-session',
+    title: '在新终端中复核时区与代理',
+    description:
+      '已打开的终端和 Claude Code 不会自动加载新配置。打开新窗口复核 TZ、代理和 API 地址，再重启 Claude Code。',
+    url: 'https://code.claude.com/docs/en/settings',
+    category: '终端',
   },
   {
     id: 'fixed-route',
@@ -474,7 +503,7 @@ export interface SnapshotSummary {
   status: 'ready' | 'restored'
   files: string[]
   excludedFiles: string[]
-  timezone?: { system?: string; terminal: boolean; user: boolean }
+  timezone?: { system?: string; terminal: boolean; user: boolean; automatic?: boolean }
   restoredAt?: string
 }
 export interface SnapshotPreview {

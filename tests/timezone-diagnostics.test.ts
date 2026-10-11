@@ -60,7 +60,7 @@ test('Shanghai does not pass the article target even when every measured timezon
   )
   expect(sameTimezone('Asia/Shanghai', 'Asia/Taipei')).toBe(false)
 })
-test('Taipei readings pass their own checks while the other three article requirements remain unconfirmed', () => {
+test('Taipei readings do not imply that phone automatic settings are confirmed', () => {
   const zone = system('Asia/Taipei')
   expect(systemTimezoneCheck(zone, article()).status).toBe('pass')
   expect(browserTimezoneCheck(zone, article(), browser('Asia/Taipei')).status).toBe('pass')
@@ -68,7 +68,7 @@ test('Taipei readings pass their own checks while the other three article requir
   const followup = timezoneFollowupCheck(article())
   expect(followup.status).toBe('manual')
   expect(followup.evidence.map((entry) => entry.label)).toEqual(
-    expect.arrayContaining(['电脑自动设定时区', '定位服务 · 设定时区', '手机时区与自动设置']),
+    expect.arrayContaining(['目标时区', '手机时区与自动设置']),
   )
 })
 test('an explicit manual target is labeled as manual and still records the article baseline', () => {

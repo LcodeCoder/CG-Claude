@@ -36,6 +36,53 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'apple-date-time-settings',
+    title: 'Apple · 自动校时与自动选择时区',
+    publisher: 'Apple',
+    url: 'https://support.apple.com/guide/mac-help/set-the-date-and-time-automatically-mchlp2996/mac',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: '日期与时间中分别设置网络校时和按当前位置选择时区，两者独立。',
+    application:
+      '区分 NTP 与自动时区；配置完成页提供日期与时间入口，已读取的 macOS 自动时区可配置并快照还原。',
+    boundary:
+      '官方页面说明设置含义与操作路径，不提供防封效果证明；defaults 键属于本机适配实现，系统版本差异需复核。',
+    checkIds: ['timezone', 'automatic-timezone'],
+    manualItemIds: ['timezone-auto', 'terminal-session'],
+  },
+  {
+    id: 'apple-location-timezone-settings',
+    title: 'Apple · 定位服务与设备时区',
+    publisher: 'Apple',
+    url: 'https://support.apple.com/en-us/101619',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: 'Mac 的定位系统服务与日期时间分别配置；iPhone 另有自动设置和 Setting Time Zone。',
+    application:
+      '电脑定位时区与手机复核拆成独立任务，提供完整路径；macOS 可请求打开定位服务上层页面。',
+    boundary: '跳转不保证展开系统服务弹窗；私有记录存在不代表权限关闭。本机不能读取另一台手机。',
+    checkIds: ['location-timezone', 'timezone-followup'],
+    manualItemIds: ['location-timezone', 'phone-timezone'],
+  },
+  {
+    id: 'chromium-language-preferences',
+    title: 'Chromium · 首选语言与生效列表实现',
+    publisher: 'Chromium',
+    url: 'https://github.com/chromium/chromium/blob/main/components/language/core/browser/language_prefs.cc',
+    kind: 'official',
+    topic: 'configuration',
+    checkedAt,
+    takeaway: '启动时根据用户选择和组织强制语言生成 accept_languages，缺省用户选择有迁移规则。',
+    application:
+      '关闭浏览器后只改 selected_languages，保留其余字段；写前备份语言并允许还原，重开后独立采样。',
+    boundary:
+      '本轮未验证真实 Chrome 重启后的 navigator 值；组织策略或同步可能覆盖偏好。应用菜单语言是独立设置。',
+    checkIds: ['browser-language'],
+    manualItemIds: ['browser-profile'],
+  },
+  {
     id: 'browser-language',
     title: 'MDN · 浏览器语言与 BCP 47 标签',
     publisher: 'Mozilla',
@@ -56,8 +103,9 @@ export const references: ReferenceEntry[] = [
     kind: 'official',
     topic: 'configuration',
     takeaway: '首选语言控制多语言页面的优先选择；macOS/Linux 的 Chrome 界面语言跟随系统。',
-    application: '提供添加、调整英文首选网页语言与重开后复检的指引。',
-    boundary: '一键时区配置不会修改外部浏览器语言；未编辑运行中的浏览器资料文件。',
+    application: '提供首选语言指引及关闭浏览器后的实际配置入口，区分网页语言与应用菜单语言。',
+    boundary:
+      '语言配置有独立预览与备份；必须完全退出对应浏览器，保存结果需重开后在实际浏览器复检。',
     checkIds: ['browser-language'],
     checkedAt: '2026-10-11',
   },
@@ -886,6 +934,9 @@ export const references: ReferenceEntry[] = [
       'client',
       'backup',
       'timezone-auto',
+      'location-timezone',
+      'phone-timezone',
+      'terminal-session',
       'fixed-route',
       'asn',
       'browser-profile',
@@ -907,13 +958,15 @@ export const references: ReferenceEntry[] = [
     takeaway:
       '原文第 2.2 / 6.1 / 9 节明确建议电脑和手机设为台北，并关闭自动时区及定位服务中的设定时区。',
     application:
-      '默认以 Asia/Taipei 对照系统、Node 进程和浏览器；也可明确选择按当前出口或手动目标。自动时区、定位和手机端列为待确认。',
+      '默认以 Asia/Taipei 对照系统、Node 进程和浏览器；也可明确选择按当前出口或手动目标。macOS 自动时区独立读取与配置，定位和手机单列人工核对，完成页提供步骤、跳转与终端命令。',
     boundary: '社区归因、养号节奏和风控权重缺乏公开可复验依据，不转换为自动结论。',
     checkIds: [
       'timezone',
       'browser-timezone',
       'timezone-env',
       'timezone-followup',
+      'automatic-timezone',
+      'location-timezone',
       'system-proxy',
       'tun',
       'dns',

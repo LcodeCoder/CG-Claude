@@ -1,3 +1,4 @@
+import type { LocalActionId, LocalActionResult } from '../../shared/local-actions'
 import { shallowRef, ref, computed, onUnmounted } from 'vue'
 import type {
   Bootstrap,
@@ -18,8 +19,13 @@ import type {
 import { DIAGNOSTIC_CHECK_COUNT, samePreferences } from '../../shared/types'
 import { browserSnapshot } from './browser'
 import { createLocalApi } from '../lib/local-api'
+import type { GuardNotification } from '../lib/notifications'
 import type { ScanJob, ServiceStatus } from '../../shared/service-status'
 import type { ConnectionRequest } from '../../shared/connections'
+import type {
+  BrowserLanguageRequest,
+  BrowserLanguagePreview,
+} from '../../shared/browser-configuration'
 import type { TranslationRequest, TranslationTestResult } from '../../shared/translation'
 export function useGuard() {
   const boot = shallowRef<Bootstrap>()
@@ -40,7 +46,7 @@ export function useGuard() {
   const connected = ref(false)
   const error = ref('')
   const progress = ref({ completed: 0, total: DIAGNOSTIC_CHECK_COUNT, current: '准备检测' })
-  const toast = ref<{ message: string; kind: 'success' | 'error' }>()
+  const toast = ref<GuardNotification>()
   let token = ''
   let mounted = true
   let toastTimer: ReturnType<typeof setTimeout> | undefined
@@ -337,6 +343,57 @@ export function useGuard() {
       working.value = false
     }
   }
+  async function previewBrowserLanguage(
+    value: BrowserLanguageRequest,
+  ): Promise<BrowserLanguagePreview | undefined> {
+    if (busy.value || !connected.value) return
+    working.value = true
+    try {
+      return await api<BrowserLanguagePreview>('/browser-language/preview', {
+        method: 'POST',
+        body: JSON.stringify(value),
+      })
+    } catch (error) {
+      notify((error as Error).message, 'error')
+    } finally {
+      working.value = false
+    }
+  }
+  async function applyBrowserLanguage(id: string, restoring = false): Promise<boolean> {
+    if (busy.value || !connected.value) return false
+    working.value = true
+    try {
+      return await finishWrite(
+        () =>
+          api<{ message: string }>(
+            restoring
+              ? '/browser-language/backups/' + id + '/restore'
+              : '/browser-language/' + id + '/apply',
+            { method: 'POST', body: '{}' },
+          ),
+        (value) => value.message,
+      )
+    } finally {
+      working.value = false
+    }
+  }
+  async function restoreBrowserLanguage(id: string) {
+    return applyBrowserLanguage(id, true)
+  }
+  async function openLocalAction(action: LocalActionId): Promise<boolean> {
+    if (!connected.value || busy.value) return false
+    try {
+      const result = await api<LocalActionResult>('/local-actions', {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      })
+      notify(result.message)
+      return result.opened
+    } catch (error) {
+      notify((error as Error).message, 'error')
+      return false
+    }
+  }
   async function saveTranslation(value: TranslationRequest): Promise<boolean> {
     if (busy.value || !connected.value) return false
     working.value = true
@@ -583,7 +640,11 @@ export function useGuard() {
     apply,
     restore,
     savePreferences,
+    openLocalAction,
     saveTranslation,
+    previewBrowserLanguage,
+    applyBrowserLanguage,
+    restoreBrowserLanguage,
     testTranslation,
     notify,
     toggleFix,

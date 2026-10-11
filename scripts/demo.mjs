@@ -33,6 +33,22 @@ await fs.writeFile(
     2,
   ) + '\n',
 )
+// Harmless external-browser fixture for preview, language writes and restoration in demo mode.
+const browserRoot =
+  process.platform === 'darwin'
+    ? 'Library/Application Support/Google/Chrome'
+    : process.platform === 'win32'
+      ? 'AppData/Local/Google/Chrome/User Data'
+      : '.config/google-chrome'
+await fs.mkdir(path.join(home, browserRoot, 'Default'), { recursive: true })
+await fs.writeFile(
+  path.join(home, browserRoot, 'Default/Preferences'),
+  JSON.stringify({
+    intl: { selected_languages: 'zh-CN,zh,en-US', accept_languages: 'zh-CN,zh,en-US' },
+    profile: { name: 'Demo' },
+  }),
+  { mode: 0o600 },
+)
 const dataDir = path.join(root, 'data')
 await fs.mkdir(dataDir, { mode: 0o700 })
 await fs.writeFile(

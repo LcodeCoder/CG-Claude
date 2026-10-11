@@ -10,15 +10,29 @@ const images = new Map(
     new Resvg(svg, { fitTo: { mode: 'width', value: size } }).render().asPng(),
   ]),
 )
+await mkdir(new URL('../build/', import.meta.url), { recursive: true })
 await writeFile(new URL('../build/icon.png', import.meta.url), images.get(1024))
 await writeFile(new URL('../build/icon.svg', import.meta.url), svg)
 await writeFile(new URL('../public/favicon.svg', import.meta.url), svg)
 
-const icnsTypes = ['icp4', 'icp5', 'icp6', 'ic07', 'ic08', 'ic09', 'ic10']
-const icnsChunks = sizes.map((size, index) => {
+// icp6 is a 48px representation; putting a 64px PNG there corrupts small macOS icons.
+// Include explicit Retina representations so app switcher / Dock use the correct size.
+const icnsRepresentations = [
+  ['icp4', 16],
+  ['icp5', 32],
+  ['ic07', 128],
+  ['ic08', 256],
+  ['ic09', 512],
+  ['ic10', 1024],
+  ['ic11', 32],
+  ['ic12', 64],
+  ['ic13', 256],
+  ['ic14', 512],
+]
+const icnsChunks = icnsRepresentations.map(([type, size]) => {
   const png = images.get(size)
   const header = Buffer.alloc(8)
-  header.write(icnsTypes[index], 0, 'ascii')
+  header.write(type, 0, 'ascii')
   header.writeUInt32BE(png.length + 8, 4)
   return Buffer.concat([header, png])
 })

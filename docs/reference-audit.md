@@ -1,8 +1,56 @@
 # 参考来源逐项审计
 
-核对日期：2026-10-11。文献库共 64 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
+核对日期：2026-10-11。文献库共 67 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
 
 官方配置名称、取值和版本条件优先以当前官方说明为准；社区项目只采用注明的方法与限制。外部泄漏页面只核对用途，本轮未替用户进行公网泄漏检测。完整正文不进入源代码仓库，读取渠道和正文哈希见 [来源读取记录](source-audit-manifest.json)。
+
+## Apple · 自动校时与自动选择时区
+
+官方文档 · Apple · [原文](https://support.apple.com/guide/mac-help/set-the-date-and-time-automatically-mchlp2996/mac) · ID：`apple-date-time-settings`。
+
+采用段落：General → Date & Time / Set time zone automatically using your current location。
+
+项目应用：区分 NTP 与自动时区；配置完成页提供日期与时间入口，已读取的 macOS 自动时区可配置并快照还原。
+
+核对结论：区分自动时区与 NTP，独立读取 macOS 开关；配置后回读、快照保存原状态。官方页面不证明私有偏好键在所有版本一致。
+
+判断边界：官方页面说明设置含义与操作路径，不提供防封效果证明；defaults 键属于本机适配实现，系统版本差异需复核。
+
+对应实现：[server/timezone-automation.ts](../server/timezone-automation.ts)。
+
+关联：环境 `timezone`；环境 `automatic-timezone`；人工 `timezone-auto`；人工 `terminal-session`。
+
+## Apple · 定位服务与设备时区
+
+官方文档 · Apple · [原文](https://support.apple.com/en-us/101619) · ID：`apple-location-timezone-settings`。
+
+采用段落：Mac / iPhone / Location Services → System Services → Setting Time Zone。
+
+项目应用：电脑定位时区与手机复核拆成独立任务，提供完整路径；macOS 可请求打开定位服务上层页面。
+
+核对结论：电脑定位、电脑自动和手机拆开复核；设置跳转仅请求上层页面，保留具体手动路径，未知权限不标通过。
+
+判断边界：跳转不保证展开系统服务弹窗；私有记录存在不代表权限关闭。本机不能读取另一台手机。
+
+对应实现：[shared/manual-guidance.ts](../shared/manual-guidance.ts)。
+
+关联：环境 `location-timezone`；环境 `timezone-followup`；人工 `location-timezone`；人工 `phone-timezone`。
+
+## Chromium · 首选语言与生效列表实现
+
+官方文档 · Chromium · [原文](https://github.com/chromium/chromium/blob/main/components/language/core/browser/language_prefs.cc) · ID：`chromium-language-preferences`。
+
+采用段落：LanguagePrefs constructor / InitializeSelectedLanguagesPref / UpdateAcceptLanguagesPref / policy languages。
+
+项目应用：关闭浏览器后只改 selected_languages，保留其余字段；写前备份语言并允许还原，重开后独立采样。
+
+核对结论：保存 selected_languages，accept_languages 留给 Chromium 派生；拒绝已观察到的强制语言、运行中浏览器和预览冲突，备份只含语言字段。
+
+判断边界：本轮未验证真实 Chrome 重启后的 navigator 值；组织策略或同步可能覆盖偏好。应用菜单语言是独立设置。
+
+对应实现：[server/browser-configuration.ts](../server/browser-configuration.ts)。
+
+关联：环境 `browser-language`；人工 `browser-profile`。
 
 ## MDN · 浏览器语言与 BCP 47 标签
 
@@ -26,11 +74,11 @@
 
 采用段落：Add preferred languages / Change the language of your Chrome browser / Mac or Linux。
 
-项目应用：提供添加、调整英文首选网页语言与重开后复检的指引。
+项目应用：提供首选语言指引及关闭浏览器后的实际配置入口，区分网页语言与应用菜单语言。
 
 核对结论：首选网页语言与界面语言分别说明，指导添加英文、调整顺序和重开后外部复检。
 
-判断边界：一键时区配置不会修改外部浏览器语言；未编辑运行中的浏览器资料文件。
+判断边界：语言配置有独立预览与备份；必须完全退出对应浏览器，保存结果需重开后在实际浏览器复检。
 
 对应实现：[src/components/BrowserLanguagePreferences.vue](../src/components/BrowserLanguagePreferences.vue)。
 
@@ -44,7 +92,7 @@
 
 项目应用：提供对应浏览器的英文设置入口与复检说明。
 
-核对结论：提供 Edge 设置 → 语言路径，实际地区标记由复检确认；未编辑浏览器资料。
+核对结论：提供 Edge 路径和独立浏览器资料选择；完全退出后可预览配置，实际语言标记仍由重开后的采样确认。
 
 判断边界：不同平台的界面语言选项不同，实际语言标记需由浏览器重新采样。
 
@@ -922,15 +970,15 @@
 
 采用段落：全文 0–10 与参考来源。
 
-项目应用：默认以 Asia/Taipei 对照系统、Node 进程和浏览器；也可明确选择按当前出口或手动目标。自动时区、定位和手机端列为待确认。
+项目应用：默认以 Asia/Taipei 对照系统、Node 进程和浏览器；也可明确选择按当前出口或手动目标。macOS 自动时区独立读取与配置，定位和手机单列人工核对，完成页提供步骤、跳转与终端命令。
 
-核对结论：完整正文逐项映射；原文默认 B 路线与用户选定模式分开，人工和不执行项不自动通过。
+核对结论：以用户提供的完整正文复核第 0–10 节；补齐自动时区、定位、手机、新终端与配置完成清单，B 路线和所选模式差异可查看。
 
 判断边界：社区归因、养号节奏和风控权重缺乏公开可复验依据，不转换为自动结论。
 
 对应实现：[shared/article-audit.ts](../shared/article-audit.ts)。
 
-关联：环境 `timezone`；环境 `browser-timezone`；环境 `timezone-env`；环境 `timezone-followup`；环境 `system-proxy`；环境 `tun`；环境 `dns`；环境 `shell-proxy`；环境 `claude-endpoint`；人工 `dns`；人工 `webrtc`；人工 `regions`；人工 `client`；人工 `backup`；人工 `timezone-auto`；人工 `fixed-route`；人工 `asn`；人工 `browser-profile`；人工 `cloud-privacy`；人工 `usage`；人工 `billing`；人工 `contact`；人工 `account-ownership`；人工 `account-export`；人工 `sessions`；人工 `account-notice`。
+关联：环境 `timezone`；环境 `browser-timezone`；环境 `timezone-env`；环境 `timezone-followup`；环境 `automatic-timezone`；环境 `location-timezone`；环境 `system-proxy`；环境 `tun`；环境 `dns`；环境 `shell-proxy`；环境 `claude-endpoint`；人工 `dns`；人工 `webrtc`；人工 `regions`；人工 `client`；人工 `backup`；人工 `timezone-auto`；人工 `location-timezone`；人工 `phone-timezone`；人工 `terminal-session`；人工 `fixed-route`；人工 `asn`；人工 `browser-profile`；人工 `cloud-privacy`；人工 `usage`；人工 `billing`；人工 `contact`；人工 `account-ownership`；人工 `account-export`；人工 `sessions`；人工 `account-notice`。
 
 ## Claude Code #39862 · NO_PROXY 历史回归
 

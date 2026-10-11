@@ -183,23 +183,36 @@ export function runtimeTimezoneCheck(
     sourceUrl: ARTICLE_URL,
   }
 }
+export function locationTimezoneCheck(location: string): CheckResult {
+  return {
+    id: 'location-timezone',
+    category: 'system',
+    title: '定位服务中的设定时区',
+    description: '独立于日期与时间里的自动时区开关。系统定位记录不等于可验证的权限状态。',
+    status: 'manual',
+    summary: '需在系统服务中单独关闭并核对',
+    evidence: [{ label: '定位服务 · 设定时区', value: location }],
+    recommendation:
+      'Mac：系统设置 → 隐私与安全性 → 定位服务 → 系统服务（详细信息），关闭“设定时区”，点击完成。配置完成页和人工复核提供快捷入口。',
+    fixIds: [],
+    source: 'community',
+    sourceUrl: ARTICLE_URL,
+  }
+}
 export function timezoneFollowupCheck(target: TimezoneTarget): CheckResult {
   return {
     id: 'timezone-followup',
     category: 'system',
-    title: '自动时区、定位与手机端',
-    description:
-      '原文第 2.2 / 6.1 / 9 节还要求关闭自动设定时区、关闭定位服务中的设定时区，并核对手机。',
+    title: '手机时区与自动设置',
+    description: '原文 2.2 / 6.1 / 9：实际登录 Claude 的手机需单独核对时区与两个自动开关。',
     status: 'manual',
-    summary: '三项尚未自动核实，需逐项人工复核',
+    summary: '需在实际使用的手机上核对',
     evidence: [
       ...targetEvidence(target),
-      { label: '电脑自动设定时区', value: '未自动读取；不能由当前时区推断已关闭' },
-      { label: '定位服务 · 设定时区', value: '未自动读取；不能由当前时区推断已关闭' },
       { label: '手机时区与自动设置', value: '本机不能读取另一台设备；请按所选目标核对' },
     ],
     recommendation:
-      'Mac：系统设置 → 通用 → 日期与时间；隐私与安全性 → 定位服务 → 系统服务。iPhone：通用 → 日期与时间，及定位服务 → 系统服务。Windows：时间和语言 → 日期和时间。逐项完成后，在人工复核中记录。',
+      'iPhone：通用 → 日期与时间，关闭自动设置并选择目标城市；隐私与安全性 → 定位服务 → 系统服务，关闭设定时区。不使用手机端时，在人工复核备注中说明。',
     fixIds: [],
     source: 'community',
     sourceUrl: ARTICLE_URL,

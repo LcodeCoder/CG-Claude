@@ -68,7 +68,12 @@ export class SnapshotEngine {
       files: files.filter((file) => file.editable).map((file) => file.display),
       excludedFiles: files.filter((file) => !file.editable).map((file) => file.display),
       preferences,
-      timezone: { system: timezone.system, terminal: true, user: timezone.user !== undefined },
+      timezone: {
+        system: timezone.system,
+        terminal: true,
+        user: timezone.user !== undefined,
+        ...(timezone.automatic !== undefined ? { automatic: timezone.automatic } : {}),
+      },
       timezoneState: { state: timezone, hash: hash(JSON.stringify(timezone)) },
       entries: files
         .filter((file) => file.editable)

@@ -51,6 +51,7 @@
 
 .dialog-footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 11px;
@@ -341,4 +342,20 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.dialog-feedback {
+  flex: 1 0 100%;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 6px;
+  color: var(--green);
+  background: var(--green-light);
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.dialog-feedback.error {
+  color: var(--red);
+  background: var(--red-light);
 }
