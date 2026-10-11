@@ -1,7 +1,7 @@
 import { get as httpGet } from 'node:http'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { afterEach, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { createAppServer } from '../server/index'
 import { defaultPreferences } from '../shared/types'
 import { fixture } from './fixtures'
@@ -356,4 +356,99 @@ test('one-click API requests an authenticated fresh browser sample while busy an
   expect((await post('/api/snapshot-plans/' + restore.id + '/restore', {})).status).toBe(200)
   expect((await data.ctx.readSystemTimezone()).timezone).toBe('Asia/Shanghai')
   expect(data.ctx.env.TZ).toBeUndefined()
+})
+
+test('exposes an active scan to a reconnected interface and returns idle only when it completes', async () => {
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const run = data.ctx.run
+  data.ctx.run = async (...args) => {
+    await gate
+    return run(...args)
+  }
+  const started = await (await post('/api/scans', { network: false })).json()
+  try {
+    const bootstrap = await (await fetch(base + '/api/bootstrap')).json()
+    expect(bootstrap.service.activity.kind).toBe('scan')
+    expect(bootstrap.service.scan.id).toBe(started.id)
+    expect(bootstrap.service.scan.status).toBe('running')
+    expect((await (await fetch(base + '/api/status')).json()).activity.id).toBe(started.id)
+  } finally {
+    release()
+  }
+  while ((await (await fetch(base + '/api/scans/' + started.id)).json()).status === 'running')
+    await new Promise((resolve) => setTimeout(resolve, 10))
+  expect((await (await fetch(base + '/api/status')).json()).activity).toBeUndefined()
+})
+
+test('shutdown waits for an in-flight mutation even after the client aborts its request', async () => {
+  let release!: () => void
+  let entered!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const entry = new Promise<void>((resolve) => {
+    entered = resolve
+  })
+  const capture = app.snapshots.capture.bind(app.snapshots)
+  const spy = vi.spyOn(app.snapshots, 'capture').mockImplementation(async (...args) => {
+    entered()
+    await gate
+    return capture(...args)
+  })
+  const controller = new AbortController()
+  const request = fetch(base + '/api/snapshots', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CG-Token': token },
+    body: '{}',
+    signal: controller.signal,
+  }).catch(() => undefined)
+  await entry
+  expect((await (await fetch(base + '/api/status')).json()).activity.kind).toBe('mutation')
+  controller.abort()
+  let finished = false
+  const closing = app.close().then(() => {
+    finished = true
+  })
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(finished).toBe(false)
+    expect((await post('/api/snapshots', {})).status).toBe(503)
+    await expect(createAppServer({ ctx: data.ctx, port: 0 })).rejects.toThrow('另一个')
+  } finally {
+    release()
+  }
+  await Promise.all([closing, request])
+  spy.mockRestore()
+  expect(finished).toBe(true)
+  expect(await data.storage.snapshots()).toHaveLength(1)
+})
+
+test('rejects non-ASCII operation credentials before constant-time byte comparison', async () => {
+  const response = await post('/api/snapshots', {}, 'é'.repeat(64))
+  expect(response.status).toBe(403)
+  expect(await response.json()).toEqual({ error: '本机操作凭证无效，请刷新界面' })
+})
+
+test('invalid absolute request targets return a client error without terminating the service', async () => {
+  const { port } = new URL(base)
+  const status = await new Promise<number>((resolve, reject) => {
+    const request = httpGet(
+      {
+        host: '127.0.0.1',
+        port: Number(port),
+        path: 'http://[',
+        headers: { Host: `127.0.0.1:${port}` },
+      },
+      (response) => {
+        response.resume()
+        resolve(response.statusCode ?? 0)
+      },
+    )
+    request.on('error', reject)
+  })
+  expect(status).toBe(400)
+  expect((await fetch(base + '/api/bootstrap')).status).toBe(200)
 })

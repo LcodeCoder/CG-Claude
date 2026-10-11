@@ -346,3 +346,20 @@ test('restoring an older field backup preserves the visible creation timeline an
   expect(JSON.stringify(list)).not.toContain('entries')
   expect(await data.read('.zshrc')).toBe(original)
 })
+
+test.each([true, false])(
+  'refuses corrupted backup originals before any write (new integrity: %s)',
+  async (modern) => {
+    await data.write('.npmrc', 'strict-ssl=false\n')
+    const backup = await engine.apply(
+      (await engine.preview(['npm-tls'], defaultPreferences)).id,
+      defaultPreferences,
+    )
+    const record = (await data.storage.manifests())[0]!
+    if (!modern) delete record.integrityHash
+    record.entries[0]!.original = 'strict-ssl=false\nfixture-corrupted-original\n'
+    await data.storage.saveManifest(record)
+    await expect(engine.restore(backup.id)).rejects.toThrow('完整性校验')
+    expect(await data.read('.npmrc')).toBe('strict-ssl=true\n')
+  },
+)

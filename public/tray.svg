@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="12 12 104 104" fill="none">
+  <title>CG Claude</title>
+  <defs>
+    <path id="loop" d="M64 42C74 29 90 25 103 32C115 39 116 54 105 64C98 70 89 73 80 71L74 61C84 64 94 62 99 56C104 50 102 43 96 40C89 36 80 40 75 48L69 57Z" />
+  </defs>
+  <g fill="#000000" stroke="#FFFFFF" stroke-width="1.5" stroke-linejoin="round">
+    <use href="#loop" />
+    <use href="#loop" transform="rotate(90 64 64)" />
+    <use href="#loop" transform="rotate(180 64 64)" />
+    <use href="#loop" transform="rotate(270 64 64)" />
+  </g>
+  <path fill="#000000" d="M64 52L67 60L75 64L67 68L64 76L60 68L52 64L60 60Z" />
+</svg>

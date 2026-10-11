@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { samePreferences } from '../../shared/types'
 import { usageModeLabel } from '../../shared/usage-modes'
 import { DIAGNOSTIC_RULESET } from '../../shared/diagnostic-checks'
 import { computed, ref, nextTick } from 'vue'
@@ -112,7 +113,7 @@ const isHistorical = computed(() =>
 const reportPreferencesChanged = computed(
   () =>
     Boolean(props.report && props.preferences) &&
-    JSON.stringify(props.report?.preferences) !== JSON.stringify(props.preferences),
+    !samePreferences(props.report?.preferences, props.preferences),
 )
 const reportRulesChanged = computed(() =>
   Boolean(props.report && props.report.ruleset !== DIAGNOSTIC_RULESET),

@@ -20,6 +20,7 @@ jobs:
       - run: npm ci
       - run: npm run format:check
       - run: npm run check
+      - run: npm run icons
       - run: npm run build
       - run: npm run desktop:prepare
       - run: npm exec electron-builder -- --dir --publish never

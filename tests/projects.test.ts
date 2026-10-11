@@ -348,3 +348,21 @@ test('project Git include cannot be treated as fully checked TLS', async () => {
   const report = await scanProject(data.ctx, data.home)
   expect(report.findings.find((item) => item.id === 'project-tls')?.status).toBe('manual')
 })
+
+test.each(['symlink', 'directory'] as const)(
+  'does not pass dependencies when the only lockfile is a %s',
+  async (kind) => {
+    await data.write('package.json', '{"name":"fixture-project"}')
+    const target = path.join(data.home, 'package-lock.json')
+    if (kind === 'directory') await fs.mkdir(target)
+    else {
+      await data.write('outside-lock', '{}')
+      await fs.symlink(path.join(data.home, 'outside-lock'), target)
+    }
+    const report = await scanProject(data.ctx, data.home)
+    const check = report.findings.find((item) => item.id === 'project-dependencies')!
+    expect(check.status).toBe('manual')
+    expect(check.evidence[0]?.label).toBe('package-lock.json')
+    expect(check.evidence[0]?.value).toContain(kind === 'directory' ? '普通文件' : '符号链接')
+  },
+)

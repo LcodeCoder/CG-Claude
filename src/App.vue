@@ -17,8 +17,9 @@ import {
   WifiOff,
   Workflow,
   LibraryBig,
+  Minus,
 } from '@lucide/vue'
-import { defaultPreferences } from '../shared/types'
+import { defaultPreferences, samePreferences } from '../shared/types'
 import type { Preferences, BackupSummary, ScanReport } from '../shared/types'
 import { useGuard } from './composables/useGuard'
 import packageMetadata from '../package.json'
@@ -61,6 +62,7 @@ const {
   canRepair,
   reportConfigurationChanged,
   busy,
+  remoteWorking,
   setupPreview,
   setupJob,
   snapshotPlan,
@@ -171,16 +173,19 @@ const activeBackups = computed(
   () => boot.value?.backups.filter((backup) => backup.status === 'applied').length ?? 0,
 )
 const preferenceChanged = computed(
-  () =>
-    JSON.stringify(draft.value) !== JSON.stringify(boot.value?.preferences ?? defaultPreferences),
+  () => !samePreferences(draft.value, boot.value?.preferences ?? defaultPreferences),
 )
 const exportBase = computed(() =>
   report.value ? `/api/reports/${report.value.id}/export?redact=1` : '',
 )
 watch(
   () => boot.value?.preferences,
-  (value) => {
-    if (value) draft.value = { ...value }
+  (value, previous) => {
+    if (
+      value &&
+      (!previous || samePreferences(draft.value, previous) || samePreferences(draft.value, value))
+    )
+      draft.value = { ...value }
   },
   { immediate: true },
 )
@@ -243,6 +248,17 @@ async function copyReferences(value: string) {
     guard.notify('文献引用已复制，包含原文链接、采用方式与判断边界。')
   } catch {
     guard.notify('无法自动复制，请在文献卡片中手动选择内容。', 'error')
+  }
+}
+const desktopAvailable = Boolean(window.claudeGuardDesktop)
+const hideWindowLabel = computed(() =>
+  boot.value?.machine.platform === 'darwin' ? '隐藏到菜单栏' : '隐藏到托盘',
+)
+async function hideDesktopWindow() {
+  try {
+    await window.claudeGuardDesktop?.hideWindow()
+  } catch {
+    guard.notify('无法隐藏窗口，请使用系统的最小化按钮。', 'error')
   }
 }
 const commandForPlatform = computed(() =>
@@ -308,7 +324,16 @@ const commandForPlatform = computed(() =>
       <header class="topbar">
         <span class="topbar-local"><LockKeyhole :size="13" />配置保存在本机</span>
         <div class="topbar-info">
-          <span v-if="boot?.runtime === 'electron'" class="desktop-tag">Electron 桌面版</span>
+          <button
+            v-if="desktopAvailable"
+            class="icon-button desktop-hide-button"
+            :aria-label="hideWindowLabel"
+            :title="hideWindowLabel"
+            @click="hideDesktopWindow"
+          >
+            <Minus :size="17" />
+          </button>
+          <span v-if="desktopAvailable" class="desktop-tag">桌面版</span>
           <span v-if="boot?.demo" class="demo-tag">隔离测试环境</span
           ><span class="machine-label"
             ><Laptop :size="14" />{{ boot?.machine.platformName || '本机' }}</span
@@ -405,6 +430,13 @@ const commandForPlatform = computed(() =>
           >
         </div>
 
+        <div
+          v-if="remoteWorking && !scanning && !loading && !error"
+          class="verification-strip"
+          role="status"
+        >
+          <LoaderCircle class="spin" :size="16" /><span>本机操作仍在进行，完成后自动更新。</span>
+        </div>
         <div v-if="loading" class="loading-view">
           <LoaderCircle class="spin" :size="28" /><strong>正在连接本机服务</strong>
           <p>读取系统信息与配置文件位置</p>
@@ -481,7 +513,7 @@ const commandForPlatform = computed(() =>
           :busy="busy"
           :working="working"
           :connected="connected"
-          :desktop="boot?.runtime === 'electron'"
+          :desktop="desktopAvailable"
           @scan="guard.scanProject"
           @choose="chooseProject"
           @references="openProjectReferences"

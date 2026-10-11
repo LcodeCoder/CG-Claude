@@ -263,6 +263,7 @@ test('legacy snapshots restore files without resetting newer timezone settings',
   await data.write('.npmrc', 'registry=https://original.example\n')
   const saved = await snapshots.capture()
   const record = (await data.storage.snapshots())[0]!
+  delete record.integrityHash
   delete record.timezoneState
   delete record.timezone
   await data.storage.saveSnapshot(record)

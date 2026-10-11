@@ -17,6 +17,7 @@ import type { SnapshotEngine } from './snapshots.js'
 import { terminalTimezoneScopeReason, transformTimezoneConfig } from './timezone-config.js'
 import { requireTimezone } from './timezone-settings.js'
 import { claudeConfigurationScopeReason } from './configuration-scope.js'
+import { backupIntegrity } from './record-validation.js'
 
 export interface AppliedRepair {
   backup: BackupSummary
@@ -259,6 +260,7 @@ export class RepairEngine {
         afterHash: hash(entry.after),
       })),
     }
+    manifest.integrityHash = backupIntegrity(manifest)
     await this.storage.saveManifest(manifest)
     const written: { entry: PlannedFile; afterMode: number }[] = []
     try {
@@ -280,9 +282,10 @@ export class RepairEngine {
         written.push({ entry, afterMode })
       }
       manifest.status = 'applied'
+      manifest.integrityHash = backupIntegrity(manifest)
       await this.storage.saveManifest(manifest)
       this.plans.delete(id)
-      const { entries, ...summary } = manifest
+      const { entries, integrityHash: _integrity, ...summary } = manifest
       return {
         backup: summary,
         files: entries.map((entry) => ({
@@ -312,6 +315,7 @@ export class RepairEngine {
         }
       }
       manifest.status = 'failed'
+      manifest.integrityHash = backupIntegrity(manifest)
       await this.storage.saveManifest(manifest)
       throw new Error(
         rollbackFailures.length
@@ -324,6 +328,8 @@ export class RepairEngine {
     const manifest = (await this.storage.manifests()).find((item) => item.id === id)
     if (!manifest || manifest.status !== 'applied') throw new Error('此备份不处于可恢复状态')
     for (const entry of manifest.entries) {
+      if (hash(entry.original) !== entry.beforeHash)
+        throw new Error('备份内容完整性校验未通过；恢复已停止，原文件保持原样')
       const current = await readConfig(this.ctx, entry.relative)
       if (
         !current.editable ||
@@ -350,7 +356,7 @@ export class RepairEngine {
       manifest.status = 'restored'
       manifest.restoredAt = new Date().toISOString()
       await this.storage.saveManifest(manifest)
-      const { entries: _entries, ...summary } = manifest
+      const { entries: _entries, integrityHash: _integrity, ...summary } = manifest
       return summary
     } catch (error) {
       const failed: string[] = []

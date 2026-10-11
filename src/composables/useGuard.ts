@@ -15,18 +15,11 @@ import type {
   ManualReview,
   ManualReviewRequest,
 } from '../../shared/types'
-import { DIAGNOSTIC_CHECK_COUNT } from '../../shared/types'
+import { DIAGNOSTIC_CHECK_COUNT, samePreferences } from '../../shared/types'
 import { browserSnapshot } from './browser'
+import { createLocalApi } from '../lib/local-api'
+import type { ScanJob, ServiceStatus } from '../../shared/service-status'
 import type { ConnectionRequest } from '../../shared/connections'
-interface Job {
-  id: string
-  status: 'running' | 'complete' | 'failed'
-  completed: number
-  total: number
-  current: string
-  report?: ScanReport
-  error?: string
-}
 export function useGuard() {
   const boot = shallowRef<Bootstrap>()
   const report = shallowRef<ScanReport>()
@@ -36,6 +29,10 @@ export function useGuard() {
   const snapshotPlan = shallowRef<SnapshotPreview>()
   const projectReport = shallowRef<ProjectReport>()
   let monitorVersion = 0
+  let scanMonitorVersion = 0
+  let serviceMonitorVersion = 0
+  const remoteWorking = ref(false)
+  const configurationCurrent = ref(true)
   const loading = ref(true)
   const scanning = ref(false)
   const working = ref(false)
@@ -51,7 +48,8 @@ export function useGuard() {
     Boolean(
       report.value &&
       boot.value &&
-      (!report.value.configurationFingerprint ||
+      (!configurationCurrent.value ||
+        !report.value.configurationFingerprint ||
         report.value.configurationFingerprint !== boot.value.configurationFingerprint),
     ),
   )
@@ -63,7 +61,7 @@ export function useGuard() {
         report.value &&
         boot.value &&
         report.value.id === boot.value.reports[0]?.id,
-      ) && JSON.stringify(report.value?.preferences) === JSON.stringify(boot.value?.preferences),
+      ) && samePreferences(report.value?.preferences, boot.value?.preferences),
   )
   const availableFixes = computed(() =>
     canRepair.value
@@ -71,9 +69,14 @@ export function useGuard() {
       : [],
   )
   const busy = computed(
-    () => scanning.value || working.value || setupJob.value?.status === 'running',
+    () =>
+      scanning.value ||
+      working.value ||
+      remoteWorking.value ||
+      setupJob.value?.status === 'running',
   )
   function notify(message: string, kind: 'success' | 'error' = 'success') {
+    if (!mounted) return
     if (toastTimer) clearTimeout(toastTimer)
     toast.value = { message, kind }
     toastTimer = setTimeout(
@@ -83,43 +86,23 @@ export function useGuard() {
       kind === 'error' ? 10000 : 6000,
     )
   }
-  async function api<T>(url: string, options: RequestInit = {}): Promise<T> {
-    let response: Response
-    try {
-      response = await fetch('/api' + url, {
-        ...options,
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'X-CG-Token': token } : {}),
-          ...options.headers,
-        },
-        signal: AbortSignal.timeout(20000),
-      })
-    } catch (failure) {
-      connected.value = false
-      const timedOut =
-        failure instanceof Error && ['TimeoutError', 'AbortError'].includes(failure.name)
-      error.value = timedOut
-        ? '本机服务响应超时，请检查启动窗口后重试。'
-        : '无法连接本机服务，请检查启动窗口，并确认工具仍在运行。'
-      throw new Error(error.value)
-    }
-    connected.value = true
-    error.value = ''
-    let value: T & { error?: string }
-    try {
-      value = (await response.json()) as T & { error?: string }
-    } catch {
-      throw new Error('本机服务返回了无法读取的响应，请重新启动工具后重试。')
-    }
-    if (!response.ok) throw new Error(value.error || '本机服务没有完成操作')
-    return value
-  }
+  const api = createLocalApi({
+    token: () => token,
+    connection: (value, message) => {
+      if (!mounted) return
+      connected.value = value
+      error.value = message
+    },
+  })
   async function refresh() {
     const value = await api<Bootstrap>('/bootstrap')
     token = value.token
     boot.value = value
+    configurationCurrent.value = true
     setupJob.value = value.workflows?.[0]
+    remoteWorking.value = Boolean(
+      value.service?.activity && value.service.activity.kind !== 'setup',
+    )
     if (!report.value) report.value = value.reports[0]
     connected.value = true
   }
@@ -129,10 +112,61 @@ export function useGuard() {
     try {
       await refresh()
       if (setupJob.value?.status === 'running') void monitorSetup(setupJob.value)
+      else if (boot.value?.service?.scan) void monitorScan(boot.value.service.scan)
+      else if (boot.value?.service?.activity) void monitorService()
     } catch (failure) {
       error.value = (failure as Error).message || '本机服务未连接，请检查启动窗口'
     } finally {
       loading.value = false
+    }
+  }
+  async function finishWrite<T>(
+    operation: () => Promise<T>,
+    saved: (value: T) => string,
+    complete?: () => void,
+  ): Promise<boolean> {
+    let result: T
+    try {
+      result = await operation()
+    } catch (failure) {
+      notify((failure as Error).message, 'error')
+      return false
+    }
+    complete?.()
+    configurationCurrent.value = false
+    try {
+      await refresh()
+      notify(saved(result))
+    } catch {
+      notify(saved(result) + ' 界面刷新未完成，重新连接后查看。', 'error')
+    }
+    return true
+  }
+  async function monitorService() {
+    const version = ++serviceMonitorVersion
+    try {
+      while (mounted && version === serviceMonitorVersion) {
+        const state = await api<ServiceStatus>('/status')
+        if (!mounted || version !== serviceMonitorVersion) return
+        if (state.scan) {
+          remoteWorking.value = false
+          void monitorScan(state.scan)
+          return
+        }
+        if (state.activity?.kind === 'setup') {
+          await refresh()
+          if (setupJob.value?.status === 'running') void monitorSetup(setupJob.value)
+          return
+        }
+        if (!state.activity) {
+          await refresh()
+          remoteWorking.value = false
+          return
+        }
+        await new Promise((resolve) => setTimeout(resolve, 700))
+      }
+    } catch (failure) {
+      notify((failure as Error).message, 'error')
     }
   }
   async function updateManualReviews(
@@ -176,28 +210,18 @@ export function useGuard() {
       // Keep old storage intact if it cannot be read or migrated.
     }
   }
-  async function scan(network = false, passes = 3) {
-    if (busy.value) return
+  async function monitorScan(initial: ScanJob) {
+    const version = ++scanMonitorVersion
     scanning.value = true
-    progress.value = {
-      completed: 0,
-      total: DIAGNOSTIC_CHECK_COUNT * passes,
-      current: network ? '正在检查浏览器出口与 WebRTC' : '正在读取浏览器设置',
-    }
+    let state = initial
     try {
-      const browser = await browserSnapshot(network)
-      const job = await api<Job>('/scans', {
-        method: 'POST',
-        body: JSON.stringify({ network, browser, passes }),
-      })
-      const deadline = Date.now() + 180000
-      let state = job
-      while (mounted && state.status === 'running') {
+      while (mounted && version === scanMonitorVersion && state.status === 'running') {
         progress.value = { completed: state.completed, total: state.total, current: state.current }
-        if (Date.now() > deadline) throw new Error('检测超过 180 秒，请检查本机服务后重新检测')
         await new Promise((resolve) => setTimeout(resolve, 300))
-        state = await api<Job>('/scans/' + job.id)
+        if (!mounted || version !== scanMonitorVersion) return
+        state = await api<ScanJob>('/scans/' + initial.id)
       }
+      if (!mounted || version !== scanMonitorVersion) return
       if (state.status === 'failed') throw new Error(state.error || '检测没有完成')
       if (state.report) {
         report.value = state.report
@@ -211,6 +235,29 @@ export function useGuard() {
     } catch (failure) {
       notify((failure as Error).message, 'error')
     } finally {
+      if (version === scanMonitorVersion) {
+        scanning.value = false
+        remoteWorking.value = false
+      }
+    }
+  }
+  async function scan(network = false, passes = 3) {
+    if (busy.value || !connected.value) return
+    scanning.value = true
+    progress.value = {
+      completed: 0,
+      total: DIAGNOSTIC_CHECK_COUNT * passes,
+      current: network ? '正在检查浏览器出口与 WebRTC' : '正在读取浏览器设置',
+    }
+    try {
+      const browser = await browserSnapshot(network)
+      const job = await api<ScanJob>('/scans', {
+        method: 'POST',
+        body: JSON.stringify({ network, browser, passes }),
+      })
+      await monitorScan(job)
+    } catch (failure) {
+      notify((failure as Error).message, 'error')
       scanning.value = false
     }
   }
@@ -231,21 +278,18 @@ export function useGuard() {
     }
   }
   async function apply(): Promise<boolean> {
-    if (!plan.value || busy.value) return false
+    if (!plan.value || busy.value || !connected.value) return false
     working.value = true
+    const id = plan.value.id
     try {
-      const backup = await api<BackupSummary>('/repairs/' + plan.value.id + '/apply', {
-        method: 'POST',
-        body: '{}',
-      })
-      plan.value = undefined
-      selected.value = []
-      await refresh()
-      notify(`已修复 ${backup.files.length} 个配置文件，并保存原始备份。`)
-      return true
-    } catch (failure) {
-      notify((failure as Error).message, 'error')
-      return false
+      return await finishWrite(
+        () => api<BackupSummary>('/repairs/' + id + '/apply', { method: 'POST', body: '{}' }),
+        (backup) => `已修复 ${backup.files.length} 个配置文件，并保存原始备份。`,
+        () => {
+          plan.value = undefined
+          selected.value = []
+        },
+      )
     } finally {
       working.value = false
     }
@@ -267,72 +311,58 @@ export function useGuard() {
   async function applyConnection(id: string): Promise<boolean> {
     if (busy.value || !connected.value) return false
     working.value = true
-    let saved = false
     try {
-      await api<BackupSummary>('/connections/' + id + '/apply', { method: 'POST', body: '{}' })
-      saved = true
-      plan.value = undefined
-      selected.value = []
-      await refresh()
-      notify('连接设置已保存，修改前的完整快照与原始备份已保留。')
-      return true
-    } catch (failure) {
-      notify(
-        saved
-          ? '连接设置已保存，但界面刷新未完成。重新连接后可查看快照与备份。'
-          : (failure as Error).message,
-        'error',
+      return await finishWrite(
+        () => api('/connections/' + id + '/apply', { method: 'POST', body: '{}' }),
+        () => '连接设置已保存，修改前的快照与原始备份已保留。',
+        () => {
+          plan.value = undefined
+          selected.value = []
+        },
       )
-      return saved
     } finally {
       working.value = false
     }
   }
   async function restore(id: string): Promise<boolean> {
-    if (busy.value) return false
+    if (busy.value || !connected.value) return false
     working.value = true
     try {
-      await api('/backups/' + id + '/restore', { method: 'POST', body: '{}' })
-      await refresh()
-      notify('已恢复原始配置。请重新启动终端让环境变量生效。')
-      return true
-    } catch (failure) {
-      notify((failure as Error).message, 'error')
-      return false
+      return await finishWrite(
+        () => api('/backups/' + id + '/restore', { method: 'POST', body: '{}' }),
+        () => '已恢复原始配置。请重新打开终端让环境变量生效。',
+      )
     } finally {
       working.value = false
     }
   }
   async function savePreferences(value: Preferences): Promise<boolean> {
-    if (busy.value) return false
+    if (busy.value || !connected.value) return false
     working.value = true
     try {
-      await api('/preferences', { method: 'PUT', body: JSON.stringify(value) })
-      selected.value = []
-      plan.value = undefined
-      await refresh()
-      notify('检测偏好已保存，重新检测后生效。')
-      return true
-    } catch (failure) {
-      notify((failure as Error).message, 'error')
-      return false
+      return await finishWrite(
+        () => api('/preferences', { method: 'PUT', body: JSON.stringify(value) }),
+        () => '检测偏好已保存，重新检测后生效。',
+        () => {
+          plan.value = undefined
+          selected.value = []
+        },
+      )
     } finally {
       working.value = false
     }
   }
   async function captureSnapshot(): Promise<void> {
-    if (busy.value) return
+    if (busy.value || !connected.value) return
     working.value = true
     try {
-      const snapshot = await api<SnapshotSummary>('/snapshots', { method: 'POST', body: '{}' })
-      await refresh()
-      notify(
-        snapshot.excludedFiles.length
-          ? `快照已保存；${snapshot.excludedFiles.length} 个文件未包含，可在快照详情中查看。`
-          : '当前配置与检测偏好已保存为完整快照。',
+      await finishWrite(
+        () => api<SnapshotSummary>('/snapshots', { method: 'POST', body: '{}' }),
+        (snapshot) =>
+          snapshot.excludedFiles.length
+            ? `快照已保存；${snapshot.excludedFiles.length} 个文件未包含，可在快照详情中查看。`
+            : '当前配置与检测偏好已保存为完整快照。',
       )
-    } catch (failure) {
-      notify((failure as Error).message, 'error')
     } finally {
       working.value = false
     }
@@ -352,22 +382,19 @@ export function useGuard() {
     }
   }
   async function restoreSnapshot(): Promise<boolean> {
-    if (!snapshotPlan.value || busy.value) return false
+    if (!snapshotPlan.value || busy.value || !connected.value) return false
     working.value = true
+    const id = snapshotPlan.value.id
     try {
-      await api('/snapshot-plans/' + snapshotPlan.value.id + '/restore', {
-        method: 'POST',
-        body: '{}',
-      })
-      snapshotPlan.value = undefined
-      plan.value = undefined
-      selected.value = []
-      await refresh()
-      notify('配置快照已完整还原，还原前的配置也已保存为快照。')
-      return true
-    } catch (failure) {
-      notify((failure as Error).message, 'error')
-      return false
+      return await finishWrite(
+        () => api('/snapshot-plans/' + id + '/restore', { method: 'POST', body: '{}' }),
+        () => '配置快照已还原，还原前的配置也已保存为快照。',
+        () => {
+          snapshotPlan.value = undefined
+          plan.value = undefined
+          selected.value = []
+        },
+      )
     } finally {
       working.value = false
     }
@@ -439,6 +466,7 @@ export function useGuard() {
         await new Promise((resolve) => setTimeout(resolve, 400))
         if (!mounted || version !== monitorVersion) return
         state = await api<SetupJob>('/setup/' + initial.id)
+        if (!mounted || version !== monitorVersion) return
         setupJob.value = state
         if (state.browserProbeId && !submittedProbes.has(state.browserProbeId)) {
           const probeId = state.browserProbeId
@@ -483,6 +511,9 @@ export function useGuard() {
   }
   onUnmounted(() => {
     mounted = false
+    monitorVersion++
+    scanMonitorVersion++
+    serviceMonitorVersion++
     if (toastTimer) clearTimeout(toastTimer)
   })
   return {
@@ -505,6 +536,7 @@ export function useGuard() {
     prepareSetup,
     startSetup,
     loading,
+    remoteWorking,
     scanning,
     working,
     connected,

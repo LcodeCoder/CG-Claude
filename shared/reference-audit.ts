@@ -6,6 +6,12 @@ export interface ReferenceAudit {
   finding: string
 }
 export const referenceAudits: Record<string, ReferenceAudit> = {
+  'electron-tray': {
+    section: 'Platform Considerations / click / setContextMenu / destroy',
+    code: 'electron/tray.ts',
+    finding:
+      '采用原生托盘、macOS 模板图与双倍像素资源；窗口保持存活，明确退出会等待配置事务后释放图标。',
+  },
   'apple-system-timezone': {
     section: '-settimezone / -setusingnetworktime',
     code: 'server/timezone-settings.ts',

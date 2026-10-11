@@ -16,7 +16,7 @@ import {
   manualReviewRequestSchema,
   manualReviewImportSchema,
 } from '../shared/types.js'
-import type { ScanReport } from '../shared/types.js'
+import type { ScanJob, ServiceStatus } from '../shared/service-status.js'
 import { createContext, machineInfo } from './context.js'
 import type { Context } from './context.js'
 import { describeConfigs } from './configs.js'
@@ -34,15 +34,6 @@ import { scanProject } from './projects.js'
 import { connectionRequestSchema } from '../shared/connections.js'
 import { CONNECTION_FILE, describeConnectionConfiguration } from './connections.js'
 
-interface ScanJob {
-  id: string
-  status: 'running' | 'complete' | 'failed'
-  completed: number
-  total: number
-  current: string
-  report?: ScanReport
-  error?: string
-}
 export interface ServerOptions {
   ctx?: Context
   port?: number
@@ -68,6 +59,7 @@ export async function createAppServer(options: ServerOptions = {}) {
   }
   let setupDone: Promise<void> = Promise.resolve()
   let scanDone: Promise<void> = Promise.resolve()
+  let mutationDone: Promise<void> = Promise.resolve()
   const token = randomBytes(32).toString('hex')
   const jobs = new Map<string, ScanJob>()
   let busy = false
@@ -109,12 +101,48 @@ export async function createAppServer(options: ServerOptions = {}) {
     }
   }
   async function mutation<T>(operation: () => Promise<T>): Promise<T> {
+    if (closing) throw new Error('本机服务正在退出，请等待当前操作完成')
     if (busy || scanActive) throw new Error('当前有检测或修改正在进行，请完成后再操作')
     busy = true
+    const pending = Promise.resolve().then(operation)
+    mutationDone = pending.then(
+      () => {},
+      () => {},
+    )
     try {
-      return await operation()
+      return await pending
     } finally {
       busy = false
+    }
+  }
+  function serviceStatus(): ServiceStatus {
+    const scan = scanActive ? [...jobs.values()].find((job) => job.status === 'running') : undefined
+    const setup = workflows.list().find((job) => job.status === 'running')
+    return {
+      closing,
+      ...(scanActive
+        ? {
+            activity: {
+              kind: 'scan' as const,
+              label: scan?.current || '正在准备检测',
+              id: scan?.id,
+            },
+            scan,
+          }
+        : busy
+          ? {
+              activity: setup
+                ? {
+                    kind: 'setup' as const,
+                    label:
+                      setup.nodes.find(
+                        (node) => node.status === 'running' || node.status === 'retrying',
+                      )?.title || '正在配置',
+                    id: setup.id,
+                  }
+                : { kind: 'mutation' as const, label: '正在处理本机操作' },
+            }
+          : {}),
     }
   }
   const server = createServer(async (req, res) => {
@@ -141,17 +169,27 @@ export async function createAppServer(options: ServerOptions = {}) {
       send(res, 403, { error: '只允许本机工具界面访问' })
       return
     }
-    const url = new URL(req.url || '/', `http://${host}`)
+    let url: URL
+    try {
+      url = new URL(req.url || '/', `http://${host}`)
+    } catch {
+      send(res, 400, { error: '请求地址无效' })
+      return
+    }
     try {
       if (url.pathname.startsWith('/api/') && req.method !== 'GET') {
         const candidate = String(req.headers['x-cg-token'] || '')
         if (
-          candidate.length !== token.length ||
+          !/^[a-f\d]{64}$/.test(candidate) ||
           !timingSafeEqual(Buffer.from(candidate), Buffer.from(token))
         ) {
           send(res, 403, { error: '本机操作凭证无效，请刷新界面' })
           return
         }
+      }
+      if (req.method === 'GET' && url.pathname === '/api/status') {
+        send(res, 200, serviceStatus())
+        return
       }
       if (req.method === 'GET' && url.pathname === '/api/bootstrap') {
         const results = await Promise.allSettled([
@@ -168,6 +206,7 @@ export async function createAppServer(options: ServerOptions = {}) {
         const configurationFiles = values[1] as Awaited<ReturnType<typeof readAllConfigs>>
         const claudeFile = configurationFiles.find((file) => file.relative === CONNECTION_FILE)!
         send(res, 200, {
+          service: serviceStatus(),
           machine: machineInfo(ctx),
           preferences: values[0],
           configurationFingerprint: configurationFingerprint(configurationFiles),
@@ -221,6 +260,10 @@ export async function createAppServer(options: ServerOptions = {}) {
           return
         }
         scanActive = true
+        let finishScan!: () => void
+        scanDone = new Promise<void>((resolve) => {
+          finishScan = resolve
+        })
         try {
           const request = scanRequestSchema.parse(await body(req))
           const preferences = await storage.preferences()
@@ -232,7 +275,7 @@ export async function createAppServer(options: ServerOptions = {}) {
             total: TOTAL_CHECKS * (request.passes ?? 1),
             current: '正在读取本机配置',
           }
-          if (jobs.size > 30)
+          if (jobs.size >= 30)
             for (const [id, item] of jobs) {
               if (item.status !== 'running') {
                 jobs.delete(id)
@@ -241,7 +284,7 @@ export async function createAppServer(options: ServerOptions = {}) {
             }
           jobs.set(job.id, job)
           send(res, 202, job)
-          scanDone = runRepeatedDiagnostics(
+          void runRepeatedDiagnostics(
             ctx,
             preferences,
             request,
@@ -259,10 +302,12 @@ export async function createAppServer(options: ServerOptions = {}) {
             })
             .finally(() => {
               scanActive = false
+              finishScan()
             })
           return
         } catch (error) {
           scanActive = false
+          finishScan()
           throw error
         }
       }
@@ -317,15 +362,21 @@ export async function createAppServer(options: ServerOptions = {}) {
           return
         }
         busy = true
+        let finishSetup!: () => void
+        setupDone = new Promise<void>((resolve) => {
+          finishSetup = resolve
+        })
         try {
           await body(req)
           const job = await workflows.create(setupStart[1]!)
           send(res, 202, job)
-          setupDone = workflows.execute(job).finally(() => {
+          void workflows.execute(job).finally(() => {
             busy = false
+            finishSetup()
           })
         } catch (error) {
           busy = false
+          finishSetup()
           throw error
         }
         return
@@ -482,6 +533,7 @@ export async function createAppServer(options: ServerOptions = {}) {
     workflows,
     snapshots,
     isBusy: () => busy || scanActive,
+    status: serviceStatus,
     async listen() {
       await new Promise<void>((resolve, reject) => {
         server.once('error', reject)
@@ -500,7 +552,7 @@ export async function createAppServer(options: ServerOptions = {}) {
     close() {
       return (closeDone ??= (async () => {
         closing = true
-        await Promise.allSettled([setupDone, scanDone])
+        await Promise.allSettled([setupDone, scanDone, mutationDone])
         if (!server.listening) {
           await releaseLock()
           return

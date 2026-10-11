@@ -583,6 +583,16 @@
       "sha256": "628a491595b1f5746174cf6b21b71a4d77d8ba9d9e917af94af368fea290bfc8",
       "method": "official-html-or-maintainer-source",
       "auditScope": "adopted-sections"
+    },
+    {
+      "id": "electron-tray",
+      "url": "https://www.electronjs.org/docs/latest/api/tray",
+      "originalUrl": "https://www.electronjs.org/docs/latest/api/tray",
+      "checkedAt": "2026-10-11",
+      "result": "adopted-sections-read",
+      "method": "web.run-rendered-content",
+      "sha256": null,
+      "auditScope": "Platform Considerations / click / setContextMenu / destroy"
     }
   ]
 }

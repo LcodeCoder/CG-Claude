@@ -19,6 +19,9 @@ const emit = defineEmits<{ close: []; execute: [] }>()
         文件会完整恢复到快照时的内容。还原前先保存当前状态；预览后文件如有变化，本次还原会停止。
       </p>
     </div>
+    <p v-if="working" class="dialog-note" role="status">
+      <LoaderCircle class="spin" :size="15" />正在还原；如系统弹出授权窗口，请在该窗口完成验证。
+    </p>
     <div v-for="file in record?.files" :key="file.path" class="file-preview">
       <div class="preview-file-title">
         <FileCode2 :size="16" /><code>{{ file.path }}</code>
@@ -41,10 +44,9 @@ const emit = defineEmits<{ close: []; execute: [] }>()
     <template #footer
       ><button class="button secondary" :disabled="working" @click="emit('close')">取消</button
       ><button class="button primary" :disabled="working" @click="emit('execute')">
-        <LoaderCircle v-if="working" class="spin" :size="16" /><RotateCcw
-          v-else
-          :size="16"
-        />保存当前状态并还原
+        <LoaderCircle v-if="working" class="spin" :size="16" /><RotateCcw v-else :size="16" />{{
+          working ? '正在还原…' : '保存当前状态并还原'
+        }}
       </button></template
     ></GuardDialog
   >

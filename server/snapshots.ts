@@ -1,3 +1,4 @@
+import { samePreferences } from '../shared/types.js'
 import { randomUUID } from 'node:crypto'
 import type { Preferences, SnapshotSummary, SnapshotPreview } from '../shared/types.js'
 import type { Context } from './context.js'
@@ -11,6 +12,7 @@ import {
 } from './timezone-settings.js'
 import type { TimezoneState } from './timezone-settings.js'
 import type { Storage } from './storage.js'
+import { snapshotIntegrity } from './record-validation.js'
 interface SnapshotEntry {
   relative: string
   original: string | null
@@ -19,6 +21,7 @@ interface SnapshotEntry {
 }
 export interface SnapshotRecord extends SnapshotSummary {
   entries: SnapshotEntry[]
+  integrityHash?: string
   preferences: Preferences
   timezoneState?: { state: TimezoneState; hash: string }
 }
@@ -40,8 +43,13 @@ export class SnapshotEngine {
     return (await this.storage.snapshots())
       .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
       .map(
-        ({ entries: _entries, preferences: _preferences, timezoneState: _timezone, ...summary }) =>
-          summary,
+        ({
+          entries: _entries,
+          preferences: _preferences,
+          timezoneState: _timezone,
+          integrityHash: _integrity,
+          ...summary
+        }) => summary,
       )
   }
   async capture(
@@ -80,11 +88,13 @@ export class SnapshotEngine {
     }
     if (hash(JSON.stringify(await captureTimezoneState(this.ctx))) !== record.timezoneState!.hash)
       throw new Error('时区在保存快照时发生变化，请重试')
+    record.integrityHash = snapshotIntegrity(record)
     await this.storage.saveSnapshot(record)
     const {
       entries: _entries,
       preferences: _preferences,
       timezoneState: _timezone,
+      integrityHash: _integrity,
       ...summary
     } = record
     return summary
@@ -103,7 +113,7 @@ export class SnapshotEngine {
       expiresAt: new Date(Date.now() + 600000).toISOString(),
       files: [],
       preferences: record.preferences,
-      preferencesChanged: JSON.stringify(preferences) !== JSON.stringify(record.preferences),
+      preferencesChanged: !samePreferences(preferences, record.preferences),
       notes: [
         '还原文件的完整内容和原权限；快照之后新增的配置字段也会恢复到当时状态。',
         '还原前会另外保存当前配置快照，可再次恢复到还原前。',
@@ -181,8 +191,9 @@ export class SnapshotEngine {
     if (plan.timezoneHash && hash(JSON.stringify(currentTimezone)) !== plan.timezoneHash)
       throw new Error('时区在还原预览后发生变化，请重新预览')
     await this.capture('before-restore', '还原快照之前的配置')
-    const written: SnapshotEntry[] = []
+    const written: { entry: SnapshotEntry; afterMode: number }[] = []
     let timezoneAttempted = false
+    let preferencesAttempted = false
     try {
       if (plan.record.timezoneState) {
         if (hash(JSON.stringify(await captureTimezoneState(this.ctx))) !== plan.timezoneHash)
@@ -198,27 +209,34 @@ export class SnapshotEngine {
         )
           throw new Error(`${file.display} 被其他程序修改`)
         if (hash(file.content) === entry.hash && file.mode === entry.mode) continue
-        await writeConfig(this.ctx, entry.relative, entry.original, entry.mode)
-        written.push(entry)
+        const afterMode = await writeConfig(this.ctx, entry.relative, entry.original, entry.mode)
+        written.push({ entry, afterMode })
       }
+      if (hash(JSON.stringify(await this.storage.preferences())) !== plan.preferencesHash)
+        throw new Error('检测偏好被其他程序修改，请重新预览')
+      preferencesAttempted = true
       await this.storage.savePreferences(plan.record.preferences)
-      plan.record.status = 'restored'
-      plan.record.restoredAt = new Date().toISOString()
-      await this.storage.saveSnapshot(plan.record)
+      const restoredRecord: SnapshotRecord = {
+        ...plan.record,
+        status: 'restored',
+        restoredAt: new Date().toISOString(),
+      }
+      await this.storage.saveSnapshot(restoredRecord)
       this.plans.delete(id)
       const {
         entries: _entries,
         preferences: _preferences,
         timezoneState: _timezone,
+        integrityHash: _integrity,
         ...summary
-      } = plan.record
+      } = restoredRecord
       return summary
     } catch (error) {
       const failures: string[] = []
-      for (const entry of written.reverse())
+      for (const { entry, afterMode } of written.reverse())
         try {
           const file = await readConfig(this.ctx, entry.relative)
-          if (!file.editable || hash(file.content) !== entry.hash)
+          if (!file.editable || hash(file.content) !== entry.hash || file.mode !== afterMode)
             throw new Error('文件又被其他程序修改')
           const original = current.find((item) => item.relative === entry.relative)!
           await writeConfig(this.ctx, entry.relative, original.content, original.mode)
@@ -231,7 +249,17 @@ export class SnapshotEngine {
           currentTimezone,
           plan.record.timezoneState!.state,
         ).catch(() => failures.push('系统时区 / TZ'))
-      await this.storage.savePreferences(currentPreferences).catch(() => failures.push('检测偏好'))
+      if (preferencesAttempted)
+        try {
+          const latestHash = hash(JSON.stringify(await this.storage.preferences()))
+          if (latestHash !== plan.preferencesHash) {
+            if (latestHash !== hash(JSON.stringify(plan.record.preferences)))
+              throw new Error('检测偏好又被其他程序修改')
+            await this.storage.savePreferences(currentPreferences)
+          }
+        } catch {
+          failures.push('检测偏好')
+        }
       throw new Error(
         failures.length
           ? `还原中断，以下内容需手动处理：${failures.join('、')}。还原前的快照仍保留。`

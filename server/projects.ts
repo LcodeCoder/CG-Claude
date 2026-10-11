@@ -358,7 +358,7 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
     dotenv.length ? 'manual' : 'pass',
     dotenv.length ? '发现本地环境文件，需要核对 Git 忽略规则' : '未发现常见 dotenv 文件',
     '扫描不读取 dotenv 的内容；检查 .gitignore 与已跟踪文件，忽略规则无法删除已经提交的秘密。',
-    dotenv.map((name) => ({ label: name, value: '存在；内容未读取' })),
+    dotenv.map((name) => ({ label: name, value: files.get(name)!.error || '存在；内容未读取' })),
   )
   const pkg = files.get('package.json')!
   if (pkg.exists)
@@ -374,16 +374,20 @@ export async function scanProject(ctx: Context, supplied: string): Promise<Proje
         'bun.lock',
         'bun.lockb',
       ].filter((name) => files.get(name)!.exists)
+      const blockedLocks = locks.filter((name) => files.get(name)!.error)
       add(
         'project-dependencies',
         '依赖清单与锁文件',
-        locks.length === 1 ? 'pass' : 'warn',
-        locks.length === 1
-          ? '存在一个包管理器锁文件'
-          : locks.length
-            ? '同时存在多个锁文件，请确认使用的包管理器'
-            : '没有常见锁文件，依赖安装可能不一致',
+        blockedLocks.length ? 'manual' : locks.length === 1 ? 'pass' : 'warn',
+        blockedLocks.length
+          ? '部分锁文件路径无法安全确认'
+          : locks.length === 1
+            ? '存在一个包管理器锁文件'
+            : locks.length
+              ? '同时存在多个锁文件，请确认使用的包管理器'
+              : '没有常见锁文件，依赖安装可能不一致',
         '锁文件只证明版本记录存在；漏洞检测与构建测试需要针对项目另行运行，不自动执行 package scripts。',
+        blockedLocks.map((name) => ({ label: name, value: files.get(name)!.error! })),
       )
     } catch (error) {
       add(

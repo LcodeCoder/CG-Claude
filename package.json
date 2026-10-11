@@ -1,6 +1,6 @@
 {
   "name": "cg-claude",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "private": true,
   "type": "module",
   "description": "本地 Claude 环境检测、配置修复与备份恢复工具",
@@ -19,8 +19,8 @@
     "demo": "node scripts/demo.mjs",
     "format": "prettier --write src shared server electron tests scripts docs *.json *.ts *.md index.html .github/workflows/*.yml electron-builder.yml",
     "format:check": "prettier --check src shared server electron tests scripts docs *.json *.ts *.md index.html .github/workflows/*.yml electron-builder.yml",
-    "desktop": "npm run build && npm run desktop:prepare && electron .",
-    "desktop:demo": "npm run build && npm run desktop:prepare && node scripts/demo.mjs --desktop",
+    "desktop": "npm run icons && npm run build && npm run desktop:prepare && electron .",
+    "desktop:demo": "npm run icons && npm run build && npm run desktop:prepare && node scripts/demo.mjs --desktop",
     "pack": "npm run icons && npm run build && npm run desktop:prepare && electron-builder --dir --publish never",
     "dist": "npm run icons && npm run build && npm run desktop:prepare && electron-builder --publish never",
     "desktop:prepare": "node scripts/electron-runtime.mjs",

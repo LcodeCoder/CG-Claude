@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { usageModeIds } from './usage-modes.js'
 import type { ConnectionConfiguration } from './connections.js'
+import type { ServiceStatus } from './service-status.js'
 import { normalizeTimezone, timezoneModes } from './timezones.js'
 
 export { DIAGNOSTIC_CHECK_COUNT } from './diagnostic-checks.js'
@@ -42,6 +43,14 @@ export const preferencesSchema = z
   })
 export type Preferences = z.infer<typeof preferencesSchema>
 export const defaultPreferences: Preferences = preferencesSchema.parse({})
+
+/** Preference equality follows values, independent of JSON field order or legacy migrations. */
+export function samePreferences(left?: Preferences, right?: Preferences): boolean {
+  if (!left || !right) return left === right
+  return (Object.keys(defaultPreferences) as (keyof Preferences)[]).every(
+    (key) => left[key] === right[key],
+  )
+}
 
 export const categoryLabels = {
   network: '网络出口',
@@ -192,6 +201,7 @@ export interface BackupSummary {
   restoredAt?: string
 }
 export interface Bootstrap {
+  service?: ServiceStatus
   machine: Machine
   preferences: Preferences
   files: ConfigFileInfo[]

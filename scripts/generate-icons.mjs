@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { Resvg } from '@resvg/resvg-js'
 
 // Keep all desktop assets derived from the same editable vector mark.
@@ -30,24 +30,51 @@ await writeFile(
   Buffer.concat([icnsHeader, ...icnsChunks]),
 )
 
-const icoSizes = sizes.filter((size) => size <= 256)
-const icoHeader = Buffer.alloc(6 + icoSizes.length * 16)
-icoHeader.writeUInt16LE(1, 2)
-icoHeader.writeUInt16LE(icoSizes.length, 4)
-let offset = icoHeader.length
-for (const [index, size] of icoSizes.entries()) {
-  const png = images.get(size)
-  const entry = 6 + index * 16
-  icoHeader[entry] = size === 256 ? 0 : size
-  icoHeader[entry + 1] = size === 256 ? 0 : size
-  icoHeader.writeUInt16LE(1, entry + 4)
-  icoHeader.writeUInt16LE(32, entry + 6)
-  icoHeader.writeUInt32LE(png.length, entry + 8)
-  icoHeader.writeUInt32LE(offset, entry + 12)
-  offset += png.length
+function ico(images) {
+  const sizes = [...images.keys()]
+  const header = Buffer.alloc(6 + sizes.length * 16)
+  header.writeUInt16LE(1, 2)
+  header.writeUInt16LE(sizes.length, 4)
+  let offset = header.length
+  for (const [index, size] of sizes.entries()) {
+    const png = images.get(size)
+    const entry = 6 + index * 16
+    header[entry] = size === 256 ? 0 : size
+    header[entry + 1] = size === 256 ? 0 : size
+    header.writeUInt16LE(1, entry + 4)
+    header.writeUInt16LE(32, entry + 6)
+    header.writeUInt32LE(png.length, entry + 8)
+    header.writeUInt32LE(offset, entry + 12)
+    offset += png.length
+  }
+  return Buffer.concat([header, ...images.values()])
 }
 await writeFile(
   new URL('../build/icon.ico', import.meta.url),
-  Buffer.concat([icoHeader, ...icoSizes.map((size) => images.get(size))]),
+  ico(new Map([...images].filter(([size]) => size <= 256))),
 )
-console.log('CG Claude icons generated from public/logo.svg')
+
+// The menu bar uses a transparent monochrome mark, with un-hashed Retina variants.
+const trayRoot = new URL('../build/tray/', import.meta.url)
+await mkdir(trayRoot, { recursive: true })
+const traySvg = await readFile(new URL('../public/tray.svg', import.meta.url), 'utf8')
+const coloredTray = traySvg.replaceAll('#000000', '#C45F3F')
+const trayImages = new Map()
+for (const size of [16, 32, 48, 64, 256]) {
+  trayImages.set(
+    size,
+    new Resvg(coloredTray, { fitTo: { mode: 'width', value: size } }).render().asPng(),
+  )
+  if (size === 16 || size === 32) {
+    // Transparent gaps stay transparent in both macOS menu bar appearances.
+    const template = traySvg.replaceAll('stroke="#FFFFFF"', 'stroke="none"')
+    await writeFile(
+      new URL(size === 16 ? 'trayTemplate.png' : 'trayTemplate@2x.png', trayRoot),
+      new Resvg(template, { fitTo: { mode: 'width', value: size } }).render().asPng(),
+    )
+  }
+}
+await writeFile(new URL('tray.png', trayRoot), trayImages.get(32))
+await writeFile(new URL('tray@2x.png', trayRoot), trayImages.get(64))
+await writeFile(new URL('tray.ico', trayRoot), ico(trayImages))
+console.log('CG Claude desktop and tray icons generated')

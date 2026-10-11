@@ -3,11 +3,14 @@ import path from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { createAppServer } from '../server/index.js'
 import { references } from '../shared/references.js'
+import { DesktopTray, keepWindowInTray } from './tray.js'
 
 let window: BrowserWindow | undefined
 let service: Awaited<ReturnType<typeof createAppServer>> | undefined
 let origin = ''
 let exiting = false
+let tray: DesktopTray | undefined
+let openingWindow: Promise<void> | undefined
 const externalHosts = new Set([
   ...references.map((entry) => new URL(entry.url).hostname),
   'x.com',
@@ -49,6 +52,7 @@ async function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: true,
+      backgroundThrottling: false,
       partition: 'persist:claude-guard',
     },
   })
@@ -76,11 +80,46 @@ async function createWindow() {
       defaultPath: path.join(app.getPath('downloads'), item.getFilename()),
     })
   })
+  keepWindowInTray(
+    window,
+    () => Boolean(tray),
+    () => exiting,
+  )
+  window.on('show', () => tray?.update())
+  window.on('hide', () => tray?.update())
   window.on('closed', () => {
     window = undefined
   })
   window.once('ready-to-show', () => window?.show())
   await window.loadURL(origin)
+}
+function hideWindow() {
+  if (tray) window?.hide()
+  else window?.minimize()
+  tray?.update()
+}
+async function showWindow() {
+  if (exiting) return
+  if (!window || window.isDestroyed()) {
+    if (!openingWindow)
+      openingWindow = createWindow().finally(() => {
+        openingWindow = undefined
+      })
+    await openingWindow
+  }
+  if (window?.isMinimized()) window.restore()
+  window?.show()
+  window?.focus()
+  tray?.update()
+}
+function trustedSender(event: Electron.IpcMainInvokeEvent) {
+  if (!window || event.sender !== window.webContents || !event.senderFrame) return false
+  try {
+    const url = new URL(event.senderFrame.url)
+    return url.origin === origin && url.pathname === '/'
+  } catch {
+    return false
+  }
 }
 app.setName('CG Claude')
 if (process.env.CG_DEMO === '1' && process.env.CG_DATA_DIR) {
@@ -92,24 +131,30 @@ if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    if (window) {
-      if (window.isMinimized()) window.restore()
-      window.show()
-      window.focus()
-    }
+    if (service) void showWindow()
   })
   app.on('activate', () => {
-    if (!window && service) void createWindow()
+    if (service) void showWindow()
   })
   app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') app.quit()
+    if (!tray && process.platform !== 'darwin') app.quit()
   })
   app.on('before-quit', (event) => {
     if (exiting || !service) return
     event.preventDefault()
     exiting = true
     // Finish a pending atomic repair and its backups before releasing the service lock.
-    void service.close().finally(() => app.quit())
+    tray?.update()
+    void service
+      .close()
+      .catch(() => {
+        console.error('退出时本机服务未能完整关闭，请检查记录目录权限。')
+      })
+      .finally(() => {
+        tray?.destroy()
+        tray = undefined
+        app.quit()
+      })
   })
   app
     .whenReady()
@@ -151,21 +196,36 @@ if (!app.requestSingleInstanceLock()) {
               { role: 'togglefullscreen' },
             ],
           },
-          { label: '窗口', submenu: [{ role: 'minimize' }, { role: 'close' }] },
+          {
+            label: '窗口',
+            submenu: [
+              {
+                label: process.platform === 'darwin' ? '隐藏到菜单栏' : '隐藏到托盘',
+                accelerator: 'CmdOrCtrl+M',
+                click: hideWindow,
+              },
+              {
+                label: '打开主窗口',
+                click: () => {
+                  void showWindow()
+                },
+              },
+              { role: 'close' },
+            ],
+          },
         ]),
       )
       ipcMain.handle('cg:choose-project', async (event) => {
-        if (
-          !window ||
-          event.sender !== window.webContents ||
-          event.senderFrame?.url !== origin + '/'
-        )
-          throw new Error('只允许本机桌面界面选择项目')
-        const result = await dialog.showOpenDialog(window, {
+        if (!trustedSender(event)) throw new Error('只允许本机桌面界面选择项目')
+        const result = await dialog.showOpenDialog(window!, {
           title: '选择要扫描的本地项目',
           properties: ['openDirectory'],
         })
         return result.canceled ? undefined : result.filePaths[0]
+      })
+      ipcMain.handle('cg:hide-window', (event) => {
+        if (!trustedSender(event)) throw new Error('只允许本机桌面界面操作窗口')
+        hideWindow()
       })
       service = await createAppServer({
         port: 0,
@@ -175,13 +235,30 @@ if (!app.requestSingleInstanceLock()) {
       })
       origin = `http://127.0.0.1:${await service.listen()}`
       console.log(`CG Claude Electron：${origin}`)
-      await createWindow()
+      try {
+        tray = new DesktopTray({
+          root: app.getAppPath(),
+          platform: process.platform,
+          status: () => service!.status(),
+          visible: () => Boolean(window?.isVisible()),
+          show: () => {
+            void showWindow()
+          },
+          hide: hideWindow,
+          quit: () => app.quit(),
+        })
+      } catch {
+        console.log('系统托盘不可用，窗口仍可通过任务栏恢复。')
+      }
+      await showWindow()
     })
     .catch(async (error) => {
       dialog.showErrorBox(
         'CG Claude 启动失败',
         error instanceof Error ? error.message : '本机服务未能启动',
       )
+      tray?.destroy()
+      tray = undefined
       await service?.close().catch(() => {})
       app.quit()
     })

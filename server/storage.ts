@@ -18,6 +18,15 @@ import type {
 } from '../shared/types.js'
 import type { Context } from './context.js'
 import type { SnapshotRecord } from './snapshots.js'
+import { readBoundedText } from './file-reading.js'
+import {
+  backupRecordsSchema,
+  snapshotRecordsSchema,
+  reportRecordsSchema,
+  workflowRecordsSchema,
+  verifyRecordIntegrity,
+  normalizeRecordIntegrity,
+} from './record-validation.js'
 
 export interface BackupFile {
   relative: string
@@ -30,6 +39,7 @@ export interface BackupFile {
 }
 export interface BackupManifest extends BackupSummary {
   entries: BackupFile[]
+  integrityHash?: string
 }
 const MAX_RECORD_BYTES = 64 * 1024 * 1024
 export class Storage {
@@ -41,19 +51,34 @@ export class Storage {
       throw new Error('工具数据目录必须是普通文件夹')
     await fs.chmod(this.ctx.dataDir, 0o700)
   }
-  private async read<T>(name: string, fallback: T): Promise<T> {
+  private async assertDirectory() {
+    const stat = await fs.lstat(this.ctx.dataDir)
+    if (stat.isSymbolicLink() || !stat.isDirectory())
+      throw new Error('工具数据目录已变化，请退出并检查原始记录目录')
+  }
+  private async read(name: string, fallback: unknown): Promise<unknown> {
+    await this.assertDirectory()
     try {
       const target = path.join(this.ctx.dataDir, name)
-      const stat = await fs.lstat(target)
-      if (!stat.isFile() || stat.isSymbolicLink() || stat.size > MAX_RECORD_BYTES)
-        throw new Error('记录必须是小于 64 MB 的普通文件')
-      return JSON.parse(await fs.readFile(target, 'utf8')) as T
+      const { text } = await readBoundedText(target, MAX_RECORD_BYTES)
+      await this.assertDirectory()
+      return JSON.parse(text)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return fallback
-      throw new Error(`本机记录 ${name} 无法读取，请检查 JSON 格式与权限`)
+      throw new Error(`本机记录 ${name} 无法读取，请检查 JSON 格式与权限；原记录已保留`)
     }
   }
+  private async records<T>(name: string, schema: z.ZodType<T>, fallback: unknown = []): Promise<T> {
+    const value = await this.read(name, fallback)
+    verifyRecordIntegrity(name, value)
+    const result = schema.safeParse(value)
+    if (!result.success)
+      throw new Error(`本机记录 ${name} 的数据结构无效，请检查该记录；原记录已保留`)
+    normalizeRecordIntegrity(name, result.data)
+    return result.data
+  }
   private async write(name: string, value: unknown) {
+    await this.assertDirectory()
     const target = path.join(this.ctx.dataDir, name)
     const temporary = `${target}.${randomUUID()}.tmp`
     const content = JSON.stringify(value, null, 2) + '\n'
@@ -64,19 +89,20 @@ export class Storage {
         mode: 0o600,
         flag: 'wx',
       })
+      await this.assertDirectory()
       await fs.rename(temporary, target)
     } finally {
       await fs.unlink(temporary).catch(() => {})
     }
   }
   async preferences(): Promise<Preferences> {
-    return preferencesSchema.parse(await this.read('preferences.json', defaultPreferences))
+    return this.records('preferences.json', preferencesSchema, defaultPreferences)
   }
   async savePreferences(prefs: Preferences) {
     await this.write('preferences.json', prefs)
   }
   async manualReviews(): Promise<ManualReview[]> {
-    const saved = z.array(manualReviewSchema).parse(await this.read('manual-reviews.json', []))
+    const saved = await this.records('manual-reviews.json', z.array(manualReviewSchema))
     return saved.filter((review) => manualItems.some((item) => item.id === review.id))
   }
   async saveManualReview(request: ManualReviewRequest): Promise<ManualReview[]> {
@@ -118,7 +144,7 @@ export class Storage {
     return []
   }
   async reports(): Promise<ScanReport[]> {
-    return this.read('reports.json', [])
+    return this.records('reports.json', reportRecordsSchema)
   }
   async saveReport(report: ScanReport) {
     const reports = await this.reports()
@@ -128,7 +154,7 @@ export class Storage {
     )
   }
   async snapshots(): Promise<SnapshotRecord[]> {
-    return this.read('snapshots.json', [])
+    return this.records('snapshots.json', snapshotRecordsSchema)
   }
   async saveSnapshot(snapshot: SnapshotRecord) {
     const snapshots = await this.snapshots()
@@ -138,18 +164,18 @@ export class Storage {
     ])
   }
   async workflows(): Promise<SetupJob[]> {
-    return this.read('workflows.json', [])
+    return this.records('workflows.json', workflowRecordsSchema)
   }
   async saveWorkflows(jobs: SetupJob[]) {
     await this.write('workflows.json', jobs.slice(0, 20))
   }
   async manifests(): Promise<BackupManifest[]> {
-    return this.read('backups.json', [])
+    return this.records('backups.json', backupRecordsSchema)
   }
   async backups(): Promise<BackupSummary[]> {
     return (await this.manifests())
       .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
-      .map(({ entries: _entries, ...summary }) => summary)
+      .map(({ entries: _entries, integrityHash: _integrity, ...summary }) => summary)
   }
   async saveManifest(manifest: BackupManifest) {
     const manifests = await this.manifests()

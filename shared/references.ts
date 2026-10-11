@@ -36,6 +36,21 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'electron-tray',
+    title: 'Electron · 菜单栏与系统托盘',
+    publisher: 'Electron',
+    url: 'https://www.electronjs.org/docs/latest/api/tray',
+    kind: 'official',
+    topic: 'engineering',
+    checkedAt,
+    takeaway: 'Tray 提供状态图标和菜单；macOS 使用 Template 与 Retina 变体，Windows 使用 ICO。',
+    application:
+      '最小化与关闭窗口时隐藏到托盘，保留任务与浏览器复检；菜单显示进度并可重新打开或退出。',
+    boundary:
+      '托盘支持取决于桌面环境；不可用时保留普通窗口与任务栏行为。Windows/Linux 图形托盘尚未实机验证。',
+    checkIds: [],
+  },
+  {
     id: 'apple-system-timezone',
     title: 'Apple · systemsetup 时区命令',
     publisher: 'Apple',

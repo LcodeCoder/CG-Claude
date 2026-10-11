@@ -10,6 +10,7 @@ files:
   - dist/**/*
   - dist-server/**/*
   - electron/preload.cjs
+  - build/tray/**/*
   - package.json
   - '!dist-server/**/*.map'
 mac:
