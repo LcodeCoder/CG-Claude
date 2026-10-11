@@ -14,16 +14,17 @@
 
 隔离界面核对中文深色、英文浅色、护眼配色、390px 窗口、键盘操作和插件真实链接。macOS arm64 成品已隔离启动并正常退出；最终安装包的 119 个代码和资源文件与构建一致，包内版本均为 1.2.7，DMG 与 ZIP 完整性通过。详情见 [验证记录](validation.md)。
 
-## 本地产物
+## 发布安装包
 
-最终包：`release/1.2.7-final/mac-arm64/CG Claude.app`。初包及旧版本保留；最终包补齐了英文时区选项。
+当前版本的分发目录为 `release/1.2.7/`，只保留安装包与 `SHA256SUMS.txt`：
 
-| 文件                            |    字节数 | SHA-256                                                            |
-| ------------------------------- | --------: | ------------------------------------------------------------------ |
-| `CG Claude-1.2.7-arm64.dmg`     | 136381903 | `96af552e6b243d4f0f40372296e5dd0d70f943ebc2d9971287f660322858fb0d` |
-| `CG Claude-1.2.7-arm64-mac.zip` | 136386358 | `2ccab4308f654bb8b9e95df4a5d4d0bcf8ec2784c50ab3decbb42ce457e3ce81` |
+- `CG-Claude-1.2.7-macos-arm64.dmg`：Apple Silicon。
+- `CG-Claude-1.2.7-macos-x64.dmg`：Intel Mac。
+- `CG-Claude-1.2.7-windows-x64-setup.exe`：Windows x64 安装程序。
+- `CG-Claude-1.2.7-linux-x64.AppImage`：Linux x64 便携应用。
+- `CG-Claude-1.2.7-linux-x64.deb`：Debian / Ubuntu x64 安装包。
 
-安装包与校验文件在 `release/1.2.7-final/`，属于本地产物。Git 推送不代表发布 GitHub Release。
+旧版本、重复 ZIP、解包应用和构建调试文件不作为发布附件。校验值以同目录 `SHA256SUMS.txt` 为准，每次重新出包后重新生成。各平台安装包由 `Build installers` 工作流在对应系统和架构上构建；源码推送和 Artifacts 上传均不代表已经发布 GitHub Release。详见 [发布说明](publishing.md)。
 
 ## 未覆盖范围
 

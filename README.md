@@ -10,7 +10,16 @@
 
 ## 启动桌面版
 
-macOS arm64 成品位于 `release/1.2.7-final/mac-arm64/CG Claude.app`，直接打开，无需另外安装 Node.js。构建产物尚未签名或公证。其他平台配置了打包目标，本次没有在真实 Windows/Linux 桌面实测。
+安装包统一放在 `release/1.2.7/`，安装后无需另外安装 Node.js：
+
+| 系统                  | 选择的安装包                                                            |
+| --------------------- | ----------------------------------------------------------------------- |
+| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`                                       |
+| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`                                         |
+| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe`                                 |
+| Linux · x64           | `CG-Claude-1.2.7-linux-x64.AppImage` 或 `CG-Claude-1.2.7-linux-x64.deb` |
+
+`SHA256SUMS.txt` 可核对下载完整性。macOS 构建尚未签名或公证；Windows / Linux 桌面交互尚未实机验证。安装包通过 GitHub Release 附件分发，源码仓库不提交二进制产物。
 
 从源码启动需要 Node.js **22.12 或更新版本**：
 
@@ -135,6 +144,8 @@ npm run pack
 npm run dist
 ```
 
-`pack` 生成应用目录；`dist` 按当前平台生成 macOS dmg/zip、Windows NSIS/portable 或 Linux AppImage/deb。GitHub Actions 配置三个系统的格式、类型、测试、构建与应用目录打包；远程 CI 是否通过以实际运行记录为准。
+`pack` 生成应用目录；`dist` 按当前平台生成 macOS dmg/zip、Windows NSIS/portable 或 Linux AppImage/deb。本机打包使用当前系统与 CPU 架构的 Electron 运行时。
 
-开发模式 `npm run dev`：前端端口 5173、后端 4318。依赖版本固定，使用项目 `.npm-cache`，字体本地打包。采用 frontend-design、Vue、find-skills 与项目内 Vitest skills，设计记录见 `docs/design.md`。
+GitHub Actions 的 `Check` 工作流在三个系统执行格式、类型、测试、构建与应用目录打包。`Build installers` 工作流可在 Actions 中手动运行，也会在推送 `v*` 标签时运行；它在原生 macOS arm64、macOS Intel、Windows x64 和 Linux x64 上分别检查、构建安装包并上传带 SHA-256 的 Artifacts，不自动发布 Release。发布步骤见 [发布说明](docs/publishing.md)。
+
+开发模式 `npm run dev`：前端端口 5173、后端 4318。依赖版本固定，使用项目 `.npm-cache`，字体本地打包。设计记录见 `docs/design.md`。

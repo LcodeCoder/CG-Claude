@@ -19,6 +19,7 @@ mac:
   category: public.app-category.developer-tools
   icon: build/icon.icns
   identity: null
+  artifactName: CG-Claude-${version}-macos-${arch}.${ext}
   target:
     - dir
     - dmg
@@ -29,9 +30,13 @@ win:
     - nsis
     - portable
 nsis:
+  artifactName: CG-Claude-${version}-windows-${arch}-setup.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
+portable:
+  artifactName: CG-Claude-${version}-windows-${arch}-portable.${ext}
 linux:
+  artifactName: CG-Claude-${version}-linux-${arch}.${ext}
   icon: build/icon.png
   category: Development
   target:

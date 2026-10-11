@@ -1,0 +1,65 @@
+name: Build installers
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: read
+jobs:
+  installers:
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: macos
+            arch: arm64
+            targets: --mac dmg --arm64
+          - os: macos-15-intel
+            platform: macos
+            arch: x64
+            targets: --mac dmg --x64
+          - os: windows-2025
+            platform: windows
+            arch: x64
+            targets: --win nsis --x64
+          - os: ubuntu-24.04
+            platform: linux
+            arch: x64
+            targets: --linux AppImage deb --x64
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Verify native build architecture
+        run: node -e "if (process.arch !== '${{ matrix.arch }}') throw new Error('Runner architecture does not match the installer')"
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run check
+      - run: npm run icons
+      - run: npm run build
+      - run: npm run desktop:prepare
+      - name: Build native installers
+        run: npm exec electron-builder -- ${{ matrix.targets }} --publish never
+      - name: Create checksums
+        run: node scripts/release-checksums.mjs
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: CG-Claude-${{ matrix.platform }}-${{ matrix.arch }}
+          path: |
+            release/*.dmg
+            release/*.exe
+            release/*.AppImage
+            release/*.deb
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
