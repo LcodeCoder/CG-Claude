@@ -214,3 +214,9 @@ npm run doctor -- --json # 只读 CLI 检测
 安装包通过 GitHub Release 附件分发，源码仓库不提交二进制产物。`Check` 工作流验证三个系统；`Build installers` 在原生平台构建安装包并上传 Artifacts，正式 Release 由维护者发布。
 
 [查看版本](https://github.com/LcodeCoder/CG-Claude/releases) · [报告问题](https://github.com/LcodeCoder/CG-Claude/issues) · [给项目一个 Star](https://github.com/LcodeCoder/CG-Claude)
+
+## 社区与鸣谢
+
+感谢 [LINUX DO](https://linux.do/) 提供技术交流与经验分享的平台，也感谢社区里乐于分享的佬友。
+
+欢迎在 [LINUX DO 社区](https://linux.do/) 交流 CG Claude 的使用体验。遇到问题或有功能建议，也可以提交到 [GitHub Issues](https://github.com/LcodeCoder/CG-Claude/issues)。
