@@ -309,3 +309,5 @@ Git 仓库已初始化 main 并连接授权的 GitHub 仓库；本机检测截�
 - 成品扫描本项目 15 个固定配置位置、14 项结果：10 通过、4 未检测、无关注项；可选项目配置缺失不当作错误。该范围不代替完整代码漏洞审查。修复和还原验证继续限于隔离目录。
 
 本轮原生首页截图为本地证据 docs/screenshots/cg-claude-1.2.1-compact-desktop.png，截图目录不进入源代码仓库。macOS 包未签名或公证；Windows/Linux 本轮实机未验证。
+
+代码提交 `52ed5c2` 的 macOS、Windows、Linux CI 已逐项读取为 success，包含格式、类型、测试、构建和应用目录打包：[运行 38104080763](https://github.com/LcodeCoder/CG-Claude/actions/runs/38104080763)。后续文档提交不改变本次成品代码。最终关闭向导后再次只读核对 10 个真实配置位置，内容哈希、权限与可编辑标记仍与基线一致，15721 网关保留。
