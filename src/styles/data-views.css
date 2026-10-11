@@ -487,15 +487,8 @@
 }
 
 .field-row select {
-  border: 1px solid #ebe7e5;
-  background: #fefdfd;
-  border-radius: 6px;
-  color: #7f736a;
-  font-size: 14px;
-  padding: 11px 30px 11px 12px;
-  width: 260px;
+  width: 280px;
   max-width: 50%;
-  min-height: 39px;
 }
 
 .radio-card {

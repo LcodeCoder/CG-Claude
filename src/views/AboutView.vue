@@ -46,15 +46,15 @@ const emit = defineEmits<{
     @source="emit('source', $event)"
     @manual="emit('manual', $event)"
   />
-  <section class="data-panel sources-panel">
+  <section class="data-panel sources-panel" aria-labelledby="about-references-title">
     <div class="panel-heading">
-      <h2>参考文献</h2>
+      <div class="sources-panel-copy">
+        <h2 id="about-references-title">参考文献</h2>
+        <p class="quiet-text">按来源分类，附核对日期、采用依据与适用范围。</p>
+      </div>
       <button class="text-link" @click="emit('references')">
-        查看完整文献库<ArrowUpRight :size="14" />
+        查看文献库<ArrowUpRight :size="14" />
       </button>
     </div>
-    <p class="quiet-text">
-      官方说明、项目文档、社区记录与外部检测分别标注。每条文献包含核对日期、采用方式和判断边界。
-    </p>
   </section>
 </template>

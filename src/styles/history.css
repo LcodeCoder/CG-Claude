@@ -22,12 +22,6 @@
 .comparison-picker select {
   min-width: 0;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 11px;
-  font: inherit;
-  color: var(--ink);
-  background: var(--paper);
 }
 .comparison-picker > svg {
   margin-bottom: 13px;

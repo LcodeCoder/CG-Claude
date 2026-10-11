@@ -36,6 +36,20 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'chrome-customizable-select',
+    title: 'Chrome · 可自定义的原生下拉框',
+    publisher: 'Chrome for Developers',
+    url: 'https://developer.chrome.com/blog/a-customizable-select',
+    kind: 'official',
+    topic: 'engineering',
+    checkedAt,
+    takeaway:
+      'appearance: base-select 与 ::picker(select) 允许原生 select 和弹出选项使用统一样式。',
+    application: '支持的浏览器采用奶油色菜单、橘色选中项；保留原生选择值与键盘操作。',
+    boundary: '通过 CSS 功能检测渐进增强；不支持时使用原生菜单，不修改检测或修复规则。',
+    checkIds: [],
+  },
+  {
     id: 'electron-tray',
     title: 'Electron · 菜单栏与系统托盘',
     publisher: 'Electron',

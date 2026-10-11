@@ -1,8 +1,24 @@
 # 参考来源逐项审计
 
-核对日期：2026-10-11。文献库共 54 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
+核对日期：2026-10-11。文献库共 55 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
 
 官方配置名称、取值和版本条件优先以当前官方说明为准；社区项目只采用注明的方法与限制。外部泄漏页面只核对用途，本轮未替用户进行公网泄漏检测。完整正文不进入源代码仓库，读取渠道和正文哈希见 [来源读取记录](source-audit-manifest.json)。
+
+## Chrome · 可自定义的原生下拉框
+
+官方文档 · Chrome for Developers · [原文](https://developer.chrome.com/blog/a-customizable-select) · ID：`chrome-customizable-select`。
+
+采用段落：Meet appearance: base-select / Completely customizable / Unchanged JavaScript interfaces。
+
+项目应用：支持的浏览器采用奶油色菜单、橘色选中项；保留原生选择值与键盘操作。
+
+核对结论：保留 select、option 与 v-model；功能检测后统一弹层和选中项，不支持时回退原生菜单。
+
+判断边界：通过 CSS 功能检测渐进增强；不支持时使用原生菜单，不修改检测或修复规则。
+
+对应实现：[src/styles/forms.css](../src/styles/forms.css)。
+
+关联：仅来源说明。
 
 ## Electron · 菜单栏与系统托盘
 

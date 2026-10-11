@@ -6,6 +6,12 @@ export interface ReferenceAudit {
   finding: string
 }
 export const referenceAudits: Record<string, ReferenceAudit> = {
+  'chrome-customizable-select': {
+    section:
+      'Meet appearance: base-select / Completely customizable / Unchanged JavaScript interfaces',
+    code: 'src/styles/forms.css',
+    finding: '保留 select、option 与 v-model；功能检测后统一弹层和选中项，不支持时回退原生菜单。',
+  },
   'electron-tray': {
     section: 'Platform Considerations / click / setContextMenu / destroy',
     code: 'electron/tray.ts',

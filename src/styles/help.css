@@ -117,3 +117,35 @@
 .manual-tip .help-entry {
   margin-top: 12px;
 }
+
+.sources-panel .panel-heading {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 22px 25px;
+  border-bottom: 0;
+}
+.sources-panel-copy {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.sources-panel-copy .quiet-text {
+  margin-top: 7px;
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.85;
+  overflow-wrap: anywhere;
+}
+.sources-panel .text-link {
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .sources-panel .panel-heading {
+    align-items: flex-start;
+    padding: 18px;
+  }
+  .sources-panel-copy {
+    flex-basis: 100%;
+  }
+}

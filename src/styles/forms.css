@@ -1,0 +1,106 @@
+/* Shared select styling; each page only controls its field width and placement. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 40px 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--paper);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236a625a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: border-color 0.14s;
+}
+select:hover:not(:disabled),
+select:focus-visible {
+  border-color: var(--accent);
+}
+select:disabled {
+  color: var(--muted);
+  background-color: var(--canvas);
+  cursor: not-allowed;
+}
+select option {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+/* The browser owns focus, selection, keyboard navigation and dismissal. */
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+  select {
+    gap: 12px;
+    padding-right: 13px;
+    background-image: none;
+  }
+  select::picker-icon {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  select:open::picker-icon {
+    rotate: 180deg;
+    color: var(--accent);
+  }
+  select::picker(select) {
+    min-inline-size: anchor-size(width);
+    max-inline-size: calc(100vw - 32px);
+    max-block-size: min(320px, 60vh);
+    margin-block: 6px;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 8px 28px #2c29251a;
+    overflow: auto;
+  }
+  select option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  select option:hover {
+    background: var(--canvas);
+  }
+  select option:checked,
+  select option:focus-visible {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  select option::checkmark {
+    color: var(--accent);
+  }
+  select option:disabled {
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+}
+@media (forced-colors: active) {
+  select {
+    appearance: auto;
+    background-image: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  select {
+    transition: none;
+  }
+}

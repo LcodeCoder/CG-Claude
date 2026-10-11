@@ -48,11 +48,7 @@
   font-size: 14px;
 }
 .reference-select select {
-  padding: 9px 30px 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: white;
-  color: var(--ink);
+  min-width: 155px;
 }
 .reference-focus {
   display: flex;

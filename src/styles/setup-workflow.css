@@ -122,8 +122,7 @@
   color: var(--muted);
 }
 
-.wizard-fields input,
-.wizard-fields select {
+.wizard-fields input {
   display: block;
   border: 1px solid #eae6e3;
   background: #fefdfc;
@@ -132,6 +131,12 @@
   margin-top: 7px;
   padding: 10px 12px;
   color: var(--ink);
+}
+
+.wizard-fields select {
+  display: block;
+  width: 100%;
+  margin-top: 7px;
 }
 
 .wizard-hint {
@@ -624,9 +629,5 @@
 }
 
 .scan-repeat-option select {
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 5px;
-  background: var(--canvas);
-  color: var(--ink);
+  min-width: 190px;
 }

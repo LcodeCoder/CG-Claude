@@ -34,6 +34,7 @@ import ReferencesView from './views/ReferencesView.vue'
 import ManualReviewView from './views/ManualReviewView.vue'
 import HistoryView from './views/HistoryView.vue'
 import ConfigurationsView from './views/ConfigurationsView.vue'
+import TranslationView from './views/TranslationView.vue'
 import ProjectsView from './views/ProjectsView.vue'
 import BackupsView from './views/BackupsView.vue'
 import SettingsView from './views/SettingsView.vue'
@@ -442,7 +443,7 @@ const commandForPlatform = computed(() =>
           <p>读取系统信息与配置文件位置</p>
         </div>
         <div
-          v-else-if="error && !['about', 'references'].includes(page)"
+          v-else-if="error && !['about', 'references', 'translation'].includes(page)"
           class="empty-view error-view"
         >
           <WifiOff :size="36" />
@@ -497,6 +498,7 @@ const commandForPlatform = computed(() =>
           @copy="copyPath"
         />
 
+        <TranslationView v-else-if="page === 'translation'" />
         <HistoryView
           v-else-if="page === 'history'"
           :reports="boot?.reports ?? []"

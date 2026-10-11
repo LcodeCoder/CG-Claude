@@ -61,11 +61,6 @@
   margin-top: 3px;
 }
 .connection-field select {
-  padding: 9px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--paper);
-  font-size: 13px;
   min-width: 122px;
 }
 .connection-field input {
