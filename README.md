@@ -12,12 +12,12 @@
 
 安装包统一放在 `release/1.2.7/`，安装后无需另外安装 Node.js：
 
-| 系统                  | 选择的安装包                                                            |
-| --------------------- | ----------------------------------------------------------------------- |
-| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`                                       |
-| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`                                         |
-| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe`                                 |
-| Linux · x64           | `CG-Claude-1.2.7-linux-x64.AppImage` 或 `CG-Claude-1.2.7-linux-x64.deb` |
+| 系统                  | 选择的安装包                                                                 |
+| --------------------- | ---------------------------------------------------------------------------- |
+| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`                                            |
+| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`                                              |
+| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe`                                      |
+| Linux · x64           | `CG-Claude-1.2.7-linux-x86_64.AppImage` 或 `CG-Claude-1.2.7-linux-amd64.deb` |
 
 `SHA256SUMS.txt` 可核对下载完整性。macOS 构建尚未签名或公证；Windows / Linux 桌面交互尚未实机验证。安装包通过 GitHub Release 附件分发，源码仓库不提交二进制产物。
 

@@ -21,8 +21,8 @@
 - `CG-Claude-1.2.7-macos-arm64.dmg`：Apple Silicon。
 - `CG-Claude-1.2.7-macos-x64.dmg`：Intel Mac。
 - `CG-Claude-1.2.7-windows-x64-setup.exe`：Windows x64 安装程序。
-- `CG-Claude-1.2.7-linux-x64.AppImage`：Linux x64 便携应用。
-- `CG-Claude-1.2.7-linux-x64.deb`：Debian / Ubuntu x64 安装包。
+- `CG-Claude-1.2.7-linux-x86_64.AppImage`：Linux x64 便携应用。
+- `CG-Claude-1.2.7-linux-amd64.deb`：Debian / Ubuntu x64 安装包。
 
 旧版本、重复 ZIP、解包应用和构建调试文件不作为发布附件。校验值以同目录 `SHA256SUMS.txt` 为准，每次重新出包后重新生成。各平台安装包由 `Build installers` 工作流在对应系统和架构上构建；源码推送和 Artifacts 上传均不代表已经发布 GitHub Release。详见 [发布说明](publishing.md)。
 

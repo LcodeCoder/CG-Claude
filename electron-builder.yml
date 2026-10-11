@@ -36,6 +36,7 @@ nsis:
 portable:
   artifactName: CG-Claude-${version}-windows-${arch}-portable.${ext}
 linux:
+  maintainer: CG Claude <LcodeCoder@users.noreply.github.com>
   artifactName: CG-Claude-${version}-linux-${arch}.${ext}
   icon: build/icon.png
   category: Development
