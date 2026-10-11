@@ -52,11 +52,16 @@ test('small app icons preserve RGB channels and transparency in bundle-compatibl
     const count = size * size
     expect(channels).toHaveLength(count * 3)
     expect(mask).toHaveLength(count)
+    const expectedRgb = Buffer.alloc(count * 3)
+    const expectedMask = Buffer.alloc(count)
     for (let index = 0; index < count; index++) {
-      expect(mask[index]).toBe(pixels[index * 4 + 3])
+      expectedMask[index] = pixels[index * 4 + 3]!
       for (const channel of [0, 1, 2])
-        expect(channels[channel * count + index]).toBe(pixels[index * 4 + channel])
+        expectedRgb[channel * count + index] = pixels[index * 4 + channel]!
     }
+    // Compare every byte without creating thousands of individual assertions on slower runners.
+    expect(Buffer.from(channels)).toEqual(expectedRgb)
+    expect(mask).toEqual(expectedMask)
   }
 })
 
