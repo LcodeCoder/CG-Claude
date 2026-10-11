@@ -209,3 +209,25 @@ test('browser language API checks authentication and strict inputs and exposes o
     await app.close()
   }
 })
+
+test('one blocked browser directory does not hide another readable browser or prevent its preview', async () => {
+  await fs.rm(path.join(data.home, 'Library/Application Support/Google/Chrome'), {
+    recursive: true,
+  })
+  await data.write('Library/Application Support/Google/Chrome', 'not-a-directory')
+  await data.write(
+    'Library/Application Support/Microsoft Edge/Default/Preferences',
+    JSON.stringify(original),
+  )
+  const configuration = await engine.configuration()
+  expect(configuration.problems).toEqual(['Chrome 用户目录不可安全读取'])
+  expect(configuration.profiles.map((profile) => profile.title)).toEqual([
+    'Microsoft Edge · 默认用户',
+  ])
+  const plan = await engine.preview({
+    profileId: configuration.profiles[0]!.id,
+    language: 'en-US',
+    appLanguage: false,
+  })
+  expect(plan.profile.title).toBe('Microsoft Edge · 默认用户')
+})

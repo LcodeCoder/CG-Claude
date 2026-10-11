@@ -1,10 +1,14 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { computed } from 'vue'
 import { ArrowUpRight, ListChecks } from '@lucide/vue'
 import ManualActionGuide from './ManualActionGuide.vue'
 import { setupFollowups } from '../../shared/manual-guidance'
 import type { ManualReview, ScanReport, SetupJob } from '../../shared/types'
 import type { LocalActionId } from '../../shared/local-actions'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   job: SetupJob
   report?: ScanReport
@@ -21,12 +25,18 @@ const items = computed(() => setupFollowups(props.job, props.report, props.revie
     <div class="followup-heading">
       <ListChecks :size="21" />
       <div>
-        <h3 id="setup-followup-title">还需要你完成 · {{ items.length }} 项</h3>
-        <p>自动配置之外的设置与复核。展开查看步骤、跳转入口和命令。</p>
+        <h3 id="setup-followup-title">
+          {{
+            items.length
+              ? t('还需手动完成 {count} 项', { count: items.length })
+              : t('没有待处理的手动项')
+          }}
+        </h3>
+        <p v-if="items.length">{{ t('展开查看步骤和设置入口。') }}</p>
       </div>
     </div>
     <p v-if="!report" class="guide-note" role="status">
-      本次复检报告未生成。清单可能不完整，请先重新检测。
+      {{ t('复检未完成，请重新检测以补齐清单。') }}
     </p>
     <details
       v-for="(item, index) in items"
@@ -35,8 +45,8 @@ const items = computed(() => setupFollowups(props.job, props.report, props.revie
       :open="index === 0"
     >
       <summary>
-        <span>{{ item.title }}</span
-        ><small>{{ item.category }}</small>
+        <span>{{ t(item.title) }}</span
+        ><small>{{ t(item.category) }}</small>
       </summary>
       <div class="followup-body">
         <p>{{ item.reason }}</p>
@@ -48,20 +58,22 @@ const items = computed(() => setupFollowups(props.job, props.report, props.revie
         />
         <div class="guide-actions">
           <button v-if="item.manualId" class="text-link" @click="emit('manual', item.manualId)">
-            记录人工复核<ArrowUpRight :size="13" /></button
+            {{ t('记录人工复核') }}<ArrowUpRight :size="13" /></button
           ><button v-if="item.checkId" class="text-link" @click="emit('check', item.checkId)">
-            查看检测详情<ArrowUpRight :size="13" /></button
+            {{ t('查看检测详情') }}<ArrowUpRight :size="13" /></button
           ><a
             v-if="item.url"
             class="text-link"
             :href="item.url"
             target="_blank"
             rel="noopener noreferrer"
-            >打开检查 / 依据<ArrowUpRight :size="13" /></a
-          ><span class="guide-source">依据 · {{ item.guidance.section }}</span>
+            >{{ t('打开检查 / 依据') }}<ArrowUpRight :size="13" /></a
+          ><span class="guide-source">{{ t('依据 ·') }} {{ item.guidance.section }}</span>
         </div>
       </div>
     </details>
-    <button class="button secondary" :disabled="busy" @click="emit('scan')">完成后重新检测</button>
+    <button class="button secondary" :disabled="busy" @click="emit('scan')">
+      {{ t('完成后重新检测') }}
+    </button>
   </section>
 </template>

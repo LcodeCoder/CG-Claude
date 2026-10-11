@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   font-family: 'Manrope Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: var(--ink);
   background: var(--canvas);
@@ -10,13 +11,63 @@
   --ink: #2c2925;
   --muted: #6a625a;
   --border: #e5dfd6;
+  --border-strong: #c8beb2;
+  --surface-subtle: #f5f1eb;
   --accent: #a94d30;
+  --on-accent: #fff;
   --accent-soft: #f5e8df;
   --accent-mark: #d97757;
+  --switch-off: #8d857c;
+  --switch-thumb: #fffdf9;
   --green: #246955;
   --green-light: #edf5ef;
   --amber: #805920;
   --amber-light: #faf0da;
   --red: #a63e39;
   --red-light: #fcf0ed;
+}
+
+/* Appearance changes only rendering; diagnostic targets are separate settings. */
+:root[data-theme='eye-care'] {
+  --switch-off: #8d816d;
+  --canvas: #e8e0ce;
+  --paper: #f2ecde;
+  --surface-subtle: #eae3d3;
+  --ink: #302c25;
+  --muted: #615949;
+  --border: #d5cab5;
+  --border-strong: #b9ab91;
+  --accent: #97472e;
+  --accent-soft: #e8d6c4;
+  --green-light: #dfe8d7;
+  --amber-light: #eee1c5;
+  --red-light: #efdad1;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --switch-off: #61574b;
+  --canvas: #171614;
+  --paper: #22211e;
+  --surface-subtle: #2b2824;
+  --ink: #ece5db;
+  --muted: #b8ab9a;
+  --border: #3d3831;
+  --border-strong: #61574b;
+  --accent: #e49678;
+  --on-accent: #201510;
+  --accent-soft: #3c2d26;
+  --green: #8fcca9;
+  --green-light: #22372d;
+  --amber: #ebc880;
+  --amber-light: #383020;
+  --red: #efaaa1;
+  --red-light: #3c2927;
+}
+:root[data-reduce-motion='true'] *,
+:root[data-reduce-motion='true'] *::before,
+:root[data-reduce-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }

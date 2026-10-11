@@ -6,6 +6,19 @@ export interface ReferenceAudit {
   finding: string
 }
 export const referenceAudits: Record<string, ReferenceAudit> = {
+  'electron-login-items': {
+    section:
+      'getLoginItemSettings / setLoginItemSettings / status / executableWillLaunchAtLogin / code signing',
+    code: 'electron/startup.ts',
+    finding:
+      '按系统回读显示状态，区分待批准与未确认；只允许可信窗口修改固定登录项。当前未验证真实开机登录及 Windows 桌面。',
+  },
+  'github-release-versioning': {
+    section: 'Specifying an API version / Supported API versions',
+    code: 'server/version-check.ts',
+    finding:
+      '使用当前支持的 API 版本，检查固定仓库的稳定 Release，并发合并、短缓存、响应有界且不信任上游下载链接。',
+  },
   'apple-date-time-settings': {
     section: 'General → Date & Time / Set time zone automatically using your current location',
     code: 'server/timezone-automation.ts',

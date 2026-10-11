@@ -1,6 +1,6 @@
 {
   "name": "cg-claude",
-  "version": "1.2.5",
+  "version": "1.2.6",
   "private": true,
   "type": "module",
   "description": "本地 Claude 环境检测、配置修复与备份恢复工具",
@@ -14,7 +14,7 @@
     "typecheck": "vue-tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.electron.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "npm run typecheck && npm test",
+    "check": "npm run architecture:check && npm run typecheck && npm test",
     "doctor": "tsx server/cli.ts",
     "demo": "node scripts/demo.mjs",
     "format": "prettier --write src shared server electron tests scripts docs *.json *.ts *.md index.html .github/workflows/*.yml electron-builder.yml",
@@ -25,7 +25,8 @@
     "dist": "npm run icons && npm run build && npm run desktop:prepare && electron-builder --publish never",
     "desktop:prepare": "node scripts/electron-runtime.mjs",
     "icons": "node scripts/generate-icons.mjs",
-    "docs:audit": "tsx scripts/generate-audit-docs.ts && prettier --write docs/article-audit.md docs/reference-audit.md"
+    "docs:audit": "tsx scripts/generate-audit-docs.ts && prettier --write docs/article-audit.md docs/reference-audit.md",
+    "architecture:check": "node scripts/check-architecture.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "5.3.0",

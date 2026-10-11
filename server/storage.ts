@@ -2,6 +2,8 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID, randomBytes } from 'node:crypto'
 import { z } from 'zod'
+import { appSettingsSchema, defaultAppSettings } from '../shared/app-settings.js'
+import type { AppSettings } from '../shared/app-settings.js'
 import {
   preferencesSchema,
   defaultPreferences,
@@ -17,13 +19,13 @@ import type {
   ManualReviewRequest,
 } from '../shared/types.js'
 import type { Context } from './context.js'
-import type { SnapshotRecord } from './snapshots.js'
+import type { SnapshotRecord } from './snapshot-record.js'
 import { readBoundedText } from './file-reading.js'
-import { translationRecordSchema } from './translation.js'
+import { translationRecordSchema } from './translation-record.js'
 import { browserLanguageBackupSchema } from '../shared/browser-configuration.js'
 import type { BrowserLanguageBackup } from '../shared/browser-configuration.js'
-import { sealBrowserBackup } from './browser-configuration.js'
-import type { TranslationRecord } from './translation.js'
+import { sealBrowserBackup } from './browser-language-record.js'
+import type { TranslationRecord } from './translation-record.js'
 import {
   backupRecordsSchema,
   snapshotRecordsSchema,
@@ -99,6 +101,12 @@ export class Storage {
     } finally {
       await fs.unlink(temporary).catch(() => {})
     }
+  }
+  async appSettings(): Promise<AppSettings> {
+    return this.records('app-settings.json', appSettingsSchema, defaultAppSettings)
+  }
+  async saveAppSettings(value: AppSettings) {
+    await this.write('app-settings.json', appSettingsSchema.parse(value))
   }
   async browserLanguageBackups(): Promise<BrowserLanguageBackup[]> {
     const records = await this.records(

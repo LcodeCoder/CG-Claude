@@ -1,5 +1,5 @@
 .environment-overview {
-  background: white;
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: 11px;
   overflow: hidden;
@@ -17,10 +17,10 @@
   width: 47px;
   height: 47px;
   border-radius: 13px;
-  background: #f8f5f3;
+  background: var(--surface-subtle);
   display: grid;
   place-items: center;
-  color: #94887f;
+  color: var(--muted);
   flex-shrink: 0;
 }
 
@@ -32,7 +32,7 @@
 
 .overview-intro p {
   font-size: 13px;
-  color: #7e7269;
+  color: var(--muted);
   margin-top: 7px;
   display: flex;
   align-items: center;
@@ -44,7 +44,7 @@
 .inline-divider {
   height: 9px;
   width: 1px;
-  background: #e8e3e0;
+  background: var(--border);
   display: inline-block;
 }
 
@@ -62,7 +62,7 @@
 }
 
 .overview-mode {
-  color: #80746b;
+  color: var(--muted);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -74,15 +74,15 @@
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #bbb4ae;
+  background: var(--border-strong);
 }
 
 .overview-counts {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr 1.25fr;
   padding: 14px 22px;
-  background: #fefdfd;
-  border-top: 1px solid #f5f2ef;
+  background: var(--paper);
+  border-top: 1px solid var(--surface-subtle);
 }
 
 .overview-counts > :is(button, div) {
@@ -94,7 +94,7 @@
 }
 
 .overview-counts > * + * {
-  border-left: 1px solid #f4f0ec;
+  border-left: 1px solid var(--surface-subtle);
   padding-left: 22px;
 }
 
@@ -149,35 +149,35 @@
 
 .overview-counts > :is(button, div) > span {
   font-size: 13px;
-  color: #7d7168;
+  color: var(--muted);
 }
 
 .overview-counts .issue-count svg {
-  color: #8b6d32;
+  color: var(--amber);
 }
 
 .overview-counts .pending-count svg {
-  color: #7d7269;
+  color: var(--muted);
 }
 
 .overview-counts .count-note svg {
-  color: #7f736a;
+  color: var(--muted);
 }
 
 .overview-counts .count-note > span {
   font-size: 13px;
-  color: #7f736a;
+  color: var(--muted);
 }
 
 .count-note small {
   font-size: 13px;
-  color: #7e7269;
+  color: var(--muted);
 }
 
 .scan-progress {
   height: 4px;
   position: relative;
-  background: #f3efeb;
+  background: var(--surface-subtle);
   margin-bottom: 16px;
 }
 
@@ -193,11 +193,11 @@
   right: 25px;
   top: 8px;
   font-size: 13px;
-  color: #897c72;
+  color: var(--muted);
 }
 
 .network-path-panel {
-  background: #fff;
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: 11px;
   padding: 0 22px;
@@ -234,11 +234,11 @@ details.network-path-panel .network-path {
   align-items: center;
   gap: 7px;
   font-size: 14px;
-  color: #7f736a;
+  color: var(--muted);
 }
 
 .panel-caption > span:first-child svg {
-  color: #84786e;
+  color: var(--muted);
 }
 
 .network-path {
@@ -262,38 +262,38 @@ details.network-path-panel .network-path {
   position: relative;
   width: 43px;
   height: 43px;
-  border: 1px solid #eeebe9;
+  border: 1px solid var(--surface-subtle);
   border-radius: 12px;
   display: grid;
   place-items: center;
-  background: #fbfaf9;
-  color: #8d8076;
+  background: var(--paper);
+  color: var(--muted);
   margin-bottom: 1px;
 }
 
 .path-icon.pass {
-  background: #f5faf8;
-  color: #4f796d;
-  border-color: #e2eee9;
+  background: var(--green-light);
+  color: var(--green);
+  border-color: var(--green-light);
 }
 
 .path-icon.warn {
-  background: #fffbf3;
-  color: #836d40;
-  border-color: #f1e9d9;
+  background: var(--surface-subtle);
+  color: var(--amber);
+  border-color: var(--border);
 }
 
 .path-icon.fail {
-  background: #fdf7f8;
-  color: #9a616b;
-  border-color: #f2e2e6;
+  background: var(--red-light);
+  color: var(--red);
+  border-color: var(--red-light);
 }
 
 .path-icon .status-badge {
   position: absolute;
   bottom: -4px;
   right: -5px;
-  box-shadow: 0 0 0 3px white;
+  box-shadow: 0 0 0 3px var(--paper);
   width: 15px;
   height: 15px;
   min-width: 15px;
@@ -312,7 +312,7 @@ details.network-path-panel .network-path {
 
 .path-value {
   font-size: 13px;
-  color: #7e7269;
+  color: var(--muted);
   white-space: nowrap;
   width: 125px;
   overflow: hidden;
@@ -324,14 +324,14 @@ details.network-path-panel .network-path {
   display: flex;
   flex: 1;
   align-items: center;
-  color: #7c7168;
+  color: var(--muted);
   padding: 17px 3px 0;
   gap: 5px;
   min-width: 10px;
 }
 
 .path-connector span {
-  border-top: 1px dashed #e7e3e0;
+  border-top: 1px dashed var(--border);
   flex: 1;
   min-width: 2px;
 }
@@ -346,7 +346,7 @@ details.network-path-panel .network-path {
 .results-panel {
   border: 1px solid var(--border);
   border-radius: 11px;
-  background: #fff;
+  background: var(--paper);
   overflow: hidden;
 }
 
@@ -366,8 +366,8 @@ details.network-path-panel .network-path {
 }
 
 .results-heading h2 span {
-  background: #f7f5f2;
-  color: #7f736a;
+  background: var(--surface-subtle);
+  color: var(--muted);
   font-size: 13px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -375,7 +375,7 @@ details.network-path-panel .network-path {
 }
 
 .results-heading p {
-  color: #7d7269;
+  color: var(--muted);
   font-size: 13px;
   margin-top: 5px;
 }
@@ -398,7 +398,7 @@ details.network-path-panel .network-path {
   font-size: 14px;
   padding: 6px 9px;
   border-radius: 5px;
-  color: #7e736a;
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -418,9 +418,9 @@ details.network-path-panel .network-path {
   align-items: center;
   gap: 6px;
   padding: 6px 8px;
-  border: 1px solid #f3efec;
+  border: 1px solid var(--surface-subtle);
   border-radius: 5px;
-  color: #7c7067;
+  color: var(--muted);
   max-width: 146px;
 }
 
@@ -431,11 +431,11 @@ details.network-path-panel .network-path {
   font-size: 13px;
   width: 100%;
   min-width: 0;
-  color: #7f736a;
+  color: var(--muted);
 }
 
 .search-box input::placeholder {
-  color: #7c7168;
+  color: var(--muted);
 }
 
 .search-box:focus-within {
@@ -448,15 +448,15 @@ details.network-path-panel .network-path {
   align-items: center;
   gap: 15px;
   padding: 11px 21px;
-  border-top: 1px solid #f7f4f2;
-  background: #fefefe;
+  border-top: 1px solid var(--surface-subtle);
+  background: var(--paper);
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
 .category-filters button {
   padding: 0;
-  color: #7c7067;
+  color: var(--muted);
   font-size: 13px;
   white-space: nowrap;
 }
@@ -479,13 +479,13 @@ details.network-path-panel .network-path {
 
 .group-heading h3 {
   font-size: 13px;
-  color: #7d7168;
+  color: var(--muted);
   font-weight: 550;
 }
 
 .group-heading span {
   font-size: 13px;
-  color: #7d7269;
+  color: var(--muted);
 }
 
 .check-row {
@@ -508,7 +508,7 @@ details.network-path-panel .network-path {
 }
 
 .check-summary:hover {
-  background: #fdfcfc;
+  background: var(--paper);
   border-radius: 6px;
 }
 
@@ -523,7 +523,7 @@ details.network-path-panel .network-path {
 .check-title strong {
   font-size: 14px;
   font-weight: 580;
-  color: #635a52;
+  color: var(--muted);
 }
 
 .check-title > span {
@@ -531,7 +531,7 @@ details.network-path-panel .network-path {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 13px;
-  color: #7e7269;
+  color: var(--muted);
   line-height: 1.6;
 }
 
@@ -565,8 +565,8 @@ details.network-path-panel .network-path {
 
 .status-badge.manual,
 .status-badge.skipped {
-  color: #7c7067;
-  background: #f7f4f2;
+  color: var(--muted);
+  background: var(--surface-subtle);
 }
 
 .status-badge.compact {
@@ -580,12 +580,12 @@ details.network-path-panel .network-path {
 }
 
 .repairable-icon {
-  color: #7c714d;
+  color: var(--amber);
   margin-right: 1px;
 }
 
 .chevron {
-  color: #7e736a;
+  color: var(--muted);
   transition: transform 0.18s;
 }
 
@@ -594,8 +594,8 @@ details.network-path-panel .network-path {
 }
 
 .check-row.expanded {
-  background: #fdfcfb;
-  border: 1px solid #f3efec;
+  background: var(--paper);
+  border: 1px solid var(--surface-subtle);
   margin: 2px 7px 8px;
 }
 
@@ -609,15 +609,15 @@ details.network-path-panel .network-path {
 }
 
 .check-description {
-  color: #7e736a;
+  color: var(--muted);
   line-height: 1.85;
   margin-bottom: 13px;
 }
 
 .evidence-table {
   margin: 0 0 13px;
-  background: #fff;
-  border: 1px solid #f4f0ed;
+  background: var(--paper);
+  border: 1px solid var(--surface-subtle);
   border-radius: 5px;
   padding: 0 11px;
 }
@@ -632,24 +632,24 @@ details.network-path-panel .network-path {
 }
 
 .evidence-table > div + div {
-  border-top: 1px solid #f6f3f1;
+  border-top: 1px solid var(--surface-subtle);
 }
 
 .evidence-table dt {
-  color: #7b7067;
+  color: var(--muted);
   overflow-wrap: anywhere;
 }
 
 .evidence-table dd {
   margin: 0;
-  color: #80746b;
+  color: var(--muted);
   font-family: 'JetBrains Mono', 'PingFang SC', monospace;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 
 .recommendation {
-  color: #80746a;
+  color: var(--muted);
   line-height: 1.9;
   font-size: 13px;
   margin-bottom: 11px;
@@ -659,8 +659,8 @@ details.network-path-panel .network-path {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  background: #f6f3f1;
-  border: 1px solid #eeebe8;
+  background: var(--surface-subtle);
+  border: 1px solid var(--surface-subtle);
   border-radius: 5px;
   padding: 10px 10px;
   margin-bottom: 11px;
@@ -669,7 +669,7 @@ details.network-path-panel .network-path {
 .command-block code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #7d7168;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.9;
   flex: 1;
@@ -700,7 +700,7 @@ details.network-path-panel .network-path {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #86796f;
+  color: var(--muted);
   font-size: 13px;
   cursor: pointer;
 }
@@ -721,12 +721,12 @@ details.network-path-panel .network-path {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #80746a;
+  color: var(--muted);
 }
 
 .repair-panel {
-  background: #fff;
-  border: 1px solid #eeebe9;
+  background: var(--paper);
+  border: 1px solid var(--surface-subtle);
   border-radius: 11px;
   padding: 21px 20px 17px;
 }
@@ -750,8 +750,8 @@ details.network-path-panel .network-path {
 
 .small-count {
   font-size: 13px;
-  background: #f7f4f2;
-  color: #8c8076;
+  background: var(--surface-subtle);
+  color: var(--muted);
   padding: 1px 5px;
   border-radius: 4px;
   margin-left: auto;
@@ -759,7 +759,7 @@ details.network-path-panel .network-path {
 
 .repair-panel > p {
   font-size: 13px;
-  color: #80746a;
+  color: var(--muted);
   line-height: 1.85;
   margin-bottom: 19px;
 }
@@ -776,7 +776,7 @@ details.network-path-panel .network-path {
   align-items: flex-start;
   gap: 8px;
   font-size: 14px;
-  color: #83776d;
+  color: var(--muted);
   cursor: pointer;
   line-height: 1.5;
 }
@@ -799,12 +799,12 @@ details.network-path-panel .network-path {
   gap: 5px;
   align-items: center;
   justify-content: center;
-  color: #7f736a;
+  color: var(--muted);
   margin-top: 13px;
 }
 
 .repair-assurance svg {
-  color: #86796f;
+  color: var(--muted);
 }
 
 .repair-empty {
@@ -814,38 +814,38 @@ details.network-path-panel .network-path {
   flex-direction: column;
   gap: 10px;
   min-height: 105px;
-  color: #7b7067;
+  color: var(--muted);
   font-size: 13px;
   margin-bottom: 14px;
 }
 
 .repair-empty svg {
-  color: #7e736a;
+  color: var(--muted);
 }
 
 .manual-tip {
   padding: 22px 17px 19px;
   margin-top: 16px;
-  background: #f7f4f1;
-  border: 1px solid #f0edea;
+  background: var(--surface-subtle);
+  border: 1px solid var(--surface-subtle);
   border-radius: 9px;
 }
 
 .manual-tip-icon {
-  color: #81756b;
+  color: var(--muted);
   display: block;
   margin-bottom: 10px;
 }
 
 .manual-tip h3 {
   font-size: 14px;
-  color: #81756c;
+  color: var(--muted);
   margin-bottom: 8px;
 }
 
 .manual-tip p {
   font-size: 13px;
-  color: #7d7269;
+  color: var(--muted);
   line-height: 1.9;
   margin-bottom: 13px;
 }
@@ -859,7 +859,7 @@ details.network-path-panel .network-path {
   align-items: center;
   gap: 7px;
   font-size: 13px;
-  color: #7c7168;
+  color: var(--muted);
   padding: 18px 16px;
 }
 
@@ -881,7 +881,7 @@ details.network-path-panel .network-path {
   text-align: center;
   padding: 58px 20px;
   gap: 12px;
-  color: #7e7269;
+  color: var(--muted);
 }
 
 .loading-view {
@@ -889,7 +889,7 @@ details.network-path-panel .network-path {
 }
 
 .loading-view strong {
-  color: #81756b;
+  color: var(--muted);
   font-size: 15px;
 }
 
@@ -899,7 +899,7 @@ details.network-path-panel .network-path {
 
 .empty-view h2 {
   font-size: 17px;
-  color: #82766c;
+  color: var(--muted);
 }
 
 .empty-view p,
@@ -920,7 +920,7 @@ details.network-path-panel .network-path {
 
 .result-empty h3 {
   font-size: 15px;
-  color: #82766d;
+  color: var(--muted);
 }
 
 .result-empty.small {
@@ -929,16 +929,16 @@ details.network-path-panel .network-path {
 
 .error-view {
   min-height: 370px;
-  background: white;
+  background: var(--paper);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
 
 .error-view code {
   padding: 10px 14px;
-  background: #faf8f7;
+  background: var(--surface-subtle);
   border-radius: 5px;
-  color: #7d7269;
+  color: var(--muted);
 }
 
 .page-footer {
@@ -947,7 +947,7 @@ details.network-path-panel .network-path {
   align-items: center;
   margin-top: 28px;
   padding-top: 12px;
-  color: #7b7067;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -957,5 +957,11 @@ details.network-path-panel .network-path {
   align-items: center;
   gap: 5px;
   font-size: 13px;
-  color: #7b7067;
+  color: var(--muted);
+}
+
+/* Before the first report, keep the page focused on starting a scan. */
+.results-layout.without-report {
+  grid-template-columns: 1fr;
+  max-width: 850px;
 }

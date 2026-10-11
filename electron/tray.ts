@@ -4,6 +4,7 @@ import path from 'node:path'
 import type { ServiceStatus } from '../shared/service-status.js'
 
 interface TrayOptions {
+  language?: () => 'zh-CN' | 'en'
   root: string
   platform: NodeJS.Platform
   status: () => ServiceStatus
@@ -47,7 +48,17 @@ export class DesktopTray {
   update() {
     const status = this.options.status()
     const visible = this.options.visible()
-    const label = status.closing ? '正在安全退出…' : status.activity?.label || '待命'
+    const english = this.options.language?.() === 'en'
+    const text = (zh: string, en: string) => (english ? en : zh)
+    const label = status.closing
+      ? text('正在安全退出…', 'Finishing before exit…')
+      : english
+        ? status.activity
+          ? { scan: 'Scanning', setup: 'Configuring', mutation: 'Updating configuration' }[
+              status.activity.kind
+            ]
+          : 'Ready'
+        : status.activity?.label || '待命'
     const state = JSON.stringify([label, visible, status.closing])
     if (state === this.lastState || this.tray.isDestroyed()) return
     this.lastState = state
@@ -57,14 +68,25 @@ export class DesktopTray {
         { label: 'CG Claude', enabled: false },
         { label, enabled: false },
         { type: 'separator' },
-        { label: '打开窗口', enabled: !status.closing, click: this.options.show },
         {
-          label: this.options.platform === 'darwin' ? '隐藏到菜单栏' : '隐藏到托盘',
+          label: text('打开窗口', 'Open window'),
+          enabled: !status.closing,
+          click: this.options.show,
+        },
+        {
+          label:
+            this.options.platform === 'darwin'
+              ? text('隐藏到菜单栏', 'Hide to menu bar')
+              : text('隐藏到托盘', 'Hide to tray'),
           enabled: visible && !status.closing,
           click: this.options.hide,
         },
         { type: 'separator' },
-        { label: '退出 CG Claude', enabled: !status.closing, click: this.options.quit },
+        {
+          label: text('退出 CG Claude', 'Quit CG Claude'),
+          enabled: !status.closing,
+          click: this.options.quit,
+        },
       ]),
     )
   }

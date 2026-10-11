@@ -173,3 +173,23 @@ test('cleans up a partially created native icon when its menu cannot be installe
   expect(native.trays[0]!.destroyed).toBe(true)
   expect(vi.getTimerCount()).toBe(0)
 })
+
+test('updates tray controls and task status when the saved interface language changes', () => {
+  let language: 'zh-CN' | 'en' = 'zh-CN'
+  tray = new DesktopTray({
+    root: '/fixture',
+    platform: 'darwin',
+    language: () => language,
+    status: () => ({ closing: false, activity: { kind: 'scan', label: '正在检查时区' } }),
+    visible: () => true,
+    show: vi.fn(),
+    hide: vi.fn(),
+    quit: vi.fn(),
+  })
+  language = 'en'
+  tray.update()
+  const value = native.trays[0]!
+  expect(value.tooltip).toContain('Scanning')
+  expect(value.menu.some((item: any) => item.label === 'Open window')).toBe(true)
+  expect(value.menu.some((item: any) => item.label === 'Quit CG Claude')).toBe(true)
+})

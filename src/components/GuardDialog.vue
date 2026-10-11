@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { ref, watch, onMounted, inject } from 'vue'
 import { notificationKey } from '../lib/notifications'
 import { X } from '@lucide/vue'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   open: boolean
   title: string
@@ -48,7 +52,7 @@ function cancel(event: Event) {
         </div>
         <button
           class="icon-button"
-          aria-label="关闭对话框"
+          :aria-label="t('关闭对话框')"
           :disabled="props.locked"
           @click="emit('close')"
         >

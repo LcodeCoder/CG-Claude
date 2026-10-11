@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { Globe, Laptop, Network, Radio, Terminal, ArrowRight, ChevronDown } from '@lucide/vue'
 import { computed } from 'vue'
 import type { ScanReport, CheckStatus, Machine } from '../../shared/types'
 import StatusBadge from './StatusBadge.vue'
+
+const { t } = useUiText()
+
 const props = defineProps<{ report?: ScanReport; machine?: Machine; scanning: boolean }>()
 function state(ids: string[]): CheckStatus {
   const checks = props.report?.checks.filter((check) => ids.includes(check.id)) ?? []
@@ -47,9 +51,10 @@ const nodes = computed(() => [
 ])
 </script>
 <template>
-  <details class="network-path-panel" aria-label="环境连接路径">
+  <details class="network-path-panel" :aria-label="t('环境连接路径')">
     <summary class="panel-caption">
-      <span><Network :size="14" />连接路径</span><ChevronDown :size="15" />
+      <span><Network :size="14" />{{ t('连接路径') }}</span
+      ><ChevronDown :size="15" />
     </summary>
     <div class="network-path" :class="{ scanning: props.scanning }">
       <template v-for="(node, index) in nodes" :key="node.name">
@@ -61,8 +66,8 @@ const nodes = computed(() => [
               compact
             />
           </div>
-          <strong>{{ node.name }}</strong
-          ><span class="path-value" :title="node.value">{{ node.value }}</span>
+          <strong>{{ t(node.name) }}</strong
+          ><span class="path-value" :title="node.value">{{ t(node.value) }}</span>
         </div>
         <div v-if="index < nodes.length - 1" class="path-connector" aria-hidden="true">
           <span /><ArrowRight :size="13" /><span />

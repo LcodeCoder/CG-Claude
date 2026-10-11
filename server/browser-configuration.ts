@@ -136,12 +136,8 @@ async function readProfile(ctx: Context, profile: ProfileTarget): Promise<Profil
     accepted,
   }
 }
-export function sealBrowserBackup(
-  record: Omit<BrowserLanguageBackup, 'integrity'> | BrowserLanguageBackup,
-) {
-  const { integrity: _ignored, ...data } = record as BrowserLanguageBackup
-  return hash(JSON.stringify(data, Object.keys(data).sort()))
-}
+export { sealBrowserBackup } from './browser-language-record.js'
+import { sealBrowserBackup } from './browser-language-record.js'
 export class BrowserLanguageEngine {
   private plans = new Map<string, Prepared>()
   private demoAppLanguages = new Map<string, string[] | null>()
@@ -151,6 +147,7 @@ export class BrowserLanguageEngine {
   ) {}
   private async targets() {
     const profiles: ProfileTarget[] = []
+    const problems: string[] = []
     for (const spec of browserSpecs) {
       try {
         const directory = root(this.ctx, spec)
@@ -161,10 +158,10 @@ export class BrowserLanguageEngine {
           profiles.push(target(this.ctx, spec, name))
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
-          throw new Error(`${spec.title} 用户目录不可安全读取`)
+          problems.push(`${spec.title} 用户目录不可安全读取`)
       }
     }
-    return profiles
+    return { profiles, problems }
   }
   private describe(profile: ProfileTarget, file?: ProfileFile, problem?: string): BrowserProfile {
     return {
@@ -181,18 +178,14 @@ export class BrowserLanguageEngine {
     }
   }
   async configuration(): Promise<BrowserLanguageConfiguration> {
+    const { profiles: targets, problems } = await this.targets()
     const profiles: BrowserProfile[] = []
-    const problems: string[] = []
-    try {
-      for (const profile of await this.targets()) {
-        try {
-          profiles.push(this.describe(profile, await readProfile(this.ctx, profile)))
-        } catch {
-          profiles.push(this.describe(profile, undefined, '此用户配置无法安全读取，未修改'))
-        }
+    for (const profile of targets) {
+      try {
+        profiles.push(this.describe(profile, await readProfile(this.ctx, profile)))
+      } catch {
+        profiles.push(this.describe(profile, undefined, '此用户配置无法安全读取，未修改'))
       }
-    } catch (error) {
-      problems.push((error as Error).message)
     }
     return {
       profiles,
@@ -296,7 +289,9 @@ export class BrowserLanguageEngine {
   }
   async preview(request: BrowserLanguageRequest): Promise<BrowserLanguagePreview> {
     const input = browserLanguageRequestSchema.parse(request)
-    const profile = (await this.targets()).find((profile) => profile.id === input.profileId)
+    const profile = (await this.targets()).profiles.find(
+      (profile) => profile.id === input.profileId,
+    )
     if (!profile) throw new Error('此浏览器用户配置已不存在，请重新刷新')
     const before = await readProfile(this.ctx, profile)
     if (input.appLanguage && this.ctx.platform !== 'darwin')

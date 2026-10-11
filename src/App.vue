@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { provide, computed, ref, watch, onMounted, nextTick } from 'vue'
+import { provide, computed, ref, watch, onMounted, nextTick, defineAsyncComponent } from 'vue'
 import {
   ShieldCheck,
   Settings2,
@@ -12,11 +12,9 @@ import {
   LockKeyhole,
   RefreshCw,
   X,
-  BookOpen,
   LoaderCircle,
   WifiOff,
   Workflow,
-  LibraryBig,
   Minus,
 } from '@lucide/vue'
 import { defaultPreferences, samePreferences } from '../shared/types'
@@ -32,23 +30,30 @@ import RestoreBackupDialog from './components/RestoreBackupDialog.vue'
 import BrandMark from './components/BrandMark.vue'
 import SetupWizard from './components/SetupWizard.vue'
 import type { ReferenceTarget } from '../shared/references'
-import ReferencesView from './views/ReferencesView.vue'
-import ManualReviewView from './views/ManualReviewView.vue'
-import HistoryView from './views/HistoryView.vue'
-import ConfigurationsView from './views/ConfigurationsView.vue'
-import TranslationView from './views/TranslationView.vue'
-import ProjectsView from './views/ProjectsView.vue'
-import BackupsView from './views/BackupsView.vue'
-import SettingsView from './views/SettingsView.vue'
-import AboutView from './views/AboutView.vue'
 import EnvironmentView from './views/EnvironmentView.vue'
+import { useAppSettings } from './composables/useAppSettings'
+import { useUiText } from './i18n'
 import { focusResult } from './lib/navigation'
 import { createResultFilters } from './lib/environment-results'
-import { primaryNavigation, workspacePages } from './content/navigation'
+import { primaryNavigation, secondaryNavigation, workspacePages } from './content/navigation'
 import type { WorkspacePage } from './content/navigation'
+
+const { t } = useUiText()
+
+const ReferencesView = defineAsyncComponent(() => import('./views/ReferencesView.vue'))
+const ManualReviewView = defineAsyncComponent(() => import('./views/ManualReviewView.vue'))
+const HistoryView = defineAsyncComponent(() => import('./views/HistoryView.vue'))
+const ConfigurationsView = defineAsyncComponent(() => import('./views/ConfigurationsView.vue'))
+const TranslationView = defineAsyncComponent(() => import('./views/TranslationView.vue'))
+const ProjectsView = defineAsyncComponent(() => import('./views/ProjectsView.vue'))
+const BackupsView = defineAsyncComponent(() => import('./views/BackupsView.vue'))
+const SettingsView = defineAsyncComponent(() => import('./views/SettingsView.vue'))
+const AboutView = defineAsyncComponent(() => import('./views/AboutView.vue'))
+const AppSettingsView = defineAsyncComponent(() => import('./views/AppSettingsView.vue'))
 
 const pageHeading = ref<HTMLElement | null>(null)
 const guard = useGuard()
+const applicationSettings = useAppSettings(() => guard.boot.value?.token ?? '')
 const {
   boot,
   report,
@@ -288,12 +293,16 @@ const commandForPlatform = computed(() =>
 
 <template>
   <div class="app-shell">
-    <button class="skip-to-content" @click="focusResult(pageHeading)">跳到主要内容</button>
+    <button class="skip-to-content" @click="focusResult(pageHeading)">
+      {{ t('跳到主要内容') }}
+    </button>
     <aside class="sidebar">
       <a class="brand" href="#" @click.prevent="page = 'overview'"
-        ><BrandMark /><span><strong>CG Claude</strong><small>环境与配置</small></span></a
+        ><BrandMark /><span
+          ><strong>CG Claude</strong><small>{{ t('环境与配置') }}</small></span
+        ></a
       >
-      <nav aria-label="主导航" class="main-nav">
+      <nav :aria-label="t('主导航')" class="main-nav">
         <button
           v-for="item in primaryNavigation"
           :key="item.id"
@@ -301,7 +310,9 @@ const commandForPlatform = computed(() =>
           :aria-current="page === item.id ? 'page' : undefined"
           @click="page = item.id"
         >
-          <component :is="item.icon" :size="18" :stroke-width="1.7" /><span>{{ item.label }}</span
+          <component :is="item.icon" :size="18" :stroke-width="1.7" /><span>{{
+            t(item.label)
+          }}</span
           ><span v-if="item.id === 'overview' && report && issueCount" class="nav-count">{{
             issueCount
           }}</span
@@ -311,30 +322,19 @@ const commandForPlatform = computed(() =>
         </button>
       </nav>
       <div class="sidebar-bottom">
-        <nav class="secondary-nav" aria-label="辅助导航">
+        <nav class="secondary-nav" :aria-label="t('辅助导航')">
           <button
-            :class="{ active: page === 'settings' }"
-            :aria-current="page === 'settings' ? 'page' : undefined"
-            @click="page = 'settings'"
+            v-for="item in secondaryNavigation"
+            :key="item.id"
+            :class="{ active: page === item.id }"
+            :aria-current="page === item.id ? 'page' : undefined"
+            @click="item.id === 'references' ? openReferences() : (page = item.id)"
           >
-            <Settings2 :size="17" />检测偏好</button
-          ><button
-            :class="{ active: page === 'about' }"
-            :aria-current="page === 'about' ? 'page' : undefined"
-            @click="page = 'about'"
-          >
-            <BookOpen :size="17" />使用说明
-          </button>
-          <button
-            :class="{ active: page === 'references' }"
-            :aria-current="page === 'references' ? 'page' : undefined"
-            @click="openReferences()"
-          >
-            <LibraryBig :size="17" />参考文献
+            <component :is="item.icon" :size="17" />{{ t(item.label) }}
           </button>
         </nav>
         <div class="sidebar-footer">
-          <span class="tiny-shield"><ShieldCheck :size="12" />本机服务</span
+          <span class="tiny-shield"><ShieldCheck :size="12" />{{ t('本机服务') }}</span
           ><span>v{{ appVersion }}</span>
         </div>
       </div>
@@ -342,32 +342,34 @@ const commandForPlatform = computed(() =>
 
     <main class="main-content">
       <header class="topbar">
-        <span class="topbar-local"><LockKeyhole :size="13" />配置保存在本机</span>
+        <span class="topbar-local"><LockKeyhole :size="13" />{{ t('配置保存在本机') }}</span>
         <div class="topbar-info">
           <button
             v-if="desktopAvailable"
             class="icon-button desktop-hide-button"
-            :aria-label="hideWindowLabel"
-            :title="hideWindowLabel"
+            :aria-label="t(hideWindowLabel)"
+            :title="t(hideWindowLabel)"
             @click="hideDesktopWindow"
           >
             <Minus :size="17" />
           </button>
-          <span v-if="desktopAvailable" class="desktop-tag">桌面版</span>
-          <span v-if="boot?.demo" class="demo-tag">隔离测试环境</span
+          <span v-if="desktopAvailable" class="desktop-tag">{{ t('桌面版') }}</span>
+          <span v-if="boot?.demo" class="demo-tag">{{ t('隔离测试环境') }}</span
           ><span class="machine-label"
-            ><Laptop :size="14" />{{ boot?.machine.platformName || '本机' }}</span
+            ><Laptop :size="14" />{{ boot?.machine.platformName || t('本机') }}</span
           ><span class="connection-badge" :class="{ offline: !connected }"
-            ><span />{{ connected ? '本机已连接' : loading ? '正在连接本机' : '本机未连接' }}</span
+            ><span />{{
+              connected ? t('本机已连接') : loading ? t('正在连接本机') : t('本机未连接')
+            }}</span
           >
         </div>
       </header>
       <div class="page-content">
         <div class="page-heading">
           <div>
-            <h1 ref="pageHeading" tabindex="-1">{{ workspacePages[page].title }}</h1>
+            <h1 ref="pageHeading" tabindex="-1">{{ t(workspacePages[page].title) }}</h1>
             <p v-if="!['overview', 'references'].includes(page)">
-              {{ workspacePages[page].description }}
+              {{ t(workspacePages[page].description) }}
             </p>
           </div>
           <div class="heading-actions">
@@ -380,14 +382,14 @@ const commandForPlatform = computed(() =>
               <Workflow v-if="setupJob?.status === 'running'" :size="16" /><Settings2
                 v-else
                 :size="16"
-              />{{ setupJob?.status === 'running' ? '查看配置进度' : '一键配置' }}
+              />{{ setupJob?.status === 'running' ? t('查看配置进度') : t('一键配置') }}
             </button>
             <details v-if="report && page === 'overview'" class="export-menu">
-              <summary class="button secondary"><Download :size="15" />导出报告</summary>
+              <summary class="button secondary"><Download :size="15" />{{ t('导出报告') }}</summary>
               <div class="export-dropdown">
-                <a :href="exportBase + '&format=markdown'">导出 Markdown</a
-                ><a :href="exportBase + '&format=json'">导出 JSON</a
-                ><small>默认隐藏 IP 与本机名称</small>
+                <a :href="exportBase + '&format=markdown'">{{ t('导出 Markdown') }}</a
+                ><a :href="exportBase + '&format=json'">{{ t('导出 JSON') }}</a
+                ><small>{{ t('默认隐藏 IP 与本机名称') }}</small>
               </div>
             </details>
             <button
@@ -400,7 +402,7 @@ const commandForPlatform = computed(() =>
                 v-else
                 :size="14"
                 fill="currentColor"
-              />{{ scanning ? '正在检测' : '开始检测' }}
+              />{{ scanning ? t('正在检测') : t('开始检测') }}
             </button>
           </div>
         </div>
@@ -414,25 +416,27 @@ const commandForPlatform = computed(() =>
           <div>
             <strong>{{
               setupJob.status === 'running'
-                ? '配置流程正在执行'
+                ? t('配置流程正在执行')
                 : setupJob.status === 'interrupted'
-                  ? '上次配置流程中断'
-                  : '最近的配置流程已结束'
+                  ? t('上次配置流程中断')
+                  : t('最近的配置流程已结束')
             }}</strong
             ><span
               >{{
                 setupJob.nodes.filter((node) => ['succeeded', 'skipped'].includes(node.status))
                   .length
               }}
-              / {{ setupJob.nodes.length }} 个节点已处理<span
+              / {{ setupJob.nodes.length }} {{ t('个节点已处理')
+              }}<span
                 v-if="setupJob.nodes.some((node) => node.enabled && node.status === 'skipped')"
               >
-                · 有未成功的节点，请查看结果</span
+                {{ t('· 有未成功的节点，请查看结果') }}</span
               ></span
             >
           </div>
           <button class="text-link" @click="openSetup(true)">
-            {{ setupJob.status === 'running' ? '查看进度' : '查看流程' }}<ArrowUpRight :size="14" />
+            {{ setupJob.status === 'running' ? t('查看进度') : t('查看流程')
+            }}<ArrowUpRight :size="14" />
           </button>
         </div>
 
@@ -441,11 +445,13 @@ const commandForPlatform = computed(() =>
           class="verification-strip"
         >
           <ShieldCheck :size="16" /><span
-            >已连续检测 {{ report.verification.passes }} 遍 ·
+            >{{ t('已连续检测 {count} 遍', { count: report.verification.passes }) }} ·
             {{
               report.verification.unstableCheckIds.length
-                ? `${report.verification.unstableCheckIds.length} 项结果存在变化，请展开复核`
-                : '各轮检测结果一致'
+                ? t('{count} 项结果存在变化，请展开复核', {
+                    count: report.verification.unstableCheckIds.length,
+                  })
+                : t('各轮检测结果一致')
             }}</span
           >
         </div>
@@ -455,24 +461,36 @@ const commandForPlatform = computed(() =>
           class="verification-strip"
           role="status"
         >
-          <LoaderCircle class="spin" :size="16" /><span>本机操作仍在进行，完成后自动更新。</span>
+          <LoaderCircle class="spin" :size="16" /><span>{{
+            t('本机操作仍在进行，完成后自动更新。')
+          }}</span>
         </div>
         <div v-if="loading" class="loading-view">
-          <LoaderCircle class="spin" :size="28" /><strong>正在连接本机服务</strong>
-          <p>读取系统信息与配置文件位置</p>
+          <LoaderCircle class="spin" :size="28" /><strong>{{ t('正在连接本机服务') }}</strong>
+          <p>{{ t('读取系统信息与配置文件位置') }}</p>
         </div>
         <div
-          v-else-if="error && !['about', 'references', 'translation'].includes(page)"
+          v-else-if="
+            error && !['about', 'references', 'translation', 'app-settings'].includes(page)
+          "
           class="empty-view error-view"
         >
           <WifiOff :size="36" />
-          <h2>{{ connected ? '本机服务返回错误' : '本机服务尚未连接' }}</h2>
+          <h2>{{ connected ? t('本机服务返回错误') : t('本机服务尚未连接') }}</h2>
           <p>{{ error }}</p>
           <code>{{ commandForPlatform }}</code
           ><button class="button primary" @click="guard.initialize">
-            <RefreshCw :size="15" />重新连接
+            <RefreshCw :size="15" />{{ t('重新连接') }}
           </button>
         </div>
+
+        <AppSettingsView
+          v-else-if="page === 'app-settings'"
+          :controller="applicationSettings"
+          :version="appVersion"
+          :busy="busy"
+          :connected="connected"
+        />
 
         <EnvironmentView
           v-else-if="page === 'overview'"
@@ -500,7 +518,7 @@ const commandForPlatform = computed(() =>
           @fix="guard.toggleFix"
           @references="openReferences"
           @source="openSource"
-          @copy-error="guard.notify('无法自动复制，请手动选择命令。', 'error')"
+          @copy-error="guard.notify(t('无法自动复制，请手动选择命令。'), 'error')"
         />
 
         <ConfigurationsView
@@ -613,8 +631,10 @@ const commandForPlatform = computed(() =>
           @check="openCheck"
         />
         <footer class="page-footer">
-          <span><ShieldCheck :size="12" />CG Claude · 本地环境工具</span
-          ><button @click="page = 'about'">检测范围与说明<ArrowUpRight :size="12" /></button>
+          <span><ShieldCheck :size="12" />{{ t('CG Claude · 本地环境工具') }}</span
+          ><button @click="page = 'about'">
+            {{ t('检测范围与说明') }}<ArrowUpRight :size="12" />
+          </button>
         </footer>
       </div>
     </main>
@@ -674,8 +694,8 @@ const commandForPlatform = computed(() =>
         <CircleCheck v-if="toast.kind === 'success'" :size="18" /><TriangleAlert
           v-else
           :size="18"
-        /><span>{{ toast.message }}</span
-        ><button class="icon-button" aria-label="关闭消息" @click="toast = undefined">
+        /><span>{{ t(toast.message) }}</span
+        ><button class="icon-button" :aria-label="t('关闭消息')" @click="toast = undefined">
           <X :size="15" />
         </button></div
     ></Transition>

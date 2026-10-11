@@ -1,0 +1,97 @@
+/* File lists keep paths readable while putting status beside the corresponding file. */
+.configuration-files .config-list-toolbar {
+  padding: 12px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.config-group-heading {
+  padding: 12px 22px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.configuration-files .config-file-row {
+  align-items: flex-start;
+  padding: 13px 22px;
+}
+.configuration-files .config-file-title {
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+.configuration-files .config-file-title strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.configuration-files .path-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  align-self: flex-start;
+  max-width: 100%;
+  color: var(--muted);
+  min-height: 28px;
+}
+.configuration-files .path-copy span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.configuration-files .path-copy:hover {
+  color: var(--accent);
+}
+.config-file-description {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.configuration-files .file-state {
+  margin-top: 2px;
+}
+.config-list-note {
+  padding: 12px 22px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+.config-list-empty {
+  padding: 32px 22px;
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.config-scope-details {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.config-scope-details summary {
+  cursor: pointer;
+  width: fit-content;
+  padding: 6px 0;
+}
+.config-scope-details p {
+  margin-top: 8px;
+  max-width: 76ch;
+  line-height: 1.8;
+}
+@media (max-width: 600px) {
+  .configuration-files .config-file-row {
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .configuration-files .config-file-title {
+    flex-basis: calc(100% - 44px);
+  }
+  .configuration-files .file-state {
+    margin-left: 43px;
+  }
+  .configuration-files .config-list-toolbar,
+  .config-group-heading,
+  .config-list-note {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

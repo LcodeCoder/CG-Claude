@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { computed } from 'vue'
 import { ExternalLink, ArrowUpRight, ChevronDown, Copy } from '@lucide/vue'
 import { referenceKindLabels, referenceMarkdown } from '../../shared/references'
@@ -7,6 +8,8 @@ import { manualItems } from '../../shared/types'
 import type { CheckResult, ProjectFinding } from '../../shared/types'
 import { referenceAudits, referenceAuditDate } from '../../shared/reference-audit'
 import { projectFindingLabel } from '../lib/project-results'
+
+const { t } = useUiText()
 
 const props = defineProps<{
   entry: ReferenceEntry
@@ -40,7 +43,7 @@ const relatedManual = computed(() =>
       <span class="source-type" :class="{ official: entry.kind === 'official' }">{{
         referenceKindLabels[entry.kind]
       }}</span>
-      <span>核对于 {{ entry.checkedAt }}</span>
+      <span>{{ t('核对于') }} {{ entry.checkedAt }}</span>
     </div>
     <h3>
       <a :href="entry.url" target="_blank" rel="noopener noreferrer"
@@ -51,26 +54,27 @@ const relatedManual = computed(() =>
       {{ entry.publisher }} · <span>{{ hostname }}</span>
     </p>
     <details class="reference-details" :open="full">
-      <summary :aria-label="'采用方式与相关检查：' + entry.title">
-        <span>采用方式与相关检查</span><ChevronDown :size="15" />
+      <summary :aria-label="t('采用方式与相关检查：') + entry.title">
+        <span>{{ t('采用方式与相关检查') }}</span
+        ><ChevronDown :size="15" />
       </summary>
       <p class="reference-takeaway">{{ entry.takeaway }}</p>
       <dl class="reference-notes">
         <div>
-          <dt>采用方式</dt>
+          <dt>{{ t('采用方式') }}</dt>
           <dd>{{ entry.application }}</dd>
         </div>
         <div v-if="audit">
-          <dt>逐项核验</dt>
+          <dt>{{ t('逐项核验') }}</dt>
           <dd>{{ referenceAuditDate }} · {{ audit.section }}<br />{{ audit.finding }}</dd>
         </div>
         <div>
-          <dt>判断边界</dt>
+          <dt>{{ t('判断边界') }}</dt>
           <dd>{{ entry.boundary }}</dd>
         </div>
       </dl>
       <div v-if="relatedChecks.length" class="reference-checks">
-        <span>相关检查</span
+        <span>{{ t('相关检查') }}</span
         ><button
           v-for="check in relatedChecks"
           :key="check.id"
@@ -81,35 +85,35 @@ const relatedManual = computed(() =>
         </button>
       </div>
       <div v-if="relatedFindings.length" class="reference-checks">
-        <span>相关项目检查</span
+        <span>{{ t('相关项目检查') }}</span
         ><button
           v-for="finding in relatedFindings"
           :key="finding.id"
           class="text-link"
           @click="emit('project', finding.id)"
         >
-          {{ projectFindingLabel(finding) }}<ArrowUpRight :size="12" />
+          {{ t(projectFindingLabel(finding)) }}<ArrowUpRight :size="12" />
         </button>
       </div>
       <div v-if="relatedManual.length" class="reference-checks">
-        <span>人工复核</span
+        <span>{{ t('人工复核') }}</span
         ><button
           v-for="item in relatedManual"
           :key="item.id"
           class="text-link"
           @click="emit('manual', item.id)"
         >
-          {{ item.title }}<ArrowUpRight :size="13" />
+          {{ t(item.title) }}<ArrowUpRight :size="13" />
         </button>
       </div>
     </details>
     <div class="reference-actions">
       <button
         class="text-link"
-        :aria-label="'复制引用：' + entry.title"
+        :aria-label="t('复制引用：') + entry.title"
         @click="emit('copy', referenceMarkdown([entry]))"
       >
-        <Copy :size="13" />复制引用
+        <Copy :size="13" />{{ t('复制引用') }}
       </button>
     </div>
   </article>

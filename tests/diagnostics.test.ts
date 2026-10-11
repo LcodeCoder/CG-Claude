@@ -457,3 +457,16 @@ test('legacy dotted Git HTTP subsections cannot hide a TLS disable declaration',
   expect(report.checks.find((item) => item.id === 'tls-verification')?.status).toBe('fail')
   expect(JSON.stringify(report)).not.toContain('private.example')
 })
+
+test('public IP queries ignore curl startup files that could change TLS, routing or the request', async () => {
+  const run = data.ctx.run
+  let args: string[] = []
+  data.ctx.run = async (command, values, timeout) => {
+    if (command === 'curl') args = values
+    return run(command, values, timeout)
+  }
+  await runDiagnostics(data.ctx, defaultPreferences, { network: true })
+  expect(args[0]).toBe('--disable')
+  expect(args).toContain('https://ipinfo.io/json')
+  expect(args).not.toContain('--insecure')
+})

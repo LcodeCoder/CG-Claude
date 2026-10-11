@@ -190,7 +190,7 @@
   min-height: 44px;
   border: 1px solid var(--border);
   border-radius: 7px;
-  background: white;
+  background: var(--paper);
   color: var(--muted);
 }
 .reference-toolbar .search-field input {

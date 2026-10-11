@@ -36,6 +36,34 @@ export const referenceTopicLabels: Record<ReferenceTopic, string> = {
 const checkedAt = '2026-10-11'
 export const references: ReferenceEntry[] = [
   {
+    id: 'electron-login-items',
+    title: 'Electron · 登录项状态与系统批准',
+    publisher: 'Electron',
+    url: 'https://www.electronjs.org/docs/latest/api/app#appgetloginitemsettingsoptions',
+    kind: 'official',
+    topic: 'engineering',
+    checkedAt,
+    takeaway: 'macOS 的登录项有已启用、待批准、未注册等状态；Windows 的运行项还可能被系统禁用。',
+    application: '设置后读取系统结果，待批准或回读不一致不会显示开启；开发与隔离模式禁用注册。',
+    boundary:
+      'macOS 官方建议打包、签名与公证。当前未签名产物的自动启动可能无法生效，需在系统登录项手动核对。',
+    checkIds: [],
+  },
+  {
+    id: 'github-release-versioning',
+    title: 'GitHub · REST 版本与正式 Release',
+    publisher: 'GitHub',
+    url: 'https://docs.github.com/en/rest/about-the-rest-api/api-versions',
+    kind: 'official',
+    topic: 'engineering',
+    checkedAt,
+    takeaway: '使用明确支持的 X-GitHub-Api-Version；正式 Release 与仓库最新提交分别处理。',
+    application:
+      '版本检查使用 2026-03-10 API，只在点击时查询固定仓库的 latest Release，排除草稿与预发布版本。',
+    boundary: '无公开正式 Release 不等于本机已是最新；检查不自动下载、安装或验证本机包的签名。',
+    checkIds: [],
+  },
+  {
     id: 'apple-date-time-settings',
     title: 'Apple · 自动校时与自动选择时区',
     publisher: 'Apple',

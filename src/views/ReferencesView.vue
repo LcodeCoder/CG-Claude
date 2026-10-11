@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { projectFindingLabel } from '../lib/project-results'
 import { computed, ref, watch } from 'vue'
 import { BookOpen, Search, X, Copy } from '@lucide/vue'
@@ -14,6 +15,9 @@ import {
 import type { ReferenceKind, ReferenceTopic, ReferenceTarget } from '../../shared/references'
 import { manualItems } from '../../shared/types'
 import type { CheckResult, ProjectFinding, ScanReport } from '../../shared/types'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   target?: ReferenceTarget
   report?: ScanReport
@@ -81,10 +85,10 @@ function clearFilters() {
   <section id="reference-intro" tabindex="-1" class="reference-intro data-panel">
     <BookOpen :size="24" />
     <div>
-      <strong>{{ references.length }} 条来源</strong>
-      <p>官方文档与社区记录</p>
+      <strong>{{ references.length }} {{ t('条来源') }}</strong>
+      <p>{{ t('官方文档与社区记录') }}</p>
     </div>
-    <span class="reference-updated">核对 {{ latestReview }}</span>
+    <span class="reference-updated">{{ t('核对') }} {{ latestReview }}</span>
   </section>
   <ArticleAuditPanel
     v-if="!target || (target.scope === 'source' && target.id === 'ayi-guide')"
@@ -96,65 +100,72 @@ function clearFilters() {
     @manual="emit('manual', $event)"
     @settings="emit('settings')"
   />
-  <div class="reference-toolbar" role="search" aria-label="文献检索工具">
+  <div class="reference-toolbar" role="search" :aria-label="t('文献检索工具')">
     <label class="search-field"
       ><Search :size="16" /><input
         v-model="query"
-        aria-label="搜索参考文献"
-        placeholder="搜索文献、发布者或配置名称" /><button
+        :aria-label="t('搜索参考文献')"
+        :placeholder="t('搜索文献、发布者或配置名称')" /><button
         v-if="query"
         class="icon-button"
-        aria-label="清除文献搜索"
+        :aria-label="t('清除文献搜索')"
         @click="query = ''"
       >
         <X :size="15" /></button
     ></label>
     <label class="reference-select"
-      ><span>来源</span
-      ><select v-model="kind" aria-label="文献来源">
-        <option value="all">全部来源</option>
+      ><span>{{ t('来源') }}</span
+      ><select v-model="kind" :aria-label="t('文献来源')">
+        <option value="all">{{ t('全部来源') }}</option>
         <option v-for="(label, id) in referenceKindLabels" :key="id" :value="id">
-          {{ label }}
+          {{ t(label) }}
         </option>
       </select></label
     >
     <label class="reference-select"
-      ><span>主题</span
-      ><select v-model="topic" aria-label="文献主题">
-        <option value="all">全部主题</option>
+      ><span>{{ t('主题') }}</span
+      ><select v-model="topic" :aria-label="t('文献主题')">
+        <option value="all">{{ t('全部主题') }}</option>
         <option v-for="(label, id) in referenceTopicLabels" :key="id" :value="id">
-          {{ label }}
+          {{ t(label) }}
         </option>
       </select></label
     >
   </div>
   <div v-if="target" id="reference-context" tabindex="-1" class="reference-focus">
-    <span>{{ target.scope === 'source' ? '正在阅读' : '正在查看依据' }}：{{ selectedTitle }}</span
-    ><button class="text-link" @click="emit('clear')">查看全部文献<X :size="14" /></button>
+    <span
+      >{{ target.scope === 'source' ? t('正在阅读') : t('正在查看依据') }}：{{
+        selectedTitle
+      }}</span
+    ><button class="text-link" @click="emit('clear')">
+      {{ t('查看全部文献') }}<X :size="14" />
+    </button>
   </div>
   <div class="reference-reading-bar">
-    <div class="reference-reading-options" role="group" aria-label="文献阅读方式">
+    <div class="reference-reading-options" role="group" :aria-label="t('文献阅读方式')">
       <button :aria-pressed="readingMode === 'compact'" @click="readingMode = 'compact'">
-        精简
+        {{ t('精简') }}
       </button>
-      <button :aria-pressed="readingMode === 'full'" @click="readingMode = 'full'">详细</button>
+      <button :aria-pressed="readingMode === 'full'" @click="readingMode = 'full'">
+        {{ t('详细') }}
+      </button>
     </div>
     <button
       class="text-link"
       :disabled="!filtered.length"
       @click="emit('copy', referenceMarkdown(filtered))"
     >
-      <Copy :size="14" />复制引用
+      <Copy :size="14" />{{ t('复制引用') }}
     </button>
   </div>
   <p class="reference-count" role="status">
-    {{ filtered.length }} / {{ references.length }} 条来源
+    {{ filtered.length }} / {{ references.length }} {{ t('条来源') }}
   </p>
   <section v-if="!filtered.length" class="data-panel result-empty">
     <BookOpen :size="26" />
-    <h3>没有找到相关文献</h3>
-    <p>试试“代理”“认证”或“隐私”，也可以清除筛选。</p>
-    <button class="text-link" @click="clearFilters">清除筛选</button>
+    <h3>{{ t('没有找到相关文献') }}</h3>
+    <p>{{ t('试试“代理”“认证”或“隐私”，也可以清除筛选。') }}</p>
+    <button class="text-link" @click="clearFilters">{{ t('清除筛选') }}</button>
   </section>
   <div class="reference-list">
     <ReferenceCard

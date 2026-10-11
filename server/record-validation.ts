@@ -3,7 +3,7 @@ import { configTargets } from './context.js'
 import { preferencesSchema, fixIds } from '../shared/types.js'
 import type { ScanReport, SetupJob } from '../shared/types.js'
 import type { BackupManifest } from './storage.js'
-import type { SnapshotRecord } from './snapshots.js'
+import type { SnapshotRecord } from './snapshot-record.js'
 import { timezoneStateSchema } from './timezone-settings.js'
 import { hash } from './safety.js'
 

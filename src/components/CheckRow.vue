@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
+import { formatDiagnosticCopy } from '../i18n/diagnostics'
 import { ChevronDown, Copy, ExternalLink, Wrench, Check, BookOpen } from '@lucide/vue'
 import { ref, computed } from 'vue'
 import type { CheckResult, FixId } from '../../shared/types'
 import { fixLabels } from '../../shared/types'
 import { referencesForCheck } from '../../shared/references'
 import StatusBadge from './StatusBadge.vue'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   check: CheckResult
   expanded: boolean
@@ -61,37 +66,39 @@ async function copy() {
     >
       <StatusBadge :status="props.check.status" compact />
       <span class="check-title"
-        ><strong>{{ props.check.title }}</strong
-        ><span v-if="props.check.status !== 'pass'">{{ props.check.summary }}</span></span
+        ><strong>{{ t(props.check.title) }}</strong
+        ><span v-if="props.check.status !== 'pass'">{{
+          formatDiagnosticCopy(props.check.summary)
+        }}</span></span
       >
       <Wrench
         v-if="props.check.fixIds.length"
         class="repairable-icon"
         :size="14"
-        aria-label="可预览修复"
+        :aria-label="t('可预览修复')"
       />
       <StatusBadge :status="props.check.status" /><ChevronDown class="chevron" :size="15" />
     </button>
     <div v-if="props.expanded" :id="'detail-' + props.check.id" class="check-detail">
       <p v-if="props.check.status === 'pass'" class="check-result-summary">
-        {{ props.check.summary }}
+        {{ formatDiagnosticCopy(props.check.summary) }}
       </p>
-      <span class="detail-label">检查范围</span>
-      <p class="check-description">{{ props.check.description }}</p>
-      <span v-if="props.check.evidence.length" class="detail-label">检测证据</span>
+      <span class="detail-label">{{ t('检查范围') }}</span>
+      <p class="check-description">{{ formatDiagnosticCopy(props.check.description) }}</p>
+      <span v-if="props.check.evidence.length" class="detail-label">{{ t('检测证据') }}</span>
       <dl v-if="props.check.evidence.length" class="evidence-table">
         <div v-for="evidence in props.check.evidence" :key="evidence.label + evidence.value">
-          <dt>{{ evidence.label }}</dt>
+          <dt>{{ formatDiagnosticCopy(evidence.label) }}</dt>
           <dd>{{ evidence.value }}</dd>
         </div>
       </dl>
-      <span class="detail-label">下一步</span>
-      <p class="recommendation">{{ props.check.recommendation }}</p>
+      <span class="detail-label">{{ t('下一步') }}</span>
+      <p class="recommendation">{{ formatDiagnosticCopy(props.check.recommendation) }}</p>
       <div v-if="command" class="command-block">
         <code>{{ command }}</code
         ><button
           class="icon-button"
-          :aria-label="copied ? '已复制命令' : '复制检查命令'"
+          :aria-label="copied ? t('已复制命令') : t('复制检查命令')"
           @click="copy"
         >
           <Check v-if="copied" :size="15" /><Copy v-else :size="15" />
@@ -105,7 +112,7 @@ async function copy() {
               :checked="props.selected.includes(id)"
               :disabled="props.disabled"
               @change="emit('fix', id)"
-            />{{ fixLabels[id] }}</label
+            />{{ t(fixLabels[id]) }}</label
           >
         </div>
         <button
@@ -115,17 +122,17 @@ async function copy() {
           class="text-link"
           @click="emit('settings')"
         >
-          {{ check.id === 'browser-language' ? '查看语言设置' : '选择目标时区' }}
+          {{ check.id === 'browser-language' ? t('查看语言设置') : t('选择目标时区') }}
         </button>
         <button
           v-if="check.id === 'timezone-followup'"
           class="text-link"
           @click="emit('manual', 'timezone-auto')"
         >
-          复核自动时区
+          {{ t('复核自动时区') }}
         </button>
         <button v-if="sources.length" class="text-link" @click="emit('references')">
-          <BookOpen :size="14" />查看来源 · {{ sources.length }}
+          <BookOpen :size="14" />{{ t('查看来源 ·') }} {{ sources.length }}
         </button>
         <a
           v-else-if="props.check.sourceUrl"
@@ -134,7 +141,7 @@ async function copy() {
           rel="noopener noreferrer"
           class="text-link"
           ><ExternalLink :size="13" />{{
-            props.check.source === 'official' ? '官方说明' : '参考 / 外部检查'
+            props.check.source === 'official' ? t('官方说明') : t('参考 / 外部检查')
           }}</a
         >
       </div>

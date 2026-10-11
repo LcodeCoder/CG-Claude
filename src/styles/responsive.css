@@ -496,7 +496,7 @@
     min-width: 12px;
     bottom: -2px;
     right: -3px;
-    box-shadow: 0 0 0 2px white;
+    box-shadow: 0 0 0 2px var(--paper);
   }
   .path-icon .status-badge svg {
     height: 8px;

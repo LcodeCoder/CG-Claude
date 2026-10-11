@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { computed, nextTick, ref } from 'vue'
 import { BookOpen, Check, ChevronDown, Settings2, ShieldCheck } from '@lucide/vue'
 import { connectionFields, connectionValueError } from '../../shared/connections'
@@ -10,7 +11,11 @@ import type {
 import type { RepairPlan } from '../../shared/types'
 import { formatDate } from '../lib/format'
 import GuardDialog from './GuardDialog.vue'
+
 import '../styles/connections.css'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   config?: ConnectionConfiguration
   busy: boolean
@@ -69,11 +74,11 @@ async function apply() {
 }
 </script>
 <template>
-  <section class="connection-panel data-panel" aria-label="Claude Code 用户连接设置">
+  <section class="connection-panel data-panel" :aria-label="t('Claude Code 用户连接设置')">
     <div class="panel-heading">
       <div>
-        <h2>配置代理与网关</h2>
-        <p>在本机保存连接设置，修改前先核对预览。</p>
+        <h2>{{ t('配置代理与网关') }}</h2>
+        <p>{{ t('在本机保存连接设置，修改前先核对预览。') }}</p>
       </div>
       <button
         class="button secondary"
@@ -82,40 +87,48 @@ async function apply() {
         :disabled="busy || !connected"
         @click="expanded = !expanded"
       >
-        <Settings2 :size="15" />{{ expanded ? '收起设置' : '编辑连接设置'
+        <Settings2 :size="15" />{{ expanded ? t('收起设置') : t('编辑连接设置')
         }}<ChevronDown :size="14" :class="{ rotated: expanded }" />
       </button>
     </div>
     <form v-if="expanded" id="connection-form" class="connection-form" @submit.prevent="prepare">
       <div class="connection-scope">
-        <strong>目标文件：{{ config?.path ?? '~/.claude/settings.json' }}</strong>
-        <p>默认保持全部现有设置。只选择要修改的项；当前地址里的凭据、路径和查询参数会隐藏。</p>
+        <strong>{{ t('目标文件：') }}{{ config?.path ?? '~/.claude/settings.json' }}</strong>
         <p>
-          对 HTTP(S)_PROXY / NO_PROXY 的操作会一起处理此文件中同名的小写项，具体变化会列在预览中。
+          {{
+            t('默认保持全部现有设置。只选择要修改的项；当前地址里的凭据、路径和查询参数会隐藏。')
+          }}
+        </p>
+        <p>
+          {{
+            t(
+              '对 HTTP(S)_PROXY / NO_PROXY 的操作会一起处理此文件中同名的小写项，具体变化会列在预览中。',
+            )
+          }}
         </p>
         <button type="button" class="text-link" @click="emit('references')">
-          <BookOpen :size="14" />查看网络配置依据
+          <BookOpen :size="14" />{{ t('查看网络配置依据') }}
         </button>
       </div>
       <div v-if="!config?.editable" class="notice error-notice" role="status">
-        {{ config?.reason ?? '本机配置尚未读取，请重新连接后再编辑。' }}
+        {{ config?.reason ?? t('本机配置尚未读取，请重新连接后再编辑。') }}
       </div>
       <fieldset :disabled="busy || !connected || !config?.editable">
-        <legend class="sr-only">选择需要修改的连接设置</legend>
+        <legend class="sr-only">{{ t('选择需要修改的连接设置') }}</legend>
         <div v-for="field in connectionFields" :key="field.key" class="connection-field">
           <div class="connection-field-heading">
             <label :for="'action-' + field.key"
-              >{{ field.title }}<code>{{ field.key }}</code></label
+              >{{ t(field.title) }}<code>{{ field.key }}</code></label
             >
             <select
               :id="'action-' + field.key"
               v-model="drafts[field.key].action"
-              :aria-label="field.title + '操作'"
+              :aria-label="field.title + t('操作')"
               @change="saved = false"
             >
-              <option value="keep">保持当前</option>
-              <option value="set">设置新值</option>
-              <option value="remove">移除此项</option>
+              <option value="keep">{{ t('保持当前') }}</option>
+              <option value="set">{{ t('设置新值') }}</option>
+              <option value="remove">{{ t('移除此项') }}</option>
             </select>
           </div>
           <p class="connection-current">{{ current(field.key) }}</p>
@@ -123,7 +136,7 @@ async function apply() {
             <input
               :id="'value-' + field.key"
               v-model="drafts[field.key].value"
-              :aria-label="field.title + '新值'"
+              :aria-label="field.title + t('新值')"
               :placeholder="field.placeholder"
               :aria-invalid="attempted && Boolean(fieldError(field.key))"
               :aria-describedby="
@@ -147,50 +160,56 @@ async function apply() {
             </p>
           </template>
           <p v-else-if="drafts[field.key].action === 'remove'" class="connection-remove-note">
-            将移除此文件中的对应项，其他配置层仍可能生效。
+            {{ t('将移除此文件中的对应项，其他配置层仍可能生效。') }}
           </p>
           <p :id="'help-' + field.key" class="connection-help">{{ field.help }}</p>
         </div>
       </fieldset>
       <div class="connection-actions">
         <span>{{
-          selectedCount ? '已选择 ' + selectedCount + ' 个配置项' : '请选择需要修改的项'
+          selectedCount ? t('已选择 ') + selectedCount + t(' 个配置项') : t('请选择需要修改的项')
         }}</span>
         <button
           class="button primary"
           :disabled="busy || !connected || !config?.editable || !selectedCount"
         >
-          预览连接修改
+          {{ t('预览连接修改') }}
         </button>
       </div>
       <div v-if="saved" ref="savedNotice" class="connection-saved" role="status" tabindex="-1">
         <Check :size="17" />
         <div>
-          <strong>设置已保存，原配置可以还原</strong>
-          <p>重新启动 Claude Code，再通过 /status 核对实际生效。也可以先做本机复检。</p>
-          <button type="button" class="text-link" @click="emit('scan')">检测保存后的配置</button>
-          <button type="button" class="text-link" @click="emit('backups')">查看快照与备份</button>
+          <strong>{{ t('设置已保存，原配置可以还原') }}</strong>
+          <p>{{ t('重新启动 Claude Code，再通过 /status 核对实际生效。也可以先做本机复检。') }}</p>
+          <button type="button" class="text-link" @click="emit('scan')">
+            {{ t('检测保存后的配置') }}
+          </button>
+          <button type="button" class="text-link" @click="emit('backups')">
+            {{ t('查看快照与备份') }}
+          </button>
         </div>
       </div>
     </form>
   </section>
   <GuardDialog
     :open="Boolean(plan)"
-    title="预览连接设置修改"
+    :title="t('预览连接设置修改')"
     wide
     :locked="busy"
-    description="确认目标文件和每一项变化，保存前会自动创建快照。"
+    :description="t('确认目标文件和每一项变化，保存前会自动创建快照。')"
     @close="plan = undefined"
   >
     <template v-if="plan">
       <div v-for="file in plan.files" :key="file.path" class="connection-preview-file">
-        <h3>{{ file.path }}<small v-if="!file.exists">保存时创建此文件</small></h3>
+        <h3>
+          {{ file.path }}<small v-if="!file.exists">{{ t('保存时创建此文件') }}</small>
+        </h3>
         <div v-for="change in file.changes" :key="change.key" class="connection-preview-change">
           <strong>{{ change.key }}</strong>
           <dl>
-            <dt>当前</dt>
+            <dt>{{ t('当前') }}</dt>
             <dd>{{ change.before }}</dd>
-            <dt>保存后</dt>
+            <dt>{{ t('保存后') }}</dt>
             <dd>{{ change.after }}</dd>
           </dl>
         </div>
@@ -199,13 +218,16 @@ async function apply() {
         <li v-for="note in plan.notes" :key="note">{{ note }}</li>
       </ul>
       <p class="quiet-text">
-        预览有效至 {{ formatDate(plan.expiresAt, true) }}，期间文件变化会停止保存。
+        {{ t('预览有效至') }} {{ formatDate(plan.expiresAt, true)
+        }}{{ t('，期间文件变化会停止保存。') }}
       </p>
     </template>
     <template #footer
-      ><button class="button secondary" :disabled="busy" @click="plan = undefined">返回编辑</button>
+      ><button class="button secondary" :disabled="busy" @click="plan = undefined">
+        {{ t('返回编辑') }}
+      </button>
       <button class="button primary" :disabled="busy || !connected" @click="apply">
-        <ShieldCheck :size="15" />保存并创建快照
+        <ShieldCheck :size="15" />{{ t('保存并创建快照') }}
       </button>
     </template>
   </GuardDialog>

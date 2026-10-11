@@ -2,7 +2,7 @@
   color: var(--accent);
   font-size: 13px;
   padding: 3px 8px;
-  border: 1px solid #e9e5e2;
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -124,8 +124,8 @@
 
 .wizard-fields input {
   display: block;
-  border: 1px solid #eae6e3;
-  background: #fefdfc;
+  border: 1px solid var(--border);
+  background: var(--paper);
   border-radius: 6px;
   width: 100%;
   margin-top: 7px;
@@ -266,7 +266,7 @@
 
 .setup-preview-list .omitted {
   opacity: 0.6;
-  background: #fdfcfb;
+  background: var(--paper);
 }
 
 .setup-preview-title {
@@ -403,7 +403,7 @@
   content: '';
   position: absolute;
   width: 2px;
-  background: #ece8e5;
+  background: var(--border);
   left: 15px;
   top: 32px;
   bottom: -5px;
@@ -414,8 +414,8 @@
   position: absolute;
   width: 6px;
   height: 6px;
-  border-right: 1px solid #d1c9c3;
-  border-bottom: 1px solid #d1c9c3;
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
   transform: rotate(45deg);
   left: 12px;
   bottom: 2px;
@@ -429,8 +429,8 @@
   place-items: center;
   margin-top: 10px;
   border-radius: 50%;
-  background: #f7f4f2;
-  color: #a0968d;
+  background: var(--surface-subtle);
+  color: var(--muted);
   z-index: 1;
 }
 
@@ -440,7 +440,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--paper);
 }
 
 .flow-node-heading {
@@ -450,7 +450,7 @@
 }
 
 .flow-number {
-  color: #a79e96;
+  color: var(--muted);
   font:
     10px 'JetBrains Mono',
     monospace;
@@ -465,8 +465,8 @@
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 13px;
-  background: #f7f4f2;
-  color: #8d8076;
+  background: var(--surface-subtle);
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -483,7 +483,7 @@
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  color: #a79e96;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -507,13 +507,22 @@
 
 .running .flow-node,
 .retrying .flow-node {
-  border-color: #d0c7c1;
+  border-color: var(--border-strong);
 }
 
 .skipped .flow-marker,
 .skipped .flow-state {
   color: var(--amber);
   background: var(--amber-light);
+}
+
+.skipped.unselected .flow-marker,
+.skipped.unselected .flow-state {
+  color: var(--muted);
+  background: var(--canvas);
+}
+.incomplete .flow-node {
+  border-color: var(--amber);
 }
 
 .flow-log {

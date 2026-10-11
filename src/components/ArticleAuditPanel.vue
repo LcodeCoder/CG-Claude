@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { computed, ref } from 'vue'
 import { ArrowUpRight, ChevronDown, ClipboardList } from '@lucide/vue'
 import {
@@ -13,6 +14,9 @@ import { ARTICLE_URL } from '../../shared/timezones'
 import { DIAGNOSTIC_RULESET } from '../../shared/diagnostic-checks'
 import { manualItems, statusLabels } from '../../shared/types'
 import type { ProjectFinding, ScanReport } from '../../shared/types'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   report?: ScanReport
   projectFindings?: ProjectFinding[]
@@ -57,31 +61,32 @@ function checkStatus(id: string) {
     <summary>
       <ClipboardList :size="22" />
       <span
-        ><strong>原文逐项对照</strong
+        ><strong>{{ t('原文逐项对照') }}</strong
         ><small
-          >{{ articleAuditEntries.length }} 项要求与边界 · 核对 {{ ARTICLE_AUDIT_DATE }}</small
+          >{{ articleAuditEntries.length }} {{ t('项要求与边界 · 核对') }}
+          {{ ARTICLE_AUDIT_DATE }}</small
         ></span
       >
       <ChevronDown :size="18" />
     </summary>
     <div class="article-audit-content">
-      <p class="article-audit-lead">展开条目查看检测证据、修复范围与人工步骤。</p>
-      <p class="article-audit-note">标签表示检测能力；账号状态需另行复核。</p>
+      <p class="article-audit-lead">{{ t('展开条目查看检测证据、修复范围与人工步骤。') }}</p>
+      <p class="article-audit-note">{{ t('标签表示检测能力；账号状态需另行复核。') }}</p>
       <div v-if="report && report.ruleset !== DIAGNOSTIC_RULESET" class="article-mode-differences">
-        这份报告使用旧规则，不能用其“通过”替代当前核对；请先重新检测。
+        {{ t('这份报告使用旧规则，不能用其“通过”替代当前核对；请先重新检测。') }}
       </div>
       <div v-if="differences.length" class="article-mode-differences">
-        <strong>本次检测设置与原文默认 B 路线不同</strong>
+        <strong>{{ t('本次检测设置与原文默认 B 路线不同') }}</strong>
         <ul>
           <li v-for="difference in differences" :key="difference.id">{{ difference.message }}</li>
         </ul>
         <button class="text-link" @click="emit('settings')">
-          查看检测偏好<ArrowUpRight :size="14" />
+          {{ t('查看检测偏好') }}<ArrowUpRight :size="14" />
         </button>
       </div>
-      <div class="article-audit-filters" role="group" aria-label="原文覆盖范围筛选">
+      <div class="article-audit-filters" role="group" :aria-label="t('原文覆盖范围筛选')">
         <button :aria-pressed="filter === 'all'" @click="filter = 'all'">
-          全部 {{ articleAuditEntries.length }}
+          {{ t('全部') }} {{ articleAuditEntries.length }}
         </button>
         <button
           v-for="(label, id) in articleCoverageLabels"
@@ -89,7 +94,7 @@ function checkStatus(id: string) {
           :aria-pressed="filter === id"
           @click="filter = id"
         >
-          {{ label }} {{ counts[id] }}
+          {{ t(label) }} {{ counts[id] }}
         </button>
       </div>
       <details
@@ -99,13 +104,14 @@ function checkStatus(id: string) {
         :open="filter !== 'all'"
       >
         <summary>
-          <h3>{{ group.label }}</h3>
-          <span>{{ group.entries.length }} 项</span><ChevronDown :size="15" />
+          <h3>{{ t(group.label) }}</h3>
+          <span>{{ group.entries.length }} {{ t('项') }}</span
+          ><ChevronDown :size="15" />
         </summary>
         <details v-for="entry in group.entries" :key="entry.id" class="article-audit-row">
           <summary>
             <span
-              ><small>原文 {{ entry.section }}</small
+              ><small>{{ t('原文') }} {{ entry.section }}</small
               ><strong>{{ entry.title }}</strong></span
             ><span class="article-coverage" :data-coverage="entry.coverage">{{
               articleCoverageLabels[entry.coverage]
@@ -115,11 +121,11 @@ function checkStatus(id: string) {
           <div class="article-audit-detail">
             <dl>
               <div>
-                <dt>检测与范围</dt>
+                <dt>{{ t('检测与范围') }}</dt>
                 <dd>{{ entry.implementation }}</dd>
               </div>
               <div>
-                <dt>修复与后续</dt>
+                <dt>{{ t('修复与后续') }}</dt>
                 <dd>{{ entry.repair }}</dd>
               </div>
             </dl>
@@ -155,16 +161,16 @@ function checkStatus(id: string) {
               >
                 {{
                   projectFindings?.find((finding) => finding.id === id)?.title ??
-                  '需先扫描所选项目'
+                  t('需先扫描所选项目')
                 }}<ArrowUpRight :size="13" />
               </button>
             </div>
-            <small class="article-code-source">实现位置：{{ entry.code }}</small>
+            <small class="article-code-source">{{ t('实现位置：') }}{{ entry.code }}</small>
           </div>
         </details>
       </details>
       <a class="text-link" :href="ARTICLE_URL" target="_blank" rel="noopener noreferrer"
-        >打开 AYi 原文<ArrowUpRight :size="14"
+        >{{ t('打开 AYi 原文') }}<ArrowUpRight :size="14"
       /></a>
     </div>
   </details>

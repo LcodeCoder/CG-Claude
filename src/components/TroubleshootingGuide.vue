@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { computed, ref } from 'vue'
 import { ArrowUpRight, BookOpen, Compass } from '@lucide/vue'
 import type { ManualReviewId } from '../../shared/types'
 import { environmentTerms, troubleshootingGuides } from '../content/troubleshooting'
+
+const { t } = useUiText()
+
 const emit = defineEmits<{
   check: [id: string]
   source: [id: string]
@@ -15,12 +19,12 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
   <section id="troubleshooting" class="data-panel troubleshooting-panel" tabindex="-1">
     <div class="panel-heading">
       <div>
-        <h2><Compass :size="21" />遇到错误，从这里开始</h2>
-        <p>选择看到的提示，查看排查步骤与依据。</p>
+        <h2><Compass :size="21" />{{ t('遇到错误，从这里开始') }}</h2>
+        <p>{{ t('选择看到的提示，查看排查步骤与依据。') }}</p>
       </div>
-      <span class="help-offline">离线可阅读</span>
+      <span class="help-offline">{{ t('离线可阅读') }}</span>
     </div>
-    <div class="troubleshooting-choices" aria-label="选择错误类型">
+    <div class="troubleshooting-choices" :aria-label="t('选择错误类型')">
       <button
         v-for="item in troubleshootingGuides"
         :key="item.id"
@@ -28,7 +32,7 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
         aria-controls="troubleshooting-detail"
         @click="selected = item.id"
       >
-        {{ item.title }}
+        {{ t(item.title) }}
       </button>
     </div>
     <div
@@ -53,20 +57,23 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
           {{ check.label }}<ArrowUpRight :size="13" />
         </button>
         <button v-if="guide.manual" class="text-link" @click="emit('manual', guide.manual!)">
-          打开人工复核<ArrowUpRight :size="13" />
+          {{ t('打开人工复核') }}<ArrowUpRight :size="13" />
         </button>
         <button class="text-link" @click="emit('source', guide.source)">
-          <BookOpen :size="14" />查看原文依据
+          <BookOpen :size="14" />{{ t('查看原文依据') }}
         </button>
       </div>
     </div>
     <p class="troubleshooting-boundary">
-      API 状态码需要结合 error.type
-      和实际服务核对。网关可能返回自己的错误；本页不发送认证或付费请求。
+      {{
+        t(
+          'API 状态码需要结合 error.type 和实际服务核对。网关可能返回自己的错误；本页不发送认证或付费请求。',
+        )
+      }}
     </p>
   </section>
   <section class="data-panel terms-panel" aria-labelledby="environment-terms-title">
-    <h2 id="environment-terms-title">读懂常见术语</h2>
+    <h2 id="environment-terms-title">{{ t('读懂常见术语') }}</h2>
     <dl>
       <div v-for="item in environmentTerms" :key="item.term">
         <dt>{{ item.term }}</dt>

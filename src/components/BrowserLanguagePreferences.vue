@@ -1,7 +1,11 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import { computed, ref } from 'vue'
 import { browserLanguageOptions } from '../../shared/browser-language'
 import type { Preferences } from '../../shared/types'
+
+const { t } = useUiText()
+
 const draft = defineModel<Preferences>({ required: true })
 defineProps<{ prefix: string }>()
 const browser = ref<'chrome' | 'edge' | 'firefox' | 'safari'>('chrome')
@@ -45,18 +49,19 @@ const guide = computed(() => guides[browser.value])
   <div class="browser-language-preferences">
     <div class="field-row">
       <label :for="`${prefix}-browser-language`"
-        >浏览器语言目标<span>检测目标；实际修改在“检测偏好”的外部浏览器配置中执行。</span></label
+        >{{ t('浏览器语言目标')
+        }}<span>{{ t('检测目标；实际修改在“检测偏好”的外部浏览器配置中执行。') }}</span></label
       >
       <select :id="`${prefix}-browser-language`" v-model="draft.expectedBrowserLanguage">
         <option v-for="option in browserLanguageOptions" :key="option.value" :value="option.value">
-          {{ option.title }}
+          {{ t(option.title) }}
         </option>
       </select>
     </div>
     <details class="browser-language-help">
-      <summary>如何设置英文与地区标记</summary>
+      <summary>{{ t('如何设置英文与地区标记') }}</summary>
       <div class="browser-language-help-content">
-        <label :for="`${prefix}-language-browser`">选择实际使用的浏览器</label>
+        <label :for="`${prefix}-language-browser`">{{ t('选择实际使用的浏览器') }}</label>
         <select :id="`${prefix}-language-browser`" v-model="browser">
           <option value="chrome">Chrome</option>
           <option value="edge">Microsoft Edge</option>
@@ -67,10 +72,12 @@ const guide = computed(() => guides[browser.value])
           <li v-for="step in guide.steps" :key="step">{{ step }}</li>
         </ol>
         <p>
-          目标：<strong lang="en">{{ draft.expectedBrowserLanguage }}</strong
-          >。CG 的中文界面和主对话翻译可继续保留。
+          {{ t('目标：') }}<strong lang="en">{{ draft.expectedBrowserLanguage }}</strong
+          >{{ t('。CG 的中文界面和主对话翻译可继续保留。') }}
         </p>
-        <a :href="guide.url" target="_blank" rel="noopener noreferrer">查看浏览器官方说明</a>
+        <a :href="guide.url" target="_blank" rel="noopener noreferrer">{{
+          t('查看浏览器官方说明')
+        }}</a>
       </div>
     </details>
   </div>

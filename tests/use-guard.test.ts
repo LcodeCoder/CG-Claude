@@ -168,3 +168,61 @@ test('legacy preference field ordering does not invalidate a current repair repo
   expect(guard.canRepair.value).toBe(true)
   expect(guard.reportConfigurationChanged.value).toBe(false)
 })
+
+test('reconnecting refreshes the latest report after another local client has completed a scan', async () => {
+  const next = bootstrap()
+  next.reports = [{ ...report, id: 'another-client-report' }]
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(bootstrap()))
+      .mockResolvedValueOnce(Response.json(next)),
+  )
+  const guard = useGuard()
+  await guard.initialize()
+  expect(guard.report.value?.id).toBe('fixture-report')
+  await guard.initialize()
+  expect(guard.report.value?.id).toBe('another-client-report')
+  expect(guard.canRepair.value).toBe(true)
+})
+test('reconnecting preserves an intentionally selected historical report', async () => {
+  const next = bootstrap()
+  next.reports = [{ ...report, id: 'another-client-report' }, report]
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockResolvedValueOnce(Response.json(bootstrap()))
+      .mockResolvedValueOnce(Response.json(next)),
+  )
+  const guard = useGuard()
+  await guard.initialize()
+  guard.report.value = { ...report, id: 'historical-report' }
+  await guard.initialize()
+  expect(guard.report.value?.id).toBe('historical-report')
+  expect(guard.canRepair.value).toBe(false)
+})
+
+test('reconnecting to an idle service cancels the old scan monitor and clears its lock', async () => {
+  const initial = bootstrap()
+  initial.service = {
+    closing: false,
+    activity: { kind: 'scan', label: '正在检测', id: 'old-scan' },
+    scan: { id: 'old-scan', status: 'running', completed: 3, total: 31, current: '正在检测' },
+  }
+  const transport = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json(initial))
+    .mockResolvedValueOnce(Response.json(bootstrap()))
+  vi.stubGlobal('fetch', transport)
+  const guard = useGuard()
+  await guard.initialize()
+  expect(guard.scanning.value).toBe(true)
+  await guard.initialize()
+  expect(guard.scanning.value).toBe(false)
+  expect(guard.busy.value).toBe(false)
+  await vi.advanceTimersByTimeAsync(300)
+  expect(transport).toHaveBeenCalledTimes(2)
+  expect(guard.toast.value).toBeUndefined()
+})

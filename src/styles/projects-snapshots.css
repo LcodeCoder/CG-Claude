@@ -17,8 +17,8 @@
 .project-picker input {
   flex: 1;
   min-width: 0;
-  border: 1px solid #eae6e3;
-  background: #fefdfc;
+  border: 1px solid var(--border);
+  background: var(--paper);
   border-radius: 6px;
   padding: 11px 12px;
 }
@@ -89,7 +89,7 @@
 .project-finding small {
   font-size: 13px;
   line-height: 1.8;
-  color: #92867c;
+  color: var(--muted);
 }
 
 .project-finding dl {

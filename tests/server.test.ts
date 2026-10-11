@@ -452,3 +452,29 @@ test('invalid absolute request targets return a client error without terminating
   expect(status).toBe(400)
   expect((await fetch(base + '/api/bootstrap')).status).toBe(200)
 })
+
+test('returns actionable JSON errors for bad media types, malformed JSON and oversized bodies', async () => {
+  for (const [contentType, body, status] of [
+    ['application/jsonp', '{}', 415],
+    ['application/json', '{', 400],
+    ['application/json', JSON.stringify({ label: 'a'.repeat(70 * 1024) }), 413],
+  ] as const) {
+    const response = await fetch(base + '/api/snapshots', {
+      method: 'POST',
+      headers: { 'Content-Type': contentType, 'X-CG-Token': token },
+      body,
+    })
+    expect(response.status).toBe(status)
+    expect((await response.json()).error).toBeTypeOf('string')
+  }
+  expect(await data.storage.snapshots()).toHaveLength(0)
+  expect((await fetch(base + '/api/status')).status).toBe(200)
+})
+
+test('HEAD serves the same static headers without returning a response body', async () => {
+  const response = await fetch(base + '/', { method: 'HEAD' })
+  expect(response.status).toBe(200)
+  expect(response.headers.get('content-type')).toContain('text/html')
+  expect(Number(response.headers.get('content-length'))).toBeGreaterThan(0)
+  expect(await response.text()).toBe('')
+})

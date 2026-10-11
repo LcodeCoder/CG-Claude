@@ -1,8 +1,40 @@
 # 参考来源逐项审计
 
-核对日期：2026-10-11。文献库共 67 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
+核对日期：2026-10-11。文献库共 69 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
 
 官方配置名称、取值和版本条件优先以当前官方说明为准；社区项目只采用注明的方法与限制。外部泄漏页面只核对用途，本轮未替用户进行公网泄漏检测。完整正文不进入源代码仓库，读取渠道和正文哈希见 [来源读取记录](source-audit-manifest.json)。
+
+## Electron · 登录项状态与系统批准
+
+官方文档 · Electron · [原文](https://www.electronjs.org/docs/latest/api/app#appgetloginitemsettingsoptions) · ID：`electron-login-items`。
+
+采用段落：getLoginItemSettings / setLoginItemSettings / status / executableWillLaunchAtLogin / code signing。
+
+项目应用：设置后读取系统结果，待批准或回读不一致不会显示开启；开发与隔离模式禁用注册。
+
+核对结论：按系统回读显示状态，区分待批准与未确认；只允许可信窗口修改固定登录项。当前未验证真实开机登录及 Windows 桌面。
+
+判断边界：macOS 官方建议打包、签名与公证。当前未签名产物的自动启动可能无法生效，需在系统登录项手动核对。
+
+对应实现：[electron/startup.ts](../electron/startup.ts)。
+
+关联：仅来源说明。
+
+## GitHub · REST 版本与正式 Release
+
+官方文档 · GitHub · [原文](https://docs.github.com/en/rest/about-the-rest-api/api-versions) · ID：`github-release-versioning`。
+
+采用段落：Specifying an API version / Supported API versions。
+
+项目应用：版本检查使用 2026-03-10 API，只在点击时查询固定仓库的 latest Release，排除草稿与预发布版本。
+
+核对结论：使用当前支持的 API 版本，检查固定仓库的稳定 Release，并发合并、短缓存、响应有界且不信任上游下载链接。
+
+判断边界：无公开正式 Release 不等于本机已是最新；检查不自动下载、安装或验证本机包的签名。
+
+对应实现：[server/version-check.ts](../server/version-check.ts)。
+
+关联：仅来源说明。
 
 ## Apple · 自动校时与自动选择时区
 

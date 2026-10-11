@@ -1,10 +1,23 @@
-import { app, BrowserWindow, dialog, Menu, shell, ipcMain, nativeImage } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  Menu,
+  shell,
+  ipcMain,
+  nativeImage,
+  nativeTheme,
+} from 'electron'
 import path from 'node:path'
 import { mkdirSync } from 'node:fs'
 import { createAppServer } from '../server/index.js'
 import { references } from '../shared/references.js'
+import { desktopMenu } from './menu.js'
+import { appSettingsSchema, defaultAppSettings } from '../shared/app-settings.js'
+import { createStartupController } from './startup.js'
 import { DesktopTray, keepWindowInTray } from './tray.js'
 
+let appearance = { ...defaultAppSettings }
 let window: BrowserWindow | undefined
 let service: Awaited<ReturnType<typeof createAppServer>> | undefined
 let origin = ''
@@ -13,6 +26,7 @@ let tray: DesktopTray | undefined
 let openingWindow: Promise<void> | undefined
 const externalHosts = new Set([
   ...references.map((entry) => new URL(entry.url).hostname),
+  'github.com',
   'x.com',
   'code.claude.com',
   'www.anthropic.com',
@@ -44,8 +58,14 @@ async function createWindow() {
     minWidth: 900,
     minHeight: 650,
     show: false,
-    title: 'CG Claude · 本机环境配置',
-    backgroundColor: '#f8f6f2',
+    title:
+      appearance.language === 'en' ? 'CG Claude · Local configuration' : 'CG Claude · 本机环境配置',
+    backgroundColor:
+      appearance.theme === 'dark'
+        ? '#171614'
+        : appearance.theme === 'eye-care'
+          ? '#e8e0ce'
+          : '#f8f6f2',
     icon: path.join(app.getAppPath(), 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'electron', 'preload.cjs'),
@@ -77,7 +97,7 @@ async function createWindow() {
   // Keep export downloads in the user's chosen folder.
   window.webContents.session.on('will-download', (_event, item) => {
     item.setSaveDialogOptions({
-      title: '保存检测报告',
+      title: appearance.language === 'en' ? 'Save scan report' : '保存检测报告',
       defaultPath: path.join(app.getPath('downloads'), item.getFilename()),
     })
   })
@@ -164,66 +184,63 @@ if (!app.requestSingleInstanceLock()) {
         app.dock?.setIcon(
           nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon.png')),
         )
-      Menu.setApplicationMenu(
-        Menu.buildFromTemplate([
-          ...(process.platform === 'darwin'
-            ? [
-                {
-                  label: 'CG Claude',
-                  submenu: [
-                    { role: 'about' as const },
-                    { type: 'separator' as const },
-                    { role: 'hide' as const },
-                    { role: 'quit' as const },
-                  ],
-                },
-              ]
-            : []),
-          {
-            label: '编辑',
-            submenu: [
-              { role: 'undo' },
-              { role: 'redo' },
-              { type: 'separator' },
-              { role: 'cut' },
-              { role: 'copy' },
-              { role: 'paste' },
-              { role: 'selectAll' },
-            ],
-          },
-          {
-            label: '视图',
-            submenu: [
-              { role: 'reload' },
-              { role: 'resetZoom' },
-              { role: 'zoomIn' },
-              { role: 'zoomOut' },
-              { role: 'togglefullscreen' },
-            ],
-          },
-          {
-            label: '窗口',
-            submenu: [
-              {
-                label: process.platform === 'darwin' ? '隐藏到菜单栏' : '隐藏到托盘',
-                accelerator: 'CmdOrCtrl+M',
-                click: hideWindow,
+      function syncAppearance() {
+        nativeTheme.themeSource = appearance.theme === 'dark' ? 'dark' : 'light'
+        Menu.setApplicationMenu(
+          Menu.buildFromTemplate(
+            desktopMenu(process.platform, appearance.language, {
+              hide: hideWindow,
+              show: () => {
+                void showWindow()
               },
-              {
-                label: '打开主窗口',
-                click: () => {
-                  void showWindow()
-                },
-              },
-              { role: 'close' },
-            ],
-          },
-        ]),
-      )
+            }),
+          ),
+        )
+        window?.setBackgroundColor(
+          appearance.theme === 'dark'
+            ? '#171614'
+            : appearance.theme === 'eye-care'
+              ? '#e8e0ce'
+              : '#f8f6f2',
+        )
+        tray?.update()
+      }
+      syncAppearance()
+      ipcMain.handle('cg:appearance', (event, value: unknown) => {
+        if (!trustedSender(event)) throw new Error('只允许本机桌面界面同步应用外观')
+        appearance = appSettingsSchema.parse(value)
+        syncAppearance()
+      })
+      const startup = createStartupController({
+        packaged: app.isPackaged,
+        demo: process.env.CG_DEMO === '1',
+        platform: process.platform,
+        read: () => app.getLoginItemSettings(),
+        write: (enabled) => app.setLoginItemSettings({ openAtLogin: enabled }),
+      })
+      ipcMain.handle('cg:startup:get', (event) => {
+        if (!trustedSender(event)) throw new Error('只允许本机桌面界面读取应用设置')
+        return startup.get()
+      })
+      ipcMain.handle('cg:startup:set', (event, enabled: unknown) => {
+        if (!trustedSender(event)) throw new Error('只允许本机桌面界面修改应用设置')
+        return startup.set(enabled)
+      })
+      ipcMain.handle('cg:startup:settings', async (event) => {
+        if (!trustedSender(event)) throw new Error('只允许本机桌面界面打开系统设置')
+        const url =
+          process.platform === 'darwin'
+            ? 'x-apple.systempreferences:com.apple.LoginItems-Settings.extension'
+            : process.platform === 'win32'
+              ? 'ms-settings:startupapps'
+              : undefined
+        if (!url) throw new Error('此系统暂不支持打开登录项设置')
+        await shell.openExternal(url)
+      })
       ipcMain.handle('cg:choose-project', async (event) => {
         if (!trustedSender(event)) throw new Error('只允许本机桌面界面选择项目')
         const result = await dialog.showOpenDialog(window!, {
-          title: '选择要扫描的本地项目',
+          title: appearance.language === 'en' ? 'Choose a project to scan' : '选择要扫描的本地项目',
           properties: ['openDirectory'],
         })
         return result.canceled ? undefined : result.filePaths[0]
@@ -238,12 +255,16 @@ if (!app.requestSingleInstanceLock()) {
         runtime: 'electron',
         distDir: path.join(app.getAppPath(), 'dist'),
       })
+      // Set the native window and menus before first paint; malformed records remain visible in settings.
+      appearance = await service.storage.appSettings().catch(() => ({ ...defaultAppSettings }))
+      syncAppearance()
       origin = `http://127.0.0.1:${await service.listen()}`
       console.log(`CG Claude Electron：${origin}`)
       try {
         tray = new DesktopTray({
           root: app.getAppPath(),
           platform: process.platform,
+          language: () => appearance.language,
           status: () => service!.status(),
           visible: () => Boolean(window?.isVisible()),
           show: () => {

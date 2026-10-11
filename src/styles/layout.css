@@ -9,7 +9,7 @@
   top: 0;
   left: 0;
   bottom: 0;
-  background: #fff;
+  background: var(--paper);
   border-right: 1px solid var(--border);
   padding: 29px 19px 17px;
   display: flex;
@@ -68,7 +68,7 @@
   border-radius: 8px;
   font-size: 15px;
   text-align: left;
-  color: #81756c;
+  color: var(--muted);
   transition:
     background 0.14s,
     color 0.14s;
@@ -76,7 +76,7 @@
 
 .main-nav button:hover,
 .secondary-nav button:hover {
-  background: #fbf9f8;
+  background: var(--paper);
   color: var(--ink);
 }
 
@@ -88,15 +88,15 @@
 
 .nav-count {
   margin-left: auto;
-  background: #ede9e6;
+  background: var(--surface-subtle);
   padding: 1px 6px;
   border-radius: 5px;
   font-size: 13px;
 }
 
 .nav-count.neutral {
-  background: #f6f2ef;
-  color: #80746b;
+  background: var(--surface-subtle);
+  color: var(--muted);
 }
 
 .sidebar-bottom {
@@ -121,7 +121,7 @@
   border-top: 1px solid var(--border);
   margin: 18px 8px 0;
   padding-top: 16px;
-  color: #7c7168;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -142,7 +142,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.85);
+  background: color-mix(in srgb, var(--paper) 85%, transparent);
   border-bottom: 1px solid var(--border);
   padding: 0 35px;
   gap: 14px;
@@ -168,7 +168,7 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  color: #7e7269;
+  color: var(--muted);
 }
 
 .connection-badge {
@@ -177,8 +177,8 @@
   gap: 6px;
   font-size: 13px;
   color: var(--green);
-  border: 1px solid #e3eee8;
-  background: #f8fcfa;
+  border: 1px solid var(--green-light);
+  background: var(--green-light);
   padding: 4px 9px;
   border-radius: 5px;
   white-space: nowrap;
@@ -187,14 +187,14 @@
 .connection-badge > span {
   width: 5px;
   height: 5px;
-  background: #4b9f8a;
+  background: var(--green);
   border-radius: 50%;
 }
 
 .connection-badge.offline {
   color: var(--amber);
-  background: #fffcf7;
-  border-color: #f4ead5;
+  background: var(--surface-subtle);
+  border-color: var(--border);
 }
 
 .connection-badge.offline > span {
@@ -232,7 +232,7 @@
 
 .page-heading p {
   margin-top: 7px;
-  color: #7d7269;
+  color: var(--muted);
   font-size: 14px;
   line-height: 1.8;
 }
@@ -264,30 +264,30 @@
 .button.primary {
   background: var(--accent);
   border: 1px solid var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 3px 5px #9e938a10;
 }
 
 .button.primary:hover:enabled {
-  background: #8f8379;
-  border-color: #8f8379;
+  background: var(--muted);
+  border-color: var(--muted);
 }
 
 .button.secondary {
-  background: #fff;
-  border: 1px solid #eae6e4;
-  color: #81756c;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .button.secondary:hover:enabled {
-  background: #fdfcfb;
-  border-color: #d9d2cd;
+  background: var(--paper);
+  border-color: var(--border-strong);
 }
 
 .button.subtle {
-  background: #fbf9f7;
-  border: 1px solid #f3efec;
-  color: #7d7269;
+  background: var(--surface-subtle);
+  border: 1px solid var(--surface-subtle);
+  color: var(--muted);
   font-size: 14px;
   padding: 8px 12px;
   min-height: 34px;
@@ -304,7 +304,7 @@
   min-height: 30px;
   min-width: 30px;
   padding: 5px;
-  color: #7e736a;
+  color: var(--muted);
   border-radius: 5px;
 }
 
@@ -323,12 +323,12 @@
 }
 
 .text-link:hover {
-  color: #7d7168;
+  color: var(--muted);
 }
 
 .quiet-text {
   font-size: 14px;
-  color: #7d7168;
+  color: var(--muted);
 }
 
 .export-menu {
@@ -349,8 +349,8 @@
   right: 0;
   top: 45px;
   width: 193px;
-  background: #fff;
-  border: 1px solid #ede9e6;
+  background: var(--paper);
+  border: 1px solid var(--surface-subtle);
   border-radius: 8px;
   padding: 6px;
   box-shadow: 0 8px 24px #332e2a0c;
@@ -372,7 +372,7 @@
 .export-dropdown small {
   display: block;
   padding: 8px 10px;
-  color: #7f736a;
+  color: var(--muted);
   font-size: 13px;
   border-top: 1px solid var(--border);
 }
@@ -393,13 +393,13 @@
 }
 
 .info-notice {
-  background: #f8f5f2;
-  border: 1px solid #f0edea;
-  color: #8a7d73;
+  background: var(--surface-subtle);
+  border: 1px solid var(--surface-subtle);
+  color: var(--muted);
 }
 
 .success-notice {
   background: var(--green-light);
-  border: 1px solid #dbede4;
-  color: #377b68;
+  border: 1px solid var(--green-light);
+  color: var(--green);
 }

@@ -3,43 +3,62 @@
 CG Claude 是一个本地应用。Vue 展示事实、收集选择和预览修改；Node 服务负责固定范围的读取与事务；Electron 提供窗口、目录选择和原生导出。前端不直接读写文件。
 
 ```mermaid
-flowchart LR
-  Views[Vue 页面与配置向导] --> Guard[useGuard 状态与请求]
-  Guard --> API[本机 HTTP API]
-  Desktop[Electron 主进程与 preload] --> API
-  API --> Diagnostics[只读环境与项目检查]
-  API --> Transactions[配置修复与快照事务]
-  API --> Storage[本机记录与目录互斥]
-  Shared[共享类型、检查 ID 与文献] --> Views
-  Shared --> API
+flowchart TB
+  Views[Vue 页面与组件] --> Guard[useGuard / useAppSettings]
+  Guard --> HTTP[HTTP kernel + feature routes]
+  HTTP --> App[application 服务组合]
+  App --> Operations[OperationCoordinator 互斥与退出]
+  App --> Services[检测 / 修复 / 流程 / 快照]
+  Services --> Adapters[文件 / 系统 / 网络适配]
+  Services --> Storage[Storage + record schemas]
+  Desktop[Electron 窗口 / 托盘 / 自启] --> App
+  Shared[shared 纯契约与规则] --> Views
+  Shared --> Services
 ```
 
 ## 从哪里开始读
 
-| 任务                                       | 入口                                                                                        |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| 页面导航与全局弹窗                         | `src/App.vue`                                                                               |
-| 页面请求、服务连接与任务状态               | `src/composables/useGuard.ts`                                                               |
-| 本机配置、项目、记录、备份、偏好、使用说明 | `src/views/` 下对应视图                                                                     |
-| 一键配置向导和节点状态                     | `src/components/SetupWizard.vue`、`server/workflows.ts`                                     |
-| 文献搜索、阅读层次与关联导航               | `src/views/ReferencesView.vue`、`src/components/ReferenceCard.vue`                          |
-| 稳定检查 ID、检测规则版本                  | `shared/diagnostic-checks.ts`                                                               |
-| 环境与浏览器检测                           | `server/diagnostics.ts`                                                                     |
-| CLI 版本与原生安装候选元数据               | `server/cli-diagnostics.ts`                                                                 |
-| 固定系统指令与 Windows .cmd 回退           | `server/commands.ts`                                                                        |
-| 进程、Claude 用户设置与静态 shell 来源     | `server/environment-sources.ts`                                                             |
-| MCP 结构、字面凭据与变量引用               | `server/mcp-diagnostics.ts`、`server/projects.ts`                                           |
-| 代理、认证、证书及隐私规则                 | `server/configuration-diagnostics.ts`、`server/privacy-diagnostics.ts`、`shared/privacy.ts` |
-| 主动编辑连接设置与严格字段校验             | `shared/connections.ts`、`server/connections.ts`、`src/components/ConnectionEditor.vue`     |
-| 本地配置静态解析与选定字段修改             | `server/configs.ts`                                                                         |
-| 路径、脱敏、固定目标和原子文件操作         | `server/safety.ts`                                                                          |
-| 预览校验、备份、写入与回退                 | `server/repairs.ts`、`server/snapshots.ts`                                                  |
-| 本机记录、版本兼容与访问互斥               | `server/storage.ts`、`server/lock.ts`                                                       |
-| HTTP 路由、输入校验、Host/Origin/token     | `server/index.ts`                                                                           |
-| 文献摘要、关联检查和外链主机               | `shared/references.ts`、`src/views/ReferencesView.vue`                                      |
-| 窗口、IPC、外链与原生文件对话框            | `electron/main.ts`、`electron/preload.ts`                                                   |
+| 要处理的工作         | 入口与职责                                                                                                                                               |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 导航与全局弹窗       | `src/App.vue` 组合页面；`src/content/navigation.ts` 是统一注册点。本机配置放在导航最后                                                                   |
+| 环境功能的公共接口   | `src/composables/useGuard.ts` 是薄 facade；`guard/context.ts` 管状态与刷新；其余文件按检测、修复、连接、浏览器语言、翻译、记录、快照、项目、偏好分别管理 |
+| 后台任务恢复         | `guard/monitors.ts` 用轮询与 generation 校验阻止旧请求覆盖新状态；服务重连会清理已经完成的占用状态                                                       |
+| 应用偏好             | `useAppSettings.ts` 管语言、外观和版本查询；与检测偏好、配置快照分开                                                                                     |
+| 页面与复用组件       | `src/views/` 负责页面，`src/components/` 负责呈现与事件。非首屏页面按需加载                                                                              |
+| 界面本地化           | `src/i18n/` 保存界面词条；在显示边界调用 `t`，不修改配置请求、代码、路径、用户输入和原文引用                                                             |
+| 服务创建与 HTTP 监听 | `server/index.ts` 仅装配、监听与 CLI 入口；`application.ts` 组合业务服务及生命周期                                                                       |
+| HTTP 边界            | `http/kernel.ts` 统一 Host、Origin、token、请求大小、错误与静态文件；`http/routes/` 按诊断、配置、记录、流程组织端点                                     |
+| 任务互斥与退出等待   | `server/operations.ts` 跟踪进行中的 Promise；写入、检测与配置流程共享占用，退出等待当前任务                                                              |
+| 环境检查编排         | `diagnostics.ts` 组合规则；`system-snapshot.ts`、`network-diagnostics.ts` 负责系统与网络取证                                                             |
+| 专项规则             | `timezone-diagnostics.ts`、`cli-diagnostics.ts`、`configuration-diagnostics.ts`、`privacy-diagnostics.ts` 等返回检查结果                                 |
+| 本地读写与回退       | `configs.ts` 解析；`safety.ts` 限定路径和原子写入；`repairs.ts`、`snapshots.ts` 处理预览、冲突校验、备份与回退                                           |
+| 持久化边界           | `storage.ts` 与 `*-record.ts` 校验数据。记录层不反向导入翻译、修复、浏览器语言等业务模块                                                                 |
+| 固定系统命令         | `commands.ts`、`command-environment.ts`、`timezone-settings.ts`、`local-actions.ts`；不接受任意命令或外部路径                                            |
+| 桌面功能             | `electron/main.ts`、`tray.ts`、`startup.ts`；preload 是 `electron/preload.cjs`，只暴露有限的可信窗口操作                                                 |
+| 版本查询             | `version-check.ts` 只访问固定项目的公开正式 Release，不把最新 commit 当成可下载版本                                                                      |
+| 稳定 ID 与文献       | `shared/diagnostic-checks.ts`、`references.ts`、`manual-guidance.ts`，连接检测、历史、详情和依据                                                         |
 
-页面通过带类型的 props、model 和事件与 App 交互；磁盘写入保留在服务端。`useGuard` 负责请求完成后的状态同步。新增视图不要复制本机 API、互斥、预览过期或快照恢复逻辑。
+页面通过类型化的 props、model 和事件与 App 交互；文件与系统写入始终在服务端。新增功能复用公共 composable，避免复制 API、互斥、预览过期或恢复逻辑。
+
+## 分层约束
+
+- `shared` 仅依赖共享模块和 Zod，保持浏览器与服务端通用。
+- `src` 可以依赖 `shared`，不能导入服务端、Electron 或 Node 本机接口。
+- `server` 可以依赖 `shared`，不能依赖 Vue 页面或 Electron。
+- Electron 组合本机服务；仅可信主窗口可调用固定 IPC。
+- 视图不能绕过 facade 直接调用 `guard/` 内部模块；持久化层不能依赖业务服务。
+- 生产代码不允许运行时循环依赖，纯类型依赖另行处理。
+
+`npm run architecture:check` 用 TypeScript AST 扫描全部生产模块，检查上述边界与循环。它已加入 `npm run check` 和三平台 CI；类型检查、架构检查和测试共同执行。编译产物、测试夹具与脚本不属于生产依赖图。
+
+## 一次修改如何流动
+
+1. 页面发送已选择的有限字段，公共 composable 调用本机 API。
+2. HTTP 边界检查来源、token、JSON 大小和 schema。
+3. `OperationCoordinator` 获得独占使用权；业务服务读当前状态并生成预览。
+4. 用户审阅后提交预览 ID，服务重新验证基线、保存快照与备份，再执行原子修改。
+5. 结果已确认时，前端立即使旧修复基线失效，再刷新 bootstrap。后续刷新失败不会撤销已确认成功的文案。
+6. 客户端断开或窗口隐藏不提前结束服务事务。明确退出等待操作完成后释放记录目录租约。
 
 ## 翻译模型与浏览器语言
 
@@ -149,7 +168,7 @@ App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog�
 
 `electron/tray.ts` 管理图标、菜单、任务状态和窗口隐藏规则。图标来自 `public/tray.svg`；生成脚本输出 macOS Template/Retina、Windows ICO 和 Linux PNG，并随应用打包。最小化和关闭窗口保留渲染器，新浏览器复检仍可回传；明确退出等待后台事务后销毁托盘。Linux 桌面不支持托盘时保留普通最小化与关闭行为。IPC 仅允许同一本机主窗口调用隐藏与目录选择。
 
-## 1.2.5 原文操作指引与独立配置目标
+## 原文操作指引与独立配置目标
 
 `shared/manual-guidance.ts` 是人工复核页和一键配置完成页的共同指引来源，集中保存原文章节、操作步骤、固定设置动作和验证命令。`SetupFollowupList` 仅负责展示，`ManualActionGuide` 复用折叠详情和复制交互。完成页选择本次任务之后、检测偏好相同的最新报告；旧勾选不能消除本次任务，新的人工确认也不能隐藏机器观察到的告警。按出口选择时区却尚无有效出口证据时，指引提示先复检，不退回台北。
 
@@ -160,3 +179,11 @@ App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog�
 `server/browser-configuration.ts` 根据当前用户目录下的固定 Chrome / Edge / Brave / Chromium 根目录重建可选资料，渲染端只能提交不透明资料 ID。写入前要求浏览器完全退出，校验文件内容和权限，原子替换并回读。仅备份语言字段，拒绝链接、异常类型和已观察到的强制语言；恢复保留无关配置与用户后续修改。macOS 可选应用语言影响该浏览器所有资料，网页首选语言只改选中资料。旧资料没有 `selected_languages` 时，同时备份 `accept_languages`，避免浏览器启动迁移破坏还原。写入结果只报告已保存，实际页面语言须重开同一浏览器复检。
 
 `server/command-environment.ts` 为从桌面启动的 macOS / Linux 补足命令查找 PATH。固定登录 shell 的有界输出只提取带标记 PATH，不导入其他变量或暴露启动日志；失败时保留已知安装目录回退。`server/commands.ts` 仍只执行固定命令，使用找到的绝对路径，已执行失败的命令不再次执行。
+
+## 应用设置与桌面启动
+
+`shared/app-settings.ts` 定义 `zh-CN / en`、`light / eye-care / dark` 和减少动画。`app-settings.json` 采用严格校验与原子写入，设置页面仅在持久化成功后应用新值；读取或保存失败保留已确认的状态。浏览器缓存仅用于快速显示，服务记录是最终依据。界面语言不会更改系统语言、浏览器首选语言、检测目标或翻译模型的输入。
+
+`electron/startup.ts` 依赖注入系统读写，区分不支持、macOS 待批准、实际开启和回读未确认。开发与隔离模式不注册登录项；Windows 核对系统禁用状态。打开系统设置的 IPC 只使用固定登录项链接。密码由系统处理。macOS 签名和公证会影响登录项可靠性，未签名包不承诺自动启动成功，页面提供回读、刷新和手动入口。
+
+版本检查只在点击时执行：TLS 校验、固定 GitHub API、拒绝重定向、10 秒超时、128 KB 响应上限、并发合并和短缓存。只接受可验证的非草稿、非预发布稳定版本；下载链接由固定仓库与版本标签重建。不自动下载安装，不上传配置、账号信息或密钥。

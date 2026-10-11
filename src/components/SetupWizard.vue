@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useUiText } from '../i18n'
 import SetupFollowupList from './SetupFollowupList.vue'
 import { setupFollowupReport } from '../../shared/manual-guidance'
 import type { LocalActionId } from '../../shared/local-actions'
@@ -36,6 +37,9 @@ import type {
   SetupPreview,
   SetupRequest,
 } from '../../shared/types'
+
+const { t } = useUiText()
+
 const props = defineProps<{
   open: boolean
   resume: boolean
@@ -77,6 +81,10 @@ const changedFiles = computed(
   () =>
     new Set(props.preview?.nodes.flatMap((node) => node.files.map((file) => file.path)) ?? []).size,
 )
+function nodeState(node: SetupJob['nodes'][number]) {
+  if (node.status === 'skipped') return node.enabled ? '未完成' : '未选择'
+  return setupNodeLabels[node.status]
+}
 const activeNode = computed(() =>
   props.job?.nodes.find((node) => ['running', 'retrying'].includes(node.status)),
 )
@@ -167,11 +175,13 @@ const title = computed(() =>
   <GuardDialog
     :open="props.open"
     :scroll-key="step"
-    :title="title"
+    :title="t(title)"
     :description="
       step === 5
-        ? '按节点顺序执行；失败重试 3 次后跳过，继续下一项。'
-        : '逐项选择适合你的设置，确认后写入本机配置。'
+        ? running
+          ? t('逐项执行，失败最多重试 3 次。')
+          : undefined
+        : t('选择配置，预览后保存。')
     "
     wide
     :locked="props.working"
@@ -179,10 +189,10 @@ const title = computed(() =>
   >
     <template v-if="step < 5">
       <p v-if="step === 4 && differences.length" class="wizard-hint">
-        本次与原文方案有
-        {{ differences.length }} 项偏好差异；复检按你的选择判断，文献页保留原文对照。
+        {{ t('本次与原文方案有') }} {{ differences.length }}
+        {{ t('项偏好差异；复检按你的选择判断，文献页保留原文对照。') }}
       </p>
-      <ol class="wizard-steps" aria-label="配置步骤">
+      <ol class="wizard-steps" :aria-label="t('配置步骤')">
         <li
           v-for="(label, index) in steps"
           :key="label"
@@ -193,37 +203,37 @@ const title = computed(() =>
             ><Check v-if="step > index" :size="13" /><template v-else>{{
               index + 1
             }}</template></span
-          >{{ label }}
+          >{{ t(label) }}
         </li>
       </ol>
       <div v-if="step === 0" class="wizard-section">
         <div class="wizard-section-heading">
           <Network :size="24" />
           <div>
-            <h3>网络接入方式</h3>
-            <p>选择当前已经启用的方式，工具会据此决定保留或移除代理字段。</p>
+            <h3>{{ t('网络接入方式') }}</h3>
+            <p>{{ t('选择当前已经启用的方式，工具会据此决定保留或移除代理字段。') }}</p>
           </div>
         </div>
         <div class="article-preset">
-          <span>原文方案：台北 · TUN · 关闭非必要流量</span
-          ><button class="text-link" @click="useArticlePreset">按原文填入</button>
+          <span>{{ t('原文方案：台北 · TUN · 关闭非必要流量') }}</span
+          ><button class="text-link" @click="useArticlePreset">{{ t('按原文填入') }}</button>
         </div>
         <label
           v-for="option in [
             {
               value: 'system',
-              title: '系统 / HTTP 代理',
-              description: '保留 shell、npm 和 Git 中已有的代理配置。',
+              title: t('系统 / HTTP 代理'),
+              description: t('保留 shell、npm 和 Git 中已有的代理配置。'),
             },
             {
               value: 'tun',
-              title: 'TUN 全流量接管',
-              description: '将移除重复的持久代理字段，请先在代理软件中启用 TUN。',
+              title: t('TUN 全流量接管'),
+              description: t('将移除重复的持久代理字段，请先在代理软件中启用 TUN。'),
             },
             {
               value: 'custom',
-              title: '自定义路由',
-              description: '保留现有代理，检查其他本机配置。',
+              title: t('自定义路由'),
+              description: t('保留现有代理，检查其他本机配置。'),
             },
           ]"
           :key="option.value"
@@ -235,16 +245,17 @@ const title = computed(() =>
             name="setup-route"
             :value="option.value"
           /><span
-            ><strong>{{ option.title }}</strong
-            ><small>{{ option.description }}</small></span
+            ><strong>{{ t(option.title) }}</strong
+            ><small>{{ t(option.description) }}</small></span
           ></label
         >
         <TimezonePreferences v-model="draft" prefix="setup" configure />
         <BrowserLanguagePreferences v-model="draft" prefix="setup" />
         <div class="wizard-fields">
           <label
-            >期望出口地区<select v-model="draft.expectedCountry">
-              <option value="">不指定</option>
+            >{{ t('期望出口地区')
+            }}<select v-model="draft.expectedCountry">
+              <option value="">{{ t('不指定') }}</option>
               <option
                 v-for="country in ['US', 'TW', 'SG', 'JP', 'GB', 'DE', 'CA', 'AU', 'CN', 'HK']"
                 :key="country"
@@ -255,14 +266,14 @@ const title = computed(() =>
             </select></label
           >
         </div>
-        <p class="wizard-hint">出口地区用于检测对照；网络接入需提前在代理软件中启用。</p>
+        <p class="wizard-hint">{{ t('出口地区用于检测对照；网络接入需提前在代理软件中启用。') }}</p>
       </div>
       <div v-else-if="step === 1" class="wizard-section">
         <div class="wizard-section-heading">
           <ShieldCheck :size="24" />
           <div>
-            <h3>你使用哪种 Claude 服务？</h3>
-            <p>已有 API 地址默认保留，恢复官方地址需要在修改范围中主动勾选。</p>
+            <h3>{{ t('你使用哪种 Claude 服务？') }}</h3>
+            <p>{{ t('已有 API 地址默认保留，恢复官方地址需要在修改范围中主动勾选。') }}</p>
           </div>
         </div>
         <label
@@ -276,8 +287,8 @@ const title = computed(() =>
             name="setup-usage"
             :value="option.value"
           /><span
-            ><strong>{{ option.title }}</strong
-            ><small>{{ option.description }}</small></span
+            ><strong>{{ t(option.title) }}</strong
+            ><small>{{ t(option.description) }}</small></span
           ></label
         >
       </div>
@@ -285,46 +296,47 @@ const title = computed(() =>
         <div class="wizard-section-heading">
           <LockKeyhole :size="24" />
           <div>
-            <h3>选择 Claude Code 隐私设置</h3>
-            <p>配置会写入 ~/.claude/settings.json，并保留其他设置。</p>
+            <h3>{{ t('选择 Claude Code 隐私设置') }}</h3>
+            <p>{{ t('配置会写入 ~/.claude/settings.json，并保留其他设置。') }}</p>
           </div>
         </div>
         <label class="radio-card" :class="{ selected: draft.privacy === 'balanced' }"
           ><input v-model="draft.privacy" type="radio" name="setup-privacy" value="balanced" /><span
-            ><strong>关闭使用指标与错误报告</strong
-            ><small>设置 DISABLE_TELEMETRY 与 DISABLE_ERROR_REPORTING。</small></span
+            ><strong>{{ t('关闭使用指标与错误报告') }}</strong
+            ><small>{{ t('设置 DISABLE_TELEMETRY 与 DISABLE_ERROR_REPORTING。') }}</small></span
           ></label
         >
         <label class="radio-card" :class="{ selected: draft.privacy === 'minimal' }"
           ><input v-model="draft.privacy" type="radio" name="setup-privacy" value="minimal" /><span
-            ><strong>关闭全部非必要流量</strong
-            ><small>另外设置 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC。</small></span
+            ><strong>{{ t('关闭全部非必要流量') }}</strong
+            ><small>{{ t('另外设置 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC。') }}</small></span
           ></label
         >
         <div class="wizard-note">
           <TriangleAlert :size="18" />
-          <p>{{ privacyCompatibilityNote }} 已有的隐私设置会保留。</p>
+          <p>{{ privacyCompatibilityNote }} {{ t('已有的隐私设置会保留。') }}</p>
         </div>
       </div>
       <div v-else-if="step === 3" class="wizard-section">
         <div class="wizard-section-heading">
           <FolderCog :size="24" />
           <div>
-            <h3>确认本次修改范围</h3>
-            <p>每个选择对应一个独立执行节点，可以在这里取消。</p>
+            <h3>{{ t('确认本次修改范围') }}</h3>
+            <p>{{ t('每个选择对应一个独立执行节点，可以在这里取消。') }}</p>
           </div>
         </div>
         <label class="setup-scope-item">
           <input v-model="timezone.system" type="checkbox" />
           <span
-            ><strong>设置系统时区</strong><small>按所选目标配置；可能需要管理员授权</small></span
+            ><strong>{{ t('设置系统时区') }}</strong
+            ><small>{{ t('按所选目标配置；可能需要管理员授权') }}</small></span
           >
         </label>
         <label class="setup-scope-item">
           <input v-model="timezone.terminal" type="checkbox" />
           <span
-            ><strong>配置终端与 Claude Code TZ</strong
-            ><small>保存启动配置；已有终端和 Claude Code 会话需重开</small></span
+            ><strong>{{ t('配置终端与 Claude Code TZ') }}</strong
+            ><small>{{ t('保存启动配置；已有终端和 Claude Code 会话需重开') }}</small></span
           >
         </label>
         <label
@@ -338,48 +350,52 @@ const title = computed(() =>
             :disabled="!eligible(id)"
             @change="toggle(id)"
           /><span
-            ><strong>{{ fixLabels[id] }}</strong
+            ><strong>{{ t(fixLabels[id]) }}</strong
             ><small>{{
               !eligible(id)
                 ? /-proxy$/.test(id)
-                  ? '当前网络模式保留此配置'
-                  : '当前 Claude 服务方式保留此配置'
+                  ? t('当前网络模式保留此配置')
+                  : t('当前 Claude 服务方式保留此配置')
                 : /-endpoint$/.test(id)
-                  ? '主动勾选后才移除已有 API 地址；密钥保留'
+                  ? t('主动勾选后才移除已有 API 地址；密钥保留')
                   : id === 'claude-privacy'
-                    ? '写入本次选择的隐私设置'
+                    ? t('写入本次选择的隐私设置')
                     : id === 'npm-tls'
-                      ? '将 npm 的 strict-ssl=false / 0 恢复为 true'
-                      : '仅移除代理字段，保留其他配置'
+                      ? t('将 npm 的 strict-ssl=false / 0 恢复为 true')
+                      : t('仅移除代理字段，保留其他配置')
             }}</small></span
           ></label
         >
         <p class="wizard-hint">
-          系统代理、TUN 和 DNS 的实际设置会在复检报告中提示，工具不会代替网络软件启用连接。
+          {{
+            t('系统代理、TUN 和 DNS 的实际设置会在复检报告中提示，工具不会代替网络软件启用连接。')
+          }}
         </p>
       </div>
       <div v-else-if="step === 4 && props.preview" class="wizard-section">
         <div class="setup-summary">
           <div>
             <strong>{{ changedFiles }}</strong
-            ><span>个文件将修改</span>
+            ><span>{{ t('个文件将修改') }}</span>
           </div>
           <div>
             <strong>{{
               selected.length + Number(timezone.system) + Number(timezone.terminal)
             }}</strong
-            ><span>个配置节点已选</span>
+            ><span>{{ t('个配置节点已选') }}</span>
           </div>
-          <div><strong>3</strong><span>次失败重试上限</span></div>
+          <div>
+            <strong>3</strong><span>{{ t('次失败重试上限') }}</span>
+          </div>
         </div>
         <p v-if="props.preview.timezoneTarget" class="wizard-hint">
-          目标时区：<strong>{{ props.preview.timezoneTarget }}</strong>
+          {{ t('目标时区：') }}<strong>{{ props.preview.timezoneTarget }}</strong>
         </p>
         <div class="setup-preferences">
           <span>{{ routeNames[draft.routeMode] }}</span
           ><span>{{ usageModeLabel(draft.usageMode) }}</span
           ><span>{{
-            draft.privacy === 'minimal' ? '关闭全部非必要流量' : '关闭指标与错误报告'
+            draft.privacy === 'minimal' ? t('关闭全部非必要流量') : t('关闭指标与错误报告')
           }}</span>
         </div>
         <ol class="setup-preview-list">
@@ -389,17 +405,17 @@ const title = computed(() =>
             :class="{ omitted: !node.enabled }"
           >
             <div class="setup-preview-title">
-              <GitBranch :size="15" /><strong>{{ node.title }}</strong
+              <GitBranch :size="15" /><strong>{{ t(node.title) }}</strong
               ><span>{{
                 node.enabled
                   ? node.blocked
-                    ? '需处理，将尝试执行'
+                    ? t('需处理，将尝试执行')
                     : node.files.length
                       ? `${node.files.length} 个文件`
                       : node.id === 'system-timezone' || node.id === 'terminal-timezone'
-                        ? '配置并复核'
-                        : '检查 / 无需写入'
-                  : '保留现有配置'
+                        ? t('配置并复核')
+                        : t('检查 / 无需写入')
+                  : t('保留现有配置')
               }}</span>
             </div>
             <p v-if="node.note">{{ node.note }}</p>
@@ -431,19 +447,18 @@ const title = computed(() =>
         <div>
           <strong>{{
             running
-              ? activeNode?.title || '正在准备下一项'
+              ? activeNode?.title || t('正在准备下一项')
               : props.job.status === 'interrupted'
-                ? '流程中断，请重新预览'
+                ? t('流程中断，请重新预览')
                 : failedCount
-                  ? `${failedCount} 个节点未成功并已跳过`
-                  : '所选配置已处理完成'
+                  ? `${failedCount} 项未完成，请查看执行记录`
+                  : t('所选自动配置已完成')
           }}</strong>
           <p>
             {{
               running
-                ? '关闭弹窗后仍会继续执行，可随时回来查看。'
-                : props.job.error ||
-                  '复检结果会保留仍需关注的环境问题。重新打开终端以加载更新的环境变量。'
+                ? t('关闭弹窗后仍会继续执行，可随时回来查看。')
+                : props.job.error || t('下一步：按下方清单完成手动设置，再重新检测。')
             }}
           </p>
         </div>
@@ -455,54 +470,67 @@ const title = computed(() =>
         :aria-valuenow="completed"
         :aria-valuemax="props.job.nodes.length"
         aria-valuemin="0"
-        aria-label="配置流程进度"
+        :aria-label="t('配置流程进度')"
       >
         <span :style="{ width: `${(completed / props.job.nodes.length) * 100}%` }" />
       </div>
       <details class="setup-execution-details" :open="running">
-        <summary>自动配置执行记录 · {{ completed }} / {{ props.job.nodes.length }}</summary>
-        <ol class="setup-flow" aria-label="配置执行流程">
-          <li v-for="(node, index) in props.job.nodes" :key="node.id" :class="node.status">
+        <summary>
+          {{ t('自动配置执行记录 ·') }} {{ completed }} / {{ props.job.nodes.length }}
+        </summary>
+        <ol class="setup-flow" :aria-label="t('配置执行流程')">
+          <li
+            v-for="(node, index) in props.job.nodes"
+            :key="node.id"
+            :class="[
+              node.status,
+              { unselected: !node.enabled, incomplete: node.enabled && node.status === 'skipped' },
+            ]"
+          >
             <div class="flow-marker">
               <LoaderCircle v-if="node.status === 'running'" class="spin" :size="17" /><RefreshCw
                 v-else-if="node.status === 'retrying'"
                 class="spin"
                 :size="17"
               /><CircleCheck v-else-if="node.status === 'succeeded'" :size="18" /><SkipForward
-                v-else-if="node.status === 'skipped'"
+                v-else-if="node.status === 'skipped' && !node.enabled"
                 :size="17"
-              /><CircleDashed v-else :size="18" />
+              /><TriangleAlert v-else-if="node.status === 'skipped'" :size="18" /><CircleDashed
+                v-else
+                :size="18"
+              />
             </div>
             <div class="flow-node">
               <div class="flow-node-heading">
                 <span class="flow-number">{{ String(index + 1).padStart(2, '0') }}</span>
-                <h3>{{ node.title }}</h3>
-                <span class="flow-state">{{ setupNodeLabels[node.status] }}</span>
+                <h3>{{ t(node.title) }}</h3>
+                <span class="flow-state">{{ t(nodeState(node)) }}</span>
               </div>
               <p>{{ node.message }}</p>
               <div class="flow-meta">
                 <span v-if="node.attempts"
-                  >尝试 {{ node.attempts }} / 4 · 重试 {{ node.retries }} / 3</span
-                ><span v-else>{{ node.enabled ? '按顺序执行' : '未选择此项' }}</span
+                  >{{ t('尝试') }} {{ node.attempts }} {{ t('/ 4 · 重试') }} {{ node.retries }} /
+                  3</span
+                ><span v-else>{{ node.enabled ? t('按顺序执行') : t('未选择此项') }}</span
                 ><button
                   v-if="node.backupId"
                   class="text-link"
                   :disabled="running"
                   @click="emit('backups')"
                 >
-                  查看原始备份
+                  {{ t('查看原始备份') }}
                 </button>
               </div>
               <details
                 v-if="node.history.some((entry) => entry.result === 'failed')"
                 class="flow-log"
               >
-                <summary>查看每次尝试</summary>
+                <summary>{{ t('查看每次尝试') }}</summary>
                 <ul>
                   <li v-for="entry in node.history" :key="entry.attempt">
                     <span
-                      >第 {{ entry.attempt }} 次 ·
-                      {{ entry.result === 'failed' ? '失败' : '成功' }}</span
+                      >{{ t('第') }} {{ entry.attempt }} {{ t('次 ·') }}
+                      {{ entry.result === 'failed' ? t('失败') : t('成功') }}</span
                     >
                     <p>{{ entry.message }}</p>
                   </li>
@@ -525,7 +553,7 @@ const title = computed(() =>
         @scan="emit('scan')"
       />
       <p class="wizard-hint">
-        未选择的节点直接保留原配置；执行失败的节点重试 3 次后跳过。处理顺序由上到下。
+        {{ t('未选择：保留原配置。未完成：重试后仍失败，详情见执行记录。') }}
       </p>
     </template>
     <template #footer>
@@ -535,7 +563,7 @@ const title = computed(() =>
           :disabled="props.working"
           @click="step ? step-- : emit('close')"
         >
-          <ArrowLeft v-if="step" :size="15" />{{ step ? '上一步' : '取消' }}</button
+          <ArrowLeft v-if="step" :size="15" />{{ step ? t('上一步') : t('取消') }}</button
         ><span class="wizard-footer-label">{{ step + 1 }} / 5</span
         ><button
           class="button primary"
@@ -547,24 +575,24 @@ const title = computed(() =>
             :size="15"
           /><ArrowRight v-else :size="16" />{{
             props.working
-              ? '正在准备'
+              ? t('正在准备')
               : step === 3
-                ? '预览本机修改'
+                ? t('预览本机修改')
                 : step === 4
-                  ? '备份并开始配置'
-                  : '下一步'
+                  ? t('备份并开始配置')
+                  : t('下一步')
           }}
         </button></template
       >
       <template v-else
         ><button class="button secondary" @click="emit('close')">
-          {{ running ? '收起，继续执行' : '关闭' }}</button
+          {{ running ? t('收起，继续执行') : t('关闭') }}</button
         ><button
           v-if="!running && props.job?.reportId"
           class="button primary"
           @click="emit('report')"
         >
-          <ShieldCheck :size="16" />查看复检报告
+          <ShieldCheck :size="16" />{{ t('查看复检报告') }}
         </button></template
       >
     </template>

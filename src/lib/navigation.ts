@@ -9,7 +9,11 @@ export async function focusResult(target: HTMLElement | null | undefined) {
   const focusTarget = target.querySelector<HTMLButtonElement>('.check-summary') ?? target
   focusTarget.focus({ preventScroll: true })
   target.scrollIntoView({
-    behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    behavior:
+      document.documentElement.dataset.reduceMotion === 'true' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
     block: 'start',
   })
 }

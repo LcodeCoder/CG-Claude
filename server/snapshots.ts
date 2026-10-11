@@ -1,6 +1,6 @@
 import { samePreferences } from '../shared/types.js'
 import { randomUUID } from 'node:crypto'
-import type { Preferences, SnapshotSummary, SnapshotPreview } from '../shared/types.js'
+import type { SnapshotSummary, SnapshotPreview } from '../shared/types.js'
 import type { Context } from './context.js'
 import { hash, readAllConfigs, readConfig, writeConfig } from './safety.js'
 import {
@@ -10,21 +10,10 @@ import {
   timezoneChanges,
   timezoneStateSchema,
 } from './timezone-settings.js'
-import type { TimezoneState } from './timezone-settings.js'
 import type { Storage } from './storage.js'
 import { snapshotIntegrity } from './record-validation.js'
-interface SnapshotEntry {
-  relative: string
-  original: string | null
-  mode: number
-  hash: string
-}
-export interface SnapshotRecord extends SnapshotSummary {
-  entries: SnapshotEntry[]
-  integrityHash?: string
-  preferences: Preferences
-  timezoneState?: { state: TimezoneState; hash: string }
-}
+import type { SnapshotEntry, SnapshotRecord } from './snapshot-record.js'
+export type { SnapshotRecord } from './snapshot-record.js'
 interface RestorePlan {
   preview: SnapshotPreview
   record: SnapshotRecord
