@@ -172,7 +172,7 @@ export interface FilePreview {
   exists: boolean
 }
 export interface RepairPlan {
-  kind?: 'connection'
+  kind?: 'connection' | 'timezone'
   label?: string
   id: string
   createdAt: string
@@ -378,10 +378,18 @@ export const manualReviewImportSchema = z.object({
 export const setupRequestSchema = z.object({
   preferences: preferencesSchema,
   fixIds: z.array(z.enum(fixIds)).max(7),
+  timezone: z.object({ system: z.boolean(), terminal: z.boolean() }).optional(),
   browser: browserSchema.optional(),
 })
 export type SetupRequest = z.infer<typeof setupRequestSchema>
-export type SetupNodeId = 'snapshot' | 'preferences' | 'inspect' | FixId | 'verify'
+export type SetupNodeId =
+  | 'snapshot'
+  | 'preferences'
+  | 'inspect'
+  | 'system-timezone'
+  | 'terminal-timezone'
+  | FixId
+  | 'verify'
 export type SetupNodeStatus = 'pending' | 'running' | 'retrying' | 'succeeded' | 'skipped'
 export interface SetupNodePreview {
   id: SetupNodeId
@@ -392,11 +400,16 @@ export interface SetupNodePreview {
   blocked?: boolean
   note?: string
 }
+export const setupBrowserRequestSchema = z.object({
+  probeId: z.string().uuid(),
+  browser: browserSchema,
+})
 export interface SetupPreview {
   id: string
   createdAt: string
   expiresAt: string
   preferences: Preferences
+  timezoneTarget?: string
   nodes: SetupNodePreview[]
   notes: string[]
 }
@@ -426,6 +439,7 @@ export interface SetupJob {
   nodes: SetupNode[]
   reportId?: string
   snapshotId?: string
+  browserProbeId?: string
   error?: string
 }
 export const SETUP_MAX_RETRIES = 3
@@ -445,6 +459,7 @@ export interface SnapshotSummary {
   status: 'ready' | 'restored'
   files: string[]
   excludedFiles: string[]
+  timezone?: { system?: string; terminal: boolean; user: boolean }
   restoredAt?: string
 }
 export interface SnapshotPreview {
@@ -455,6 +470,7 @@ export interface SnapshotPreview {
   files: FilePreview[]
   preferences: Preferences
   preferencesChanged: boolean
+  timezoneChanges?: ChangePreview[]
   notes: string[]
 }
 export interface ProjectFinding {

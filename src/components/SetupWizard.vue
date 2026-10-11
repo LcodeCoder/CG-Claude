@@ -46,6 +46,7 @@ const emit = defineEmits<{ close: []; backups: []; report: [] }>()
 const step = ref(0)
 const draft = reactive<Preferences>({ ...defaultPreferences })
 const selected = ref<FixId[]>([])
+const timezone = reactive({ system: true, terminal: true })
 const steps = ['网络模式', 'Claude 服务', '隐私偏好', '修改范围', '确认并执行']
 const fieldError = ref('')
 const running = computed(() => props.job?.status === 'running')
@@ -79,6 +80,8 @@ watch(
     Object.assign(draft, props.boot?.preferences ?? defaultPreferences)
     // Restoring an API endpoint is always an explicit opt-in in the scope step.
     selected.value = fixIds.filter((id) => eligible(id) && !/-endpoint$/.test(id))
+    timezone.system = true
+    timezone.terminal = true
     fieldError.value = ''
   },
 )
@@ -110,7 +113,13 @@ async function next() {
   if (step.value === 0 && draft.routeMode === 'tun')
     selected.value = [...new Set([...selected.value, ...fixIds.filter((id) => /-proxy$/.test(id))])]
   if (step.value === 3) {
-    if (await props.prepare({ preferences: { ...draft }, fixIds: [...selected.value] }))
+    if (
+      await props.prepare({
+        preferences: { ...draft },
+        fixIds: [...selected.value],
+        timezone: { ...timezone },
+      })
+    )
       step.value = 4
   } else step.value++
 }
@@ -196,7 +205,7 @@ const title = computed(() =>
             ><small>{{ option.description }}</small></span
           ></label
         >
-        <TimezonePreferences v-model="draft" prefix="setup" />
+        <TimezonePreferences v-model="draft" prefix="setup" configure />
         <div class="wizard-fields">
           <label
             >期望出口地区<select v-model="draft.expectedCountry">
@@ -211,9 +220,7 @@ const title = computed(() =>
             </select></label
           >
         </div>
-        <p class="wizard-hint">
-          这些期望值用于检测对照，系统时区与网络软件设置需要在对应系统或软件中调整。
-        </p>
+        <p class="wizard-hint">出口地区用于检测对照；网络接入需提前在代理软件中启用。</p>
       </div>
       <div v-else-if="step === 1" class="wizard-section">
         <div class="wizard-section-heading">
@@ -272,6 +279,19 @@ const title = computed(() =>
             <p>每个选择对应一个独立执行节点，可以在这里取消。</p>
           </div>
         </div>
+        <label class="setup-scope-item">
+          <input v-model="timezone.system" type="checkbox" />
+          <span
+            ><strong>设置系统时区</strong><small>按所选目标配置；可能需要管理员授权</small></span
+          >
+        </label>
+        <label class="setup-scope-item">
+          <input v-model="timezone.terminal" type="checkbox" />
+          <span
+            ><strong>配置终端与 Claude Code TZ</strong
+            ><small>保存启动配置；已有终端和 Claude Code 会话需重开</small></span
+          >
+        </label>
         <label
           v-for="id in fixIds"
           :key="id"
@@ -310,11 +330,16 @@ const title = computed(() =>
             ><span>个文件将修改</span>
           </div>
           <div>
-            <strong>{{ selected.length }}</strong
+            <strong>{{
+              selected.length + Number(timezone.system) + Number(timezone.terminal)
+            }}</strong
             ><span>个配置节点已选</span>
           </div>
           <div><strong>3</strong><span>次失败重试上限</span></div>
         </div>
+        <p v-if="props.preview.timezoneTarget" class="wizard-hint">
+          目标时区：<strong>{{ props.preview.timezoneTarget }}</strong>
+        </p>
         <div class="setup-preferences">
           <span>{{ routeNames[draft.routeMode] }}</span
           ><span>{{ usageModeLabel(draft.usageMode) }}</span
@@ -336,7 +361,9 @@ const title = computed(() =>
                     ? '需处理，将尝试执行'
                     : node.files.length
                       ? `${node.files.length} 个文件`
-                      : '检查 / 无需写入'
+                      : node.id === 'system-timezone' || node.id === 'terminal-timezone'
+                        ? '配置并复核'
+                        : '检查 / 无需写入'
                   : '保留现有配置'
               }}</span>
             </div>

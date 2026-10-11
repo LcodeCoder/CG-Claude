@@ -394,7 +394,13 @@ export function useGuard() {
     try {
       setupPreview.value = await api<SetupPreview>('/setup/preview', {
         method: 'POST',
-        body: JSON.stringify({ ...request, browser: await browserSnapshot(false) }),
+        body: JSON.stringify({
+          ...request,
+          browser: await browserSnapshot(
+            request.preferences.timezoneMode === 'exit' &&
+              Boolean(request.timezone?.system || request.timezone?.terminal),
+          ),
+        }),
       })
       return true
     } catch (failure) {
@@ -427,12 +433,27 @@ export function useGuard() {
   async function monitorSetup(initial: SetupJob) {
     const version = ++monitorVersion
     let state = initial
+    const submittedProbes = new Set<string>()
     try {
       while (mounted && version === monitorVersion && state.status === 'running') {
         await new Promise((resolve) => setTimeout(resolve, 400))
         if (!mounted || version !== monitorVersion) return
         state = await api<SetupJob>('/setup/' + initial.id)
         setupJob.value = state
+        if (state.browserProbeId && !submittedProbes.has(state.browserProbeId)) {
+          const probeId = state.browserProbeId
+          const browser = await browserSnapshot(state.preferences.timezoneMode === 'exit')
+          if (!mounted || version !== monitorVersion) return
+          try {
+            await api('/setup/' + initial.id + '/browser', {
+              method: 'POST',
+              body: JSON.stringify({ probeId, browser }),
+            })
+            submittedProbes.add(probeId)
+          } catch {
+            /* Continue monitoring; a missed probe remains unconfirmed in the report. */
+          }
+        }
       }
       if (!mounted || version !== monitorVersion) return
       await refresh()

@@ -112,3 +112,9 @@
 46 条来源逐项写明采用段落与实现位置，来源清单只保留元数据和可用的内容摘要校验值，不提交来源全文或用户信息。新增 IPinfo 官方 Legacy Free API 与 Lite 响应差异来源：仅采用 Legacy /json 顶层时区，缺失或无效值保留待确认，不宣称支持 Lite/Core/ASN 时区查询。见 [reference-audit.md](reference-audit.md)与 source-audit-manifest.json。
 
 npm/Git 的有效代理查询须完整成功；Git 固定 key 的空输出 exit 1 与其他错误分开。Git http.sslVerify、URL 子节、旧式 dotted 子节及 GIT_SSL_NO_VERIFY 纳入 TLS 判断，include、复杂值与不可读来源保留待确认。WebRTC 的未完成、超时、异常和缺少当前浏览器公网基准也不报通过；终端不同出口不能代替浏览器基准。上述扩展都限定在实际能读取的配置与采样证据范围。
+
+## 一键时区配置的系统依据（2026-10-11）
+
+文献库由 46 条增至 53 条，补充 Apple systemsetup 与 AppleScript 管理员授权、Node TZ、systemd timedate1/polkit、Windows Set-TimeZone、Start-Process/UAC 和用户环境变量官方说明。七份来源的检索时间、字节数与 SHA-256 已登记在 source-audit-manifest.json，采用段落与实现位置见 [来源审计](reference-audit.md)。AppleScript 来源为官方归档技术说明，结合独立系统读数验证，不将来源归档中的历史行为当成本机成功证据。
+
+这些来源用于有限时区写入、授权与还原。应用不接收密码，不调整授时/NTP，不使用浏览器时区模拟掩盖差异；每次系统配置独立读回，终端 TZ 修改复用原文件备份事务。已运行的外部终端与 Claude Code 进程需要重开。复杂 shell、自定义配置目录和无法读取的原始时区保持明确失败或待确认。

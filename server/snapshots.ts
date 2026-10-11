@@ -2,6 +2,14 @@ import { randomUUID } from 'node:crypto'
 import type { Preferences, SnapshotSummary, SnapshotPreview } from '../shared/types.js'
 import type { Context } from './context.js'
 import { hash, readAllConfigs, readConfig, writeConfig } from './safety.js'
+import {
+  captureTimezoneState,
+  restoreTimezoneState,
+  rollbackTimezoneState,
+  timezoneChanges,
+  timezoneStateSchema,
+} from './timezone-settings.js'
+import type { TimezoneState } from './timezone-settings.js'
 import type { Storage } from './storage.js'
 interface SnapshotEntry {
   relative: string
@@ -12,12 +20,14 @@ interface SnapshotEntry {
 export interface SnapshotRecord extends SnapshotSummary {
   entries: SnapshotEntry[]
   preferences: Preferences
+  timezoneState?: { state: TimezoneState; hash: string }
 }
 interface RestorePlan {
   preview: SnapshotPreview
   record: SnapshotRecord
   hashes: Map<string, string>
   preferencesHash: string
+  timezoneHash?: string
 }
 export class SnapshotEngine {
   private plans = new Map<string, RestorePlan>()
@@ -29,7 +39,10 @@ export class SnapshotEngine {
     // Updating an old restore record must not move it ahead of a newer capture.
     return (await this.storage.snapshots())
       .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0))
-      .map(({ entries: _entries, preferences: _preferences, ...summary }) => summary)
+      .map(
+        ({ entries: _entries, preferences: _preferences, timezoneState: _timezone, ...summary }) =>
+          summary,
+      )
   }
   async capture(
     purpose: SnapshotSummary['purpose'] = 'manual',
@@ -37,6 +50,7 @@ export class SnapshotEngine {
   ): Promise<SnapshotSummary> {
     const preferences = await this.storage.preferences()
     const files = await readAllConfigs(this.ctx)
+    const timezone = await captureTimezoneState(this.ctx)
     const record: SnapshotRecord = {
       id: randomUUID(),
       createdAt: new Date().toISOString(),
@@ -46,6 +60,8 @@ export class SnapshotEngine {
       files: files.filter((file) => file.editable).map((file) => file.display),
       excludedFiles: files.filter((file) => !file.editable).map((file) => file.display),
       preferences,
+      timezone: { system: timezone.system, terminal: true, user: timezone.user !== undefined },
+      timezoneState: { state: timezone, hash: hash(JSON.stringify(timezone)) },
       entries: files
         .filter((file) => file.editable)
         .map((file) => ({
@@ -62,8 +78,15 @@ export class SnapshotEngine {
       if (!current.editable || hash(current.content) !== entry.hash || current.mode !== entry.mode)
         throw new Error(`${current.display} 在保存快照时发生变化，请重试`)
     }
+    if (hash(JSON.stringify(await captureTimezoneState(this.ctx))) !== record.timezoneState!.hash)
+      throw new Error('时区在保存快照时发生变化，请重试')
     await this.storage.saveSnapshot(record)
-    const { entries: _entries, preferences: _preferences, ...summary } = record
+    const {
+      entries: _entries,
+      preferences: _preferences,
+      timezoneState: _timezone,
+      ...summary
+    } = record
     return summary
   }
   async preview(id: string): Promise<SnapshotPreview> {
@@ -90,6 +113,24 @@ export class SnapshotEngine {
           : []),
       ],
     }
+    let timezoneHash: string | undefined
+    if (record.timezoneState) {
+      const state = timezoneStateSchema.parse(record.timezoneState.state)
+      if (hash(JSON.stringify(record.timezoneState.state)) !== record.timezoneState.hash)
+        throw new Error('快照时区完整性校验未通过')
+      if (state.platform !== this.ctx.platform) throw new Error('快照平台与本机不同，不能还原时区')
+      const timezone = await captureTimezoneState(this.ctx)
+      if (state.system && !timezone.system) throw new Error('无法读取当前系统时区，不能安全还原')
+      if (state.user !== undefined && timezone.user === undefined)
+        throw new Error('无法读取当前 Windows 用户 TZ，不能安全还原')
+      timezoneHash = hash(JSON.stringify(timezone))
+      preview.timezoneChanges = timezoneChanges(timezone, state)
+      if (!state.system) preview.notes.push('此快照未读取系统时区，该项保留当前设置。')
+      if (state.platform === 'win32' && state.user === undefined)
+        preview.notes.push('此快照未读取 Windows 用户 TZ，该项保留当前设置。')
+      if (preview.timezoneChanges.some((change) => change.key === '系统时区'))
+        preview.notes.push('还原系统时区可能需要管理员授权。')
+    } else preview.notes.push('旧快照未记录系统时区与进程 TZ，仅还原文件和检测偏好。')
     const hashes = new Map<string, string>()
     for (const entry of record.entries) {
       if (hash(entry.original) !== entry.hash)
@@ -116,6 +157,7 @@ export class SnapshotEngine {
       record,
       hashes,
       preferencesHash: hash(JSON.stringify(preferences)),
+      timezoneHash,
     })
     return preview
   }
@@ -135,9 +177,19 @@ export class SnapshotEngine {
       )
         throw new Error(`${file.display} 在还原预览后发生变化，请重新预览`)
     }
+    const currentTimezone = await captureTimezoneState(this.ctx)
+    if (plan.timezoneHash && hash(JSON.stringify(currentTimezone)) !== plan.timezoneHash)
+      throw new Error('时区在还原预览后发生变化，请重新预览')
     await this.capture('before-restore', '还原快照之前的配置')
     const written: SnapshotEntry[] = []
+    let timezoneAttempted = false
     try {
+      if (plan.record.timezoneState) {
+        if (hash(JSON.stringify(await captureTimezoneState(this.ctx))) !== plan.timezoneHash)
+          throw new Error('时区被其他程序修改，请重新预览')
+        timezoneAttempted = true
+        await restoreTimezoneState(this.ctx, plan.record.timezoneState.state)
+      }
       for (const entry of plan.record.entries) {
         const file = await readConfig(this.ctx, entry.relative)
         if (
@@ -154,7 +206,12 @@ export class SnapshotEngine {
       plan.record.restoredAt = new Date().toISOString()
       await this.storage.saveSnapshot(plan.record)
       this.plans.delete(id)
-      const { entries: _entries, preferences: _preferences, ...summary } = plan.record
+      const {
+        entries: _entries,
+        preferences: _preferences,
+        timezoneState: _timezone,
+        ...summary
+      } = plan.record
       return summary
     } catch (error) {
       const failures: string[] = []
@@ -168,6 +225,12 @@ export class SnapshotEngine {
         } catch {
           failures.push('~/' + entry.relative)
         }
+      if (timezoneAttempted)
+        await rollbackTimezoneState(
+          this.ctx,
+          currentTimezone,
+          plan.record.timezoneState!.state,
+        ).catch(() => failures.push('系统时区 / TZ'))
       await this.storage.savePreferences(currentPreferences).catch(() => failures.push('检测偏好'))
       throw new Error(
         failures.length

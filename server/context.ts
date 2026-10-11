@@ -3,6 +3,7 @@ import path from 'node:path'
 import type { Machine } from '../shared/types.js'
 import { runSystemCommand } from './commands.js'
 import { readSystemTimezone } from './system-timezone.js'
+import { setSystemTimezone, readUserTimezone, setUserTimezone } from './timezone-settings.js'
 import type { SystemTimezone } from './system-timezone.js'
 
 export interface CommandResult {
@@ -19,9 +20,15 @@ export interface Context {
   run: (command: string, args: string[], timeout?: number) => Promise<CommandResult>
   readSystemTimezone: () => Promise<SystemTimezone>
   readRuntimeTimezone: () => string
+  setSystemTimezone: (timezone: string) => Promise<void>
+  setRuntimeTimezone: (timezone: string | null) => void
+  readUserTimezone: () => Promise<string | null>
+  setUserTimezone: (timezone: string | null) => Promise<void>
 }
 export function createContext(overrides: Partial<Context> = {}): Context {
   const home = path.resolve(process.env.CG_HOME || os.homedir())
+  let demoTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  let demoUserTimezone: string | null = null
   const ctx: Context = {
     home,
     dataDir: path.resolve(process.env.CG_DATA_DIR || path.join(home, '.claude-guard')),
@@ -29,8 +36,30 @@ export function createContext(overrides: Partial<Context> = {}): Context {
     env: { ...process.env },
     demo: process.env.CG_DEMO === '1',
     run: (command, args, timeout) => runSystemCommand(ctx, command, args, timeout),
-    readSystemTimezone: () => readSystemTimezone(ctx),
-    readRuntimeTimezone: () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    readSystemTimezone: () =>
+      ctx.demo
+        ? Promise.resolve({ timezone: demoTimezone, source: '隔离环境模拟系统时区' })
+        : readSystemTimezone(ctx),
+    readRuntimeTimezone: () =>
+      ctx.demo ? ctx.env.TZ || demoTimezone : Intl.DateTimeFormat().resolvedOptions().timeZone,
+    setSystemTimezone: async (timezone) => {
+      if (ctx.demo) demoTimezone = timezone
+      else await setSystemTimezone(ctx, timezone)
+    },
+    setRuntimeTimezone: (timezone) => {
+      if (timezone === null) {
+        delete ctx.env.TZ
+        if (!ctx.demo) delete process.env.TZ
+      } else {
+        ctx.env.TZ = timezone
+        if (!ctx.demo) process.env.TZ = timezone
+      }
+    },
+    readUserTimezone: () => (ctx.demo ? Promise.resolve(demoUserTimezone) : readUserTimezone(ctx)),
+    setUserTimezone: async (timezone) => {
+      if (ctx.demo) demoUserTimezone = timezone
+      else await setUserTimezone(ctx, timezone)
+    },
     ...overrides,
   }
   return ctx
@@ -59,6 +88,7 @@ export const configTargets: ConfigTarget[] = [
   { id: 'zshenv', label: 'Zsh 环境配置', relative: '.zshenv', kind: 'shell' },
   { id: 'bashrc', label: 'Bash 启动配置', relative: '.bashrc', kind: 'shell' },
   { id: 'bash_profile', label: 'Bash 登录配置', relative: '.bash_profile', kind: 'shell' },
+  { id: 'bash_login', label: 'Bash 备用登录配置', relative: '.bash_login', kind: 'shell' },
   { id: 'profile', label: 'Shell 通用配置', relative: '.profile', kind: 'shell' },
   { id: 'npmrc', label: 'npm 用户配置', relative: '.npmrc', kind: 'npm' },
   { id: 'gitconfig', label: 'Git 用户配置', relative: '.gitconfig', kind: 'git' },

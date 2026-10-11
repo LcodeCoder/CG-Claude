@@ -14,6 +14,8 @@ import { connectionRequestSchema } from '../shared/connections.js'
 import type { ConnectionRequest } from '../shared/connections.js'
 import { prepareConnectionEdit, validateConnectionFiles } from './connections.js'
 import type { SnapshotEngine } from './snapshots.js'
+import { terminalTimezoneScopeReason, transformTimezoneConfig } from './timezone-config.js'
+import { requireTimezone } from './timezone-settings.js'
 import { claudeConfigurationScopeReason } from './configuration-scope.js'
 
 export interface AppliedRepair {
@@ -102,6 +104,48 @@ export class RepairEngine {
         beforeHash: hash(file.content),
       })
       preview.files.push({ path: file.display, changes: transformed.changes, exists: file.exists })
+    }
+    if (!entries.length) throw new NoRepairChangesError()
+    this.plans.set(preview.id, {
+      preview,
+      entries,
+      preferencesHash: hash(JSON.stringify(preferences)),
+    })
+    return preview
+  }
+  async previewTimezone(value: string, preferences: Preferences): Promise<RepairPlan> {
+    this.checkPlanCapacity()
+    const timezone = requireTimezone(value)
+    const scope = terminalTimezoneScopeReason(this.ctx)
+    if (scope) throw new Error(scope)
+    const files = await readAllConfigs(this.ctx)
+    const reason = claudeConfigurationScopeReason(
+      this.ctx,
+      files.find((file) => file.relative === '.claude/settings.json'),
+    )
+    if (reason) throw new Error(reason)
+    const preview: RepairPlan = {
+      id: randomUUID(),
+      kind: 'timezone',
+      label: '配置终端与 Claude Code TZ',
+      createdAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 600000).toISOString(),
+      fixIds: [],
+      files: [],
+      notes: ['重开已有终端和 Claude Code 会话后生效。'],
+    }
+    const entries: PlannedFile[] = []
+    for (const file of files) {
+      const edit = transformTimezoneConfig(file, timezone, this.ctx.platform)
+      if (!edit) continue
+      entries.push({
+        relative: file.relative,
+        before: file.content,
+        after: edit.after,
+        mode: file.mode,
+        beforeHash: hash(file.content),
+      })
+      preview.files.push({ path: file.display, exists: file.exists, changes: edit.changes })
     }
     if (!entries.length) throw new NoRepairChangesError()
     this.plans.set(preview.id, {

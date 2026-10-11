@@ -25,6 +25,12 @@ const emit = defineEmits<{ close: []; execute: [] }>()
       </div>
       <p class="snapshot-file-note">{{ file.changes[0]?.before }} → {{ file.changes[0]?.after }}</p>
     </div>
+    <div v-if="record?.timezoneChanges?.length" class="file-preview">
+      <div class="preview-file-title"><RotateCcw :size="16" /><strong>时区与 TZ</strong></div>
+      <p v-for="change in record.timezoneChanges" :key="change.key" class="snapshot-file-note">
+        {{ change.key }}：{{ change.before }} → {{ change.after }}
+      </p>
+    </div>
     <p v-if="!record?.files.length" class="wizard-hint">配置文件内容与快照一致。</p>
     <p class="wizard-hint">
       检测偏好：{{ record?.preferencesChanged ? '会恢复为快照中的选择' : '与快照一致' }}

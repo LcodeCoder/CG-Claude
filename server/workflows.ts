@@ -2,6 +2,7 @@ import { privacyCompatibilityNote } from '../shared/privacy.js'
 import { randomUUID } from 'node:crypto'
 import { setTimeout as delay } from 'node:timers/promises'
 import type {
+  BrowserSnapshot,
   FixId,
   SetupJob,
   SetupNode,
@@ -12,12 +13,16 @@ import type {
 import { fixIds, fixLabels, SETUP_MAX_RETRIES } from '../shared/types.js'
 import type { Context } from './context.js'
 import { configTargets } from './context.js'
-import { runRepeatedDiagnostics } from './diagnostics.js'
+import { runRepeatedDiagnostics, probeNetwork } from './diagnostics.js'
 import { proxyKeys, shellAssignments } from './configs.js'
-import { configurationState, readAllConfigs, safeValue } from './safety.js'
+import { configurationState, readAllConfigs, safeValue, hash } from './safety.js'
 import type { ConfigContent, ConfigurationState } from './safety.js'
 import { NoRepairChangesError, RepairEngine } from './repairs.js'
 import type { Storage } from './storage.js'
+import { captureTimezoneState, requireTimezone } from './timezone-settings.js'
+import type { TimezoneState } from './timezone-settings.js'
+import { resolveTimezoneTarget } from './timezone-diagnostics.js'
+import { applySystemTimezone, applyTerminalTimezone, timezoneSetupNodes } from './setup-timezone.js'
 import type { SnapshotEngine } from './snapshots.js'
 
 export type NodeOperation = (node: SetupNode) => Promise<string>
@@ -99,6 +104,8 @@ interface PreparedSetup {
   request: SetupRequest
   baselines: Map<string, ConfigurationState>
   jobId?: string
+  timezoneState?: TimezoneState
+  timezoneTarget?: string
 }
 function matchesBaseline(file: ConfigContent, baseline?: ConfigurationState): boolean {
   const current = configurationState(file)
@@ -132,11 +139,16 @@ function applies(id: FixId, relative: string) {
 export class SetupWorkflows {
   private previews = new Map<string, PreparedSetup>()
   private jobs: SetupJob[] = []
+  private browserProbes = new Map<
+    string,
+    { id: string; resolve: (browser?: BrowserSnapshot) => void }
+  >()
   constructor(
     private ctx: Context,
     private storage: Storage,
     private repairs: RepairEngine,
     private snapshots: SnapshotEngine,
+    private options: { browserTimeoutMs?: number } = {},
   ) {}
   async init() {
     this.jobs = await this.storage.workflows()
@@ -162,6 +174,30 @@ export class SetupWorkflows {
   }
   forPreview(id: string) {
     return this.jobs.find((job) => job.previewId === id)
+  }
+  submitBrowser(jobId: string, probeId: string, browser: BrowserSnapshot) {
+    const probe = this.browserProbes.get(jobId)
+    if (!probe || probe.id !== probeId) throw new Error('浏览器复检请求已失效')
+    this.browserProbes.delete(jobId)
+    probe.resolve(browser)
+  }
+  private async freshBrowser(job: SetupJob): Promise<BrowserSnapshot | undefined> {
+    const id = randomUUID()
+    let resolve!: (browser?: BrowserSnapshot) => void
+    const sample = new Promise<BrowserSnapshot | undefined>((done) => {
+      resolve = done
+    })
+    this.browserProbes.set(job.id, { id, resolve })
+    const timeout = setTimeout(() => resolve(undefined), this.options.browserTimeoutMs ?? 12000)
+    job.browserProbeId = id
+    try {
+      await this.publish()
+      return await sample
+    } finally {
+      clearTimeout(timeout)
+      this.browserProbes.delete(job.id)
+      delete job.browserProbeId
+    }
   }
   private publish() {
     return this.storage.saveWorkflows(this.jobs)
@@ -199,6 +235,22 @@ export class SetupWorkflows {
     for (const [id, prepared] of this.previews)
       if (Date.parse(prepared.preview.expiresAt) < Date.now()) this.previews.delete(id)
     if (this.previews.size >= 30) throw new Error('配置预览过多，请完成现有流程或稍后重试')
+    const configureTimezone = Boolean(request.timezone?.system || request.timezone?.terminal)
+    let timezoneTarget: string | undefined
+    let timezoneState: TimezoneState | undefined
+    if (configureTimezone) {
+      const network =
+        request.preferences.timezoneMode === 'exit' ? await probeNetwork(this.ctx) : undefined
+      const target = resolveTimezoneTarget(
+        request.preferences,
+        request.preferences.timezoneMode === 'exit',
+        network?.info,
+        request.browser,
+      )
+      if (!target.timezone) throw new Error(target.error || network?.error || '未获取配置目标时区')
+      timezoneTarget = requireTimezone(target.timezone)
+      timezoneState = await captureTimezoneState(this.ctx)
+    }
     const files = await readAllConfigs(this.ctx)
     const baselines = new Map(files.map((file) => [file.relative, configurationState(file)]))
     const preview: SetupPreview = {
@@ -206,11 +258,12 @@ export class SetupWorkflows {
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 600000).toISOString(),
       preferences: request.preferences,
+      timezoneTarget,
       nodes: [
         {
           id: 'snapshot',
           title: '保存配置前快照',
-          description: '记录可读取的本机配置与检测偏好，支持一次完整还原',
+          description: '记录配置、系统时区、TZ 与检测偏好，支持完整还原',
           enabled: true,
           files: [],
         },
@@ -232,7 +285,8 @@ export class SetupWorkflows {
       notes: [
         '每个节点首次执行失败后最多重试 3 次，仍未成功就跳过，继续下一个节点。',
         '每次写入前保存原始备份。密钥、Hooks、权限与其他未选字段会保留。',
-        '终端环境变量需要重新打开终端才会生效。系统代理、TUN、DNS 和系统时区仍需在对应软件中配置。',
+        '系统时区设置可能需要管理员授权。已有终端与 Claude Code 会话需重新打开。',
+        '自动时区与定位服务仍需人工复核；系统代理、TUN 与 DNS 由对应软件配置。',
         `${privacyCompatibilityNote} 已有隐私设置保留。`,
       ],
     }
@@ -262,6 +316,9 @@ export class SetupWorkflows {
       }
       preview.nodes.push(node)
     }
+    preview.nodes.push(
+      ...(await timezoneSetupNodes(this.ctx, this.repairs, request, timezoneState, timezoneTarget)),
+    )
     preview.nodes.push({
       id: 'verify',
       title: '复检并生成报告',
@@ -272,7 +329,13 @@ export class SetupWorkflows {
     for (const file of await readAllConfigs(this.ctx))
       if (!matchesBaseline(file, baselines.get(file.relative)))
         throw new Error('配置在预览过程中发生变化，请重新生成预览')
-    this.previews.set(preview.id, { preview, request, baselines })
+    if (
+      timezoneState &&
+      hash(JSON.stringify(await captureTimezoneState(this.ctx))) !==
+        hash(JSON.stringify(timezoneState))
+    )
+      throw new Error('时区在预览过程中发生变化，请重新预览')
+    this.previews.set(preview.id, { preview, request, baselines, timezoneState, timezoneTarget })
     return preview
   }
   async create(id: string): Promise<SetupJob> {
@@ -284,6 +347,12 @@ export class SetupWorkflows {
     for (const file of await readAllConfigs(this.ctx))
       if (!matchesBaseline(file, prepared.baselines.get(file.relative)))
         throw new Error(`${file.display} 在预览后发生变化，请重新预览`)
+    if (
+      prepared.timezoneState &&
+      hash(JSON.stringify(await captureTimezoneState(this.ctx))) !==
+        hash(JSON.stringify(prepared.timezoneState))
+    )
+      throw new Error('时区在预览后发生变化，请重新预览')
     const job: SetupJob = {
       id: randomUUID(),
       previewId: id,
@@ -320,12 +389,21 @@ export class SetupWorkflows {
         )
           throw new Error(`${file.display} 被其他程序修改，请重新预览`)
     }
+    const assertTimezone = async () => {
+      if (
+        prepared.timezoneState &&
+        hash(JSON.stringify(await captureTimezoneState(this.ctx))) !==
+          hash(JSON.stringify(prepared.timezoneState))
+      )
+        throw new Error('时区被其他程序修改，请重新预览')
+    }
     const requireSnapshot = () => {
       if (!job.snapshotId) throw new Error('配置前快照尚未保存，无法继续修改本机配置')
     }
     const operations: Partial<Record<SetupNodeId, NodeOperation>> = {
       snapshot: async () => {
         await assertCurrent()
+        await assertTimezone()
         const snapshot = await this.snapshots.capture('setup', '一键配置之前的完整快照')
         job.snapshotId = snapshot.id
         return `已保存 ${snapshot.files.length} 个配置位置与检测偏好${snapshot.excludedFiles.length ? `；${snapshot.excludedFiles.length} 个不可读文件已排除` : ''}`
@@ -341,17 +419,51 @@ export class SetupWorkflows {
         return `已读取 ${files.length} 个配置位置；不可编辑的文件会在对应节点提示`
       },
       verify: async () => {
+        const browser = prepared.timezoneTarget
+          ? prepared.request.browser
+            ? await this.freshBrowser(job)
+            : undefined
+          : prepared.request.browser
         const report = await runRepeatedDiagnostics(
           this.ctx,
           prefs,
-          { network: false, passes: 3, browser: prepared.request.browser },
+          {
+            network: prefs.timezoneMode === 'exit' && Boolean(prepared.timezoneTarget),
+            passes: 3,
+            browser,
+          },
           () => {},
           (await this.storage.reports())[0],
         )
         await this.storage.saveReport(report)
         job.reportId = report.id
-        return `复检完成：${report.counts.pass} 项通过，${report.counts.warn + report.counts.fail} 项需关注，${report.counts.manual + report.counts.skipped} 项待确认`
+        return `复检完成：${report.counts.pass} 项通过，${report.counts.warn + report.counts.fail} 项需关注，${report.counts.manual + report.counts.skipped} 项待确认${prepared.timezoneTarget && prepared.request.browser && !browser ? '；浏览器未返回新样本，已标为未检测' : ''}`
       },
+    }
+    operations['system-timezone'] = async (node) => {
+      requireSnapshot()
+      await assertTimezone()
+      if (!this.ctx.demo && prepared.timezoneState?.system !== prepared.timezoneTarget) {
+        node.message = '请在系统授权窗口完成验证，正在等待授权'
+        await this.publish()
+      }
+      return applySystemTimezone(this.ctx, prepared.timezoneState!, prepared.timezoneTarget!)
+    }
+    operations['terminal-timezone'] = async (node) => {
+      requireSnapshot()
+      await assertCurrent()
+      await assertTimezone()
+      const result = await applyTerminalTimezone(
+        this.ctx,
+        this.repairs,
+        prefs,
+        prepared.timezoneState!,
+        prepared.timezoneTarget!,
+        node,
+      )
+      for (const file of result.files) prepared.baselines.set(file.relative, file.state)
+      prepared.timezoneState = result.state
+      return result.message
     }
     for (const id of fixIds)
       operations[id] = async (node) => {

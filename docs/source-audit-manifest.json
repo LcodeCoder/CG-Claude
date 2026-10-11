@@ -506,6 +506,83 @@
       "method": "web.run-rendered-content",
       "sha256": null,
       "auditScope": "Legacy response example / Key API Response Differences"
+    },
+    {
+      "id": "apple-system-timezone",
+      "url": "https://support.apple.com/guide/remote-desktop/about-systemsetup-apd95406b8d/mac",
+      "originalUrl": "https://support.apple.com/guide/remote-desktop/about-systemsetup-apd95406b8d/mac",
+      "bytes": 638318,
+      "retrievedAt": "2026-10-11T02:43:51.074Z",
+      "result": "retrieved",
+      "sha256": "689a3bab00c9874184cd5418fc2ccfd7fe9658c54b99c64cdb2060f22a948318",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "apple-admin-authorization",
+      "url": "https://developer.apple.com/library/archive/technotes/tn2065/_index.html",
+      "originalUrl": "https://developer.apple.com/library/archive/technotes/tn2065/_index.html",
+      "bytes": 68685,
+      "retrievedAt": "2026-10-11T02:43:52.413Z",
+      "result": "retrieved",
+      "sha256": "201cf876e9d4ca7b8774ac8cc3bfed0c05d4b307378d34b890af26d5f9b2c5b8",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "node-timezone",
+      "url": "https://nodejs.org/api/cli.html",
+      "originalUrl": "https://nodejs.org/api/cli.html#tz",
+      "bytes": 360141,
+      "retrievedAt": "2026-10-11T02:43:51.345Z",
+      "result": "retrieved",
+      "sha256": "6582902bd5789d07617998630f74dc65d1cee8b64efb1b8a3a55da09571a122f",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "systemd-timezone",
+      "url": "https://raw.githubusercontent.com/systemd/systemd/main/man/org.freedesktop.timedate1.xml",
+      "originalUrl": "https://raw.githubusercontent.com/systemd/systemd/main/man/org.freedesktop.timedate1.xml",
+      "bytes": 9664,
+      "retrievedAt": "2026-10-11T02:43:51.135Z",
+      "result": "retrieved",
+      "sha256": "2c19001543949a462e867c4cc1aded982b5fa7147d98fb25f06293546070fc16",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "windows-system-timezone",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-timezone?view=powershell-7.5",
+      "originalUrl": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-timezone?view=powershell-7.5",
+      "bytes": 64419,
+      "retrievedAt": "2026-10-11T02:43:51.885Z",
+      "result": "retrieved",
+      "sha256": "503a0f85e417e9d7ab0e473598c35aea2ae0e99d26bbd5d823dde45ac6277ab5",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "windows-admin-authorization",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process?view=powershell-5.1",
+      "originalUrl": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process?view=powershell-5.1",
+      "bytes": 92381,
+      "retrievedAt": "2026-10-11T02:43:51.952Z",
+      "result": "retrieved",
+      "sha256": "4a2f9d4bc9ab4d92074d3d77f629604615024d302333fce188c9868c6f5d8fd1",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
+    },
+    {
+      "id": "windows-user-environment",
+      "url": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_environment_variables?view=powershell-7.5",
+      "originalUrl": "https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_environment_variables?view=powershell-7.5",
+      "bytes": 76577,
+      "retrievedAt": "2026-10-11T02:43:51.876Z",
+      "result": "retrieved",
+      "sha256": "628a491595b1f5746174cf6b21b71a4d77d8ba9d9e917af94af368fea290bfc8",
+      "method": "official-html-or-maintainer-source",
+      "auditScope": "adopted-sections"
     }
   ]
 }

@@ -152,7 +152,7 @@ export function parseSystemProxy(ctx: Context, result: CommandResult) {
     values: [{ label: 'GNOME 代理模式', value: safeValue(result.stdout) }],
   }
 }
-async function probeNetwork(ctx: Context): Promise<{ info?: NetworkInfo; error?: string }> {
+export async function probeNetwork(ctx: Context): Promise<{ info?: NetworkInfo; error?: string }> {
   const result = await ctx.run(
     'curl',
     ['--silent', '--show-error', '--fail', '--max-time', '8', 'https://ipinfo.io/json'],

@@ -11,6 +11,7 @@ import {
   repairRequestSchema,
   scanRequestSchema,
   setupRequestSchema,
+  setupBrowserRequestSchema,
   projectRequestSchema,
   manualReviewRequestSchema,
   manualReviewImportSchema,
@@ -327,6 +328,13 @@ export async function createAppServer(options: ServerOptions = {}) {
           busy = false
           throw error
         }
+        return
+      }
+      const setupBrowser = url.pathname.match(/^\/api\/setup\/([\w-]+)\/browser$/)
+      if (req.method === 'POST' && setupBrowser) {
+        const request = setupBrowserRequestSchema.parse(await body(req))
+        workflows.submitBrowser(setupBrowser[1]!, request.probeId, request.browser)
+        send(res, 200, { accepted: true })
         return
       }
       const setupGet = url.pathname.match(/^\/api\/setup\/([\w-]+)$/)

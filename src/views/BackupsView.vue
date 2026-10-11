@@ -33,7 +33,7 @@ function formatFixes(ids: BackupSummary['fixIds']) {
     <div class="panel-heading">
       <div>
         <h2>完整配置快照</h2>
-        <p>保存十个用户配置位置与检测偏好，恢复到修改之前；不包含钥匙串与会话历史。</p>
+        <p>保存本机配置、时区、TZ 与检测偏好，支持还原。</p>
       </div>
       <div class="heading-actions">
         <button class="button secondary" :disabled="busy || !connected" @click="emit('capture')">
@@ -58,6 +58,9 @@ function formatFixes(ids: BackupSummary['fixIds']) {
           {{ formatDate(snapshot.createdAt, true) }} · {{ snapshot.files.length }} 个配置位置 ·
           {{ snapshot.status === 'restored' ? '已还原' : '可还原' }}
         </p>
+        <small v-if="snapshot.timezone?.system"
+          >系统时区：{{ snapshot.timezone.system }} · 包含 TZ</small
+        >
         <small v-if="snapshot.restoredAt"
           >已在 {{ formatDate(snapshot.restoredAt, true) }} 还原</small
         >

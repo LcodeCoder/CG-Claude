@@ -8,14 +8,23 @@ export async function fixture(overrides: Partial<Context> = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'claude-guard-test-'))
   const home = path.join(root, 'home')
   await fs.mkdir(home, { recursive: true })
+  let systemTimezone = 'Asia/Taipei'
+  let userTimezone: string | null = null
   const ctx = createContext({
     home,
     dataDir: path.join(root, 'data'),
     env: {},
     platform: 'darwin',
     demo: true,
-    readSystemTimezone: async () => ({ timezone: 'Asia/Taipei', source: '隔离测试系统时区' }),
-    readRuntimeTimezone: () => 'Asia/Taipei',
+    readSystemTimezone: async () => ({ timezone: systemTimezone, source: '隔离测试系统时区' }),
+    setSystemTimezone: async (timezone) => {
+      systemTimezone = timezone
+    },
+    readRuntimeTimezone: () => ctx.env.TZ || systemTimezone,
+    readUserTimezone: async () => userTimezone,
+    setUserTimezone: async (timezone) => {
+      userTimezone = timezone
+    },
     run: async (command, args): Promise<CommandResult> => {
       if (command === 'scutil' && args[0] === '--proxy')
         return {

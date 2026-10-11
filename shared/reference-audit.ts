@@ -6,6 +6,41 @@ export interface ReferenceAudit {
   finding: string
 }
 export const referenceAudits: Record<string, ReferenceAudit> = {
+  'apple-system-timezone': {
+    section: '-settimezone / -setusingnetworktime',
+    code: 'server/timezone-settings.ts',
+    finding: '已区分时区与网络校时；没有通过关闭 NTP 代替自动时区设置。',
+  },
+  'apple-admin-authorization': {
+    section: 'Administrator privileges / Quoting',
+    code: 'server/timezone-settings.ts',
+    finding: '使用系统授权窗口；没有构建 root 密码表单或把密码写入参数、日志、快照。',
+  },
+  'node-timezone': {
+    section: 'Environment variables / TZ',
+    code: 'server/context.ts',
+    finding: 'ctx.env 与生产 process.env 同步；隔离模式只修改模拟状态。',
+  },
+  'systemd-timezone': {
+    section: 'timedatectl set-timezone / org.freedesktop.timedate1 SetTimezone',
+    code: 'server/timezone-settings.ts',
+    finding: '核对官方 man 源码：仅设置时区，没有关闭网络校时；Linux 图形授权尚未实机验证。',
+  },
+  'windows-system-timezone': {
+    section: 'Id / Get-TimeZone -ListAvailable',
+    code: 'server/system-timezone.ts',
+    finding: '按区域身份映射台北与上海，不能因为同为 UTC+8 而互相替代。',
+  },
+  'windows-admin-authorization': {
+    section: 'Example 5 / Wait / PassThru',
+    code: 'server/timezone-settings.ts',
+    finding: '仅提升固定的 Set-TimeZone 操作；带失败退出码并独立复核，未提升整个应用。',
+  },
+  'windows-user-environment': {
+    section: 'Long description / Saving environment variables',
+    code: 'server/timezone-settings.ts',
+    finding: '读取、保存、复核与还原用户 TZ；任意旧字符串通过编码作为数据传输。',
+  },
   'ipinfo-legacy': {
     section: 'Key API Response Differences / Legacy response example',
     code: 'server/timezone-diagnostics.ts',

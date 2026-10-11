@@ -12,7 +12,7 @@
 | 2.5：HTTP 与 WebRTC 出口                    | Google STUN 候选与浏览器 HTTP 出口对照                                                       | 无候选、隐藏候选或 IPv4/IPv6 分流不被标为已证明无泄漏                                             |
 | 2.5：DNS                                    | 本机解析器读取、BrowserLeaks 人工入口                                                        | 本机地址不足以证明实际 DNS 出口                                                                   |
 | 2.5：scutil/system proxy                    | macOS、Windows 注册表、GNOME 代理读取                                                        | GNOME 以外 Linux 桌面需要手动核对                                                                 |
-| 2.5：env / shell / npm / Git / settings     | 进程变量、10 个用户配置位置、npm 当前查询与 Git 全局查询、固定字段修复                       | 不执行 shell；复杂脚本、include、托管策略与其他配置层不会自动改写                                 |
+| 2.5：env / shell / npm / Git / settings     | 进程变量、11 个用户配置位置、npm 当前查询与 Git 全局查询、固定字段修复                       | 不执行 shell；复杂脚本、include、托管策略与其他配置层不会自动改写                                 |
 | 2.5：IPv6                                   | 接口地址观察与路由核对提示                                                                   | 不依据接口地址推算出口地理位置或证明代理覆盖                                                      |
 | 2.6、6.6、6.9：浏览器资料、邮箱、会话与设备 | 当前浏览器信息、资料与本人邮箱核对、官方 Active sessions 入口                                | 无法在本机证明账号登录设备或邮箱状态                                                              |
 | 3.4：网页端隐私                             | 独立的网页隐私人工条目与官方入口                                                             | 网页隐私选择独立于本机 env                                                                        |

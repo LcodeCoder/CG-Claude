@@ -115,4 +115,12 @@ App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog�
 
 `shared/article-audit.ts` 注册原文各节要求、自动覆盖范围、修复方式和稳定检查 ID。`shared/reference-audit.ts` 记录每条文献实际采用的段落及代码位置，`ArticleAuditPanel.vue` 展示当前模式与原文的差异并接入精确跳转。新增来源时同步这两份数据，再运行 `npm run docs:audit` 生成审计文档；不要把已有检查通过当成满足原文全文。
 
-系统时区取证在 `server/system-timezone.ts`，目标与证据判断在 `server/timezone-diagnostics.ts`。Git TLS 的布尔语义在 `server/git-tls.ts`，用户和项目作用域分别核对，include 与无效值保留未知；系统时区和 Git TLS 不自动改写。
+系统时区取证在 `server/system-timezone.ts`，目标与证据判断在 `server/timezone-diagnostics.ts`。Git TLS 的布尔语义在 `server/git-tls.ts`，用户和项目作用域分别核对，include 与无效值保留未知；Git TLS 不自动改写。系统时区配置使用下面的独立授权事务。
+
+## 时区配置事务
+
+`server/timezone-settings.ts` 集中管理各平台的有限命令、独立系统读取、用户 TZ 与快照状态。`server/timezone-config.ts` 只转换白名单文件中的 TZ，`server/setup-timezone.ts` 负责两个节点的预览和配置。Context 暴露可注入的读写适配器；demo 和测试使用内存模拟，避免触碰真实系统和全局 process.env。
+
+一键预览冻结有效目标及文件、时区基线。文件事务继续复用 RepairEngine；系统写入要求配置前快照，成功必须经独立读数复核。快照将时区状态与校验值保存在本地私有记录中，摘要不返回旧 TZ 原文；还原检查时区漂移，并防止失败回退覆盖第三方新时区。旧记录缺少时区字段时兼容其原范围。
+
+最终复检通过一次性 `browserProbeId` 请求新的渲染器采样。受本机 token 与 origin 检查保护的回传接口只接受当前任务待采样的 token，可以在流程占用写入锁时接收样本；它不写配置。超时不复用旧浏览器数据，重放请求被拒绝。配置过程的授权密码由操作系统处理，不存在应用密码输入或存储字段。

@@ -9,7 +9,7 @@ export interface SystemTimezone {
   error?: string
 }
 // These are Windows region identities, not offset guesses. Unmapped IDs remain unconfirmed.
-const windowsZones: Record<string, string> = {
+export const windowsZones: Record<string, string> = {
   'Taipei Standard Time': 'Asia/Taipei',
   'China Standard Time': 'Asia/Shanghai',
   'Singapore Standard Time': 'Asia/Singapore',

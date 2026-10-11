@@ -52,7 +52,8 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     coverage: 'automatic',
     implementation:
       '独立读取操作系统时区，默认以 Asia/Taipei 比较；上海即使同为 UTC+8 也不符合原文目标。',
-    repair: '提供系统设置路径；应用里的时区选择只设置检测目标，不修改系统。',
+    repair:
+      '一键配置按所选目标实际设置系统时区，必要时由系统请求管理员授权；先保存原时区快照，写入后独立复核。',
     code: 'server/system-timezone.ts',
     checkIds: ['timezone'],
   },
@@ -63,7 +64,8 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     group: 'environment',
     coverage: 'partial',
     implementation: '读取本工具 Node 进程并静态检查 TZ；不能代表所有旧终端或 Claude Code 会话。',
-    repair: '按来源手动调整 TZ，重启工具，并在实际终端复核。',
+    repair:
+      '一键配置写入可安全解析的 shell TZ 与 Claude env.TZ，并同步本工具进程；已有终端和 Claude Code 会话重开后复核。',
     code: 'server/timezone-diagnostics.ts',
     checkIds: ['timezone-env'],
   },
@@ -488,7 +490,7 @@ export const articleAuditEntries: ArticleAuditEntry[] = [
     group: 'boundary',
     coverage: 'excluded',
     implementation:
-      '快照只覆盖十个用户配置位置与偏好，不是 ~/.claude、Keychain 或会话历史的完整备份。',
+      '快照覆盖十一个用户配置位置、偏好、可读取的系统时区与 TZ，不是 ~/.claude、Keychain 或会话历史的完整备份。',
     repair: '不运行清理脚本、不删除登录凭据；需要时由本人单独完整备份。',
     code: 'server/snapshots.ts',
     manualIds: ['backup'],

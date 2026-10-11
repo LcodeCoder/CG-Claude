@@ -1,8 +1,120 @@
 # 参考来源逐项审计
 
-核对日期：2026-10-11。文献库共 46 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
+核对日期：2026-10-11。文献库共 53 条，包含主原文和扩展依据。以下仅核对项目实际采用的段落，不表示上游全文都被执行、上游代码被运行或服务条件已经满足。
 
 官方配置名称、取值和版本条件优先以当前官方说明为准；社区项目只采用注明的方法与限制。外部泄漏页面只核对用途，本轮未替用户进行公网泄漏检测。完整正文不进入源代码仓库，读取渠道和正文哈希见 [来源读取记录](source-audit-manifest.json)。
+
+## Apple · systemsetup 时区命令
+
+官方文档 · Apple · [原文](https://support.apple.com/guide/remote-desktop/about-systemsetup-apd95406b8d/mac) · ID：`apple-system-timezone`。
+
+采用段落：-settimezone / -setusingnetworktime。
+
+项目应用：一键配置调用固定 -settimezone 命令，写入后独立读取系统时区，快照保存与还原原时区。
+
+核对结论：已区分时区与网络校时；没有通过关闭 NTP 代替自动时区设置。
+
+判断边界：自动选择时区、定位服务和手机端仍需人工复核；系统时区正确不代表账号状态。
+
+对应实现：[server/timezone-settings.ts](../server/timezone-settings.ts)。
+
+关联：环境 `timezone`。
+
+## Apple · AppleScript 管理员授权
+
+官方文档 · Apple · [原文](https://developer.apple.com/library/archive/technotes/tn2065/_index.html) · ID：`apple-admin-authorization`。
+
+采用段落：Administrator privileges / Quoting。
+
+项目应用：macOS 设置或还原系统时区时请求系统授权；固定命令仅接受经过校验的 IANA 名称。
+
+核对结论：使用系统授权窗口；没有构建 root 密码表单或把密码写入参数、日志、快照。
+
+判断边界：应用不接收、保存或记录管理员密码；取消授权保留为失败，不能显示已配置。
+
+对应实现：[server/timezone-settings.ts](../server/timezone-settings.ts)。
+
+关联：环境 `timezone`。
+
+## Node.js · TZ 进程时区
+
+官方文档 · Node.js · [原文](https://nodejs.org/api/cli.html#tz) · ID：`node-timezone`。
+
+采用段落：Environment variables / TZ。
+
+项目应用：配置启动文件与 Claude env.TZ，同时同步 CG Claude 的进程环境，再读取 Intl 复核。
+
+核对结论：ctx.env 与生产 process.env 同步；隔离模式只修改模拟状态。
+
+判断边界：不能回写其他已运行进程的环境；已有终端与 Claude Code 会话需重新打开。
+
+对应实现：[server/context.ts](../server/context.ts)。
+
+关联：环境 `timezone-env`。
+
+## systemd · timedatectl 与时区授权
+
+官方文档 · systemd · [原文](https://www.freedesktop.org/software/systemd/man/latest/timedatectl.html) · ID：`systemd-timezone`。
+
+采用段落：timedatectl set-timezone / org.freedesktop.timedate1 SetTimezone。
+
+项目应用：Linux 使用 timedatectl set-timezone 并复核，按现有图形 polkit 授权代理请求认证。
+
+核对结论：核对官方 man 源码：仅设置时区，没有关闭网络校时；Linux 图形授权尚未实机验证。
+
+判断边界：需要 systemd 与可用的授权代理；无图形代理、权限不足或命令不可用时节点失败并跳过，不伪造通过。
+
+对应实现：[server/timezone-settings.ts](../server/timezone-settings.ts)。
+
+关联：环境 `timezone`。
+
+## Microsoft · Set-TimeZone 区域 ID
+
+官方文档 · Microsoft · [原文](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/set-timezone?view=powershell-7.5) · ID：`windows-system-timezone`。
+
+采用段落：Id / Get-TimeZone -ListAvailable。
+
+项目应用：采用 IANA 与 Windows ID 的已知区域映射，配置后用 Get-TimeZone 独立复核。
+
+核对结论：按区域身份映射台北与上海，不能因为同为 UTC+8 而互相替代。
+
+判断边界：尚未映射的手动目标不可自动配置；当前支持常用列表，真实 Windows 桌面授权尚未实测。
+
+对应实现：[server/system-timezone.ts](../server/system-timezone.ts)。
+
+关联：环境 `timezone`。
+
+## Microsoft · Start-Process 管理员启动
+
+官方文档 · Microsoft · [原文](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process?view=powershell-5.1) · ID：`windows-admin-authorization`。
+
+采用段落：Example 5 / Wait / PassThru。
+
+项目应用：Windows 系统时区写入通过固定的编码命令请求 UAC，并检查退出码与系统读数。
+
+核对结论：仅提升固定的 Set-TimeZone 操作；带失败退出码并独立复核，未提升整个应用。
+
+判断边界：应用不收集管理员密码；取消 UAC 或子进程失败不能记为成功，Windows 实机行为仍需验证。
+
+对应实现：[server/timezone-settings.ts](../server/timezone-settings.ts)。
+
+关联：环境 `timezone`。
+
+## Microsoft · 用户持久环境变量
+
+官方文档 · Microsoft · [原文](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_environment_variables?view=powershell-7.5) · ID：`windows-user-environment`。
+
+采用段落：Long description / Saving environment variables。
+
+项目应用：Windows 终端 TZ 使用 User 作用域；快照记录原值或未设置状态，还原按数据编码传入。
+
+核对结论：读取、保存、复核与还原用户 TZ；任意旧字符串通过编码作为数据传输。
+
+判断边界：不修改 Machine 作用域或 PowerShell 脚本；已运行的终端应用须重启才加载更新的用户环境。
+
+对应实现：[server/timezone-settings.ts](../server/timezone-settings.ts)。
+
+关联：环境 `timezone-env`。
 
 ## IPinfo · Legacy Free API 与 Lite 的响应差异
 

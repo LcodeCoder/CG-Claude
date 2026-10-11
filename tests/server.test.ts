@@ -313,3 +313,47 @@ test('public brand assets revalidate when the application is updated', async () 
     'public, max-age=86400',
   )
 })
+
+test('one-click API requests an authenticated fresh browser sample while busy and restores timezone with its snapshot', async () => {
+  await data.ctx.setSystemTimezone('Asia/Shanghai')
+  const preview = await (
+    await post('/api/setup/preview', {
+      preferences: defaultPreferences,
+      fixIds: [],
+      timezone: { system: true, terminal: true },
+      browser: { timezone: 'Asia/Shanghai', language: 'zh-CN', platform: 'test' },
+    })
+  ).json()
+  expect(preview.timezoneTarget).toBe('Asia/Taipei')
+  const start = await post('/api/setup/' + preview.id + '/start', {})
+  expect(start.status).toBe(202)
+  let job = await start.json()
+  let submitted = false
+  for (let attempt = 0; attempt < 200 && job.status === 'running'; attempt++) {
+    job = await (await fetch(base + '/api/setup/' + job.id)).json()
+    if (job.browserProbeId && !submitted) {
+      const request = {
+        probeId: job.browserProbeId,
+        browser: { timezone: 'Asia/Taipei', language: 'zh-CN', platform: 'test' },
+      }
+      expect((await post('/api/setup/' + job.id + '/browser', request, '')).status).toBe(403)
+      expect((await post('/api/setup/' + job.id + '/browser', request)).status).toBe(200)
+      expect((await post('/api/setup/' + job.id + '/browser', request)).status).toBe(400)
+      submitted = true
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  expect(submitted).toBe(true)
+  expect(job.status).toBe('complete')
+  const bootstrap = await (await fetch(base + '/api/bootstrap')).json()
+  expect(
+    bootstrap.reports
+      .find((report: { id: string }) => report.id === job.reportId)
+      .checks.find((check: { id: string }) => check.id === 'browser-timezone').status,
+  ).toBe('pass')
+  const restore = await (await post('/api/snapshots/' + job.snapshotId + '/preview', {})).json()
+  expect(restore.timezoneChanges.map((change: { key: string }) => change.key)).toContain('系统时区')
+  expect((await post('/api/snapshot-plans/' + restore.id + '/restore', {})).status).toBe(200)
+  expect((await data.ctx.readSystemTimezone()).timezone).toBe('Asia/Shanghai')
+  expect(data.ctx.env.TZ).toBeUndefined()
+})
