@@ -1,151 +1,216 @@
-# CG Claude
+<p align="center">
+  <img src="public/logo.svg" width="80" height="80" alt="CG Claude 标志" />
+</p>
 
-本地环境工作台，支持 Electron 桌面版和本机浏览器版。根据 AYi 参考文章逐项整理可检测的环境配置，并核对 Claude Code 官方配置说明。提供 31 项环境检查、连续三遍复检、配置向导、项目配置扫描、字段修复、本地连接设置编辑与完整快照还原。
+<h1 align="center">CG Claude</h1>
 
-首页「浏览器环境配置插件」可打开 [LC-time 项目](https://github.com/LcodeCoder/LC-time)，查看浏览器插件和安装说明。
+<p align="center">本地 Claude 环境检测与配置工具</p>
+<p align="center">v1.2.7 · Electron 桌面应用 · macOS / Windows / Linux</p>
 
-一键配置结束会集中展示剩余事项：设置页跳转、操作步骤、可复制命令和打开终端。Mac 的电脑自动时区、定位服务与手机时区分别核对；外部浏览器语言可独立预览、保存和还原。
+<p align="center">
+  <a href="#安装">安装</a> ·
+  <a href="#第一次使用">开始使用</a> ·
+  <a href="#应用截图">应用截图</a> ·
+  <a href="docs/architecture.md">开发文档</a> ·
+  <a href="https://github.com/LcodeCoder/CG-Claude/issues">问题反馈</a>
+</p>
 
-本轮变化与成品校验见 [1.2.7 交付记录](docs/release-1.2.7.md)。实际验证与截图见 [验证记录](docs/validation.md)，43 项原文对照见 [逐项审计](docs/article-audit.md)，69 条文献的采用段落见 [来源审计](docs/reference-audit.md)。
+CG Claude 把系统时区、终端环境、浏览器设置和 Claude Code 配置集中到一个桌面工作台。先检测问题、查看修改预览，再保存配置；需要回退时，可以恢复修改前的快照。
 
-## 启动桌面版
+![CG Claude 环境检测首页：检测统计、结果分类与配置修复入口](docs/images/environment.png)
 
-安装包统一放在 `release/1.2.7/`，安装后无需另外安装 Node.js：
+_实际应用界面，使用独立演示目录。截图中的配置与检测结果仅作示例。_
 
-| 系统                  | 选择的安装包                                                                 |
-| --------------------- | ---------------------------------------------------------------------------- |
-| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`                                            |
-| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`                                              |
-| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe`                                      |
-| Linux · x64           | `CG-Claude-1.2.7-linux-x86_64.AppImage` 或 `CG-Claude-1.2.7-linux-amd64.deb` |
+## 可以做什么
 
-`SHA256SUMS.txt` 可核对下载完整性。macOS 构建尚未签名或公证；Windows / Linux 桌面交互尚未实机验证。安装包通过 GitHub Release 附件分发，源码仓库不提交二进制产物。
+| 功能       | 使用方式                                                                                                            |
+| ---------- | ------------------------------------------------------------------------------------------------------------------- |
+| 环境检测   | 31 项检查，默认连续检测 3 遍。点击「需要关注」直接定位问题，展开查看证据、处理方法和来源。                          |
+| 一键配置   | 5 步向导先确认目标和修改范围，再预览执行。13 个节点依次处理，每个节点首次失败后最多重试 3 次；仍失败则继续下一项。  |
+| 备份恢复   | 写入前自动备份并保存完整配置快照。可恢复单次修改，或预览后还原整份配置快照。                                        |
+| 本机配置   | 编辑 Claude Code 的代理、API 地址、NO_PROXY 和额外 CA 路径；外部浏览器语言配置提供独立预览、保存与还原。            |
+| 项目扫描   | 选择本地项目，核对 Claude 配置、权限、Hooks、MCP、TLS、凭据声明与锁文件。只读扫描，不执行项目脚本。                 |
+| 记录与依据 | 保留检测历史、导出报告、记录人工复核。内置原文对照与参考文献，可从检测项跳到对应来源。                              |
+| 翻译模型   | 配置 OpenAI 兼容或 Anthropic 接口，测试中译英、英译中。**当前尚未接入 Claude Code 原生会话。**                      |
+| 应用设置   | 中英文界面、浅色／护眼／深色配色、减少动画、版本检查，以及菜单栏／系统托盘。打包的 macOS / Windows 版支持开机自启。 |
 
-从源码启动需要 Node.js **22.12 或更新版本**：
+首页还提供 [LC-time 浏览器环境配置插件](https://github.com/LcodeCoder/LC-time) 入口，方便单独查看浏览器插件及安装说明。
+
+## 安装
+
+前往 [GitHub Releases](https://github.com/LcodeCoder/CG-Claude/releases) 选择已发布版本，下载与你的系统和 CPU 架构对应的附件。安装桌面版后，无需另外安装 Node.js。若发布页暂未提供安装包，可以先按下方「源码启动」运行。
+
+当前版本为 **1.2.7**，安装包命名如下：
+
+| 系统                  | 安装包                                  | 安装方式                                |
+| --------------------- | --------------------------------------- | --------------------------------------- |
+| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`       | 打开 DMG，将应用拖入「应用程序」。      |
+| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`         | 打开 DMG，将应用拖入「应用程序」。      |
+| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe` | 运行安装程序，按提示完成安装。          |
+| Linux · x64           | `CG-Claude-1.2.7-linux-x86_64.AppImage` | 添加执行权限后直接运行。                |
+| Debian / Ubuntu · x64 | `CG-Claude-1.2.7-linux-amd64.deb`       | 使用系统软件安装器，或通过 `apt` 安装。 |
+
+<details>
+<summary>Linux 启动命令与安装包校验</summary>
+
+AppImage：
 
 ```sh
+chmod +x CG-Claude-1.2.7-linux-x86_64.AppImage
+./CG-Claude-1.2.7-linux-x86_64.AppImage
+```
+
+Debian / Ubuntu：
+
+```sh
+sudo apt install ./CG-Claude-1.2.7-linux-amd64.deb
+```
+
+下载同一版本的 `SHA256SUMS.txt`，在安装包所在目录核对文件完整性：
+
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+Windows PowerShell 可计算单个文件的校验值，与清单对照：
+
+```powershell
+Get-FileHash .\CG-Claude-1.2.7-windows-x64-setup.exe -Algorithm SHA256
+```
+
+</details>
+
+macOS 安装包尚未签名、公证，Windows 安装包尚未进行发布者签名。Windows / Linux 的桌面交互尚未实机验证，已验证范围见 [交付记录](docs/release-1.2.7.md)。
+
+### 源码启动
+
+需要 **Node.js 22.12 或更新版本**：
+
+```sh
+git clone https://github.com/LcodeCoder/CG-Claude.git
+cd CG-Claude
 npm ci
 npm run desktop
 ```
 
-macOS 可双击 `启动工具.command`，Windows 可双击 `启动工具.cmd`，两者均启动 Electron。Linux 从项目目录运行 `npm run desktop`。准备脚本会按锁定版本下载 Electron；已安装的二进制直接复用，下载使用已有 HTTP/HTTPS 代理环境，不改写用户代理配置。
+macOS 也可双击 `启动工具.command`，Windows 可双击 `启动工具.cmd`；首次运行需要安装依赖并构建应用。
 
-桌面窗口内置本机服务、项目目录选择器、报告保存对话框。最小化或关闭窗口时隐藏到菜单栏／系统托盘，任务继续运行。图标菜单可打开窗口、查看当前进度与「退出 CG Claude」；托盘不可用时保留系统默认窗口行为。明确退出会等待检测、配置与还原事务完成后释放服务锁。为避免并发写入，浏览器服务和桌面版不能同时使用同一份记录目录，启动桌面版前请退出另一个运行实例。
+## 第一次使用
 
-左侧「双向翻译」可配置模型协议、API 地址、模型名、密钥与超时，并保存到本机。支持 OpenAI 兼容 Chat Completions 与 Anthropic Messages；「测试双向翻译」实际发送两段固定示例，展示中译英和英译中结果。Claude Code 原生终端尚未接入，模型测试通过不会自动开启会话拦截。
+1. **选择检测目标。** 在「检测偏好」设置实际使用的网络模式、服务方式与目标时区；也可以在「一键配置」中逐项选择。
+2. **开始检测。** 默认连续检查 3 遍，仅读取本机配置。需要比较公网出口或 WebRTC 时，再勾选对应网络检测。
+3. **查看并处理问题。** 点击顶部「需要关注」定位详情。自动修改先展示预览，确认后备份并执行。
+4. **完成剩余设置。** 配置结束后查看手动清单，按步骤打开系统设置、复制核对命令或打开终端。重新打开终端与 Claude Code 后再次检测。
+5. **需要时恢复。** 在「备份恢复」选择修改记录或完整快照，查看还原预览后恢复。
 
-左侧「应用设置」提供中英文界面、浅色／护眼／深色配色、减少动画、版本检查与 GitHub Star 入口。语言和外观保存到本机，重新打开仍保留；命令、路径、配置值、测试样例和资料原文不随界面语言转换。「本机配置」位于导航最后，「检测偏好」单独管理环境核对条件。
+最小化或关闭桌面窗口后，应用留在菜单栏／系统托盘，检测与配置任务继续执行。需要完全退出时，从图标菜单选择「退出 CG Claude」。
 
-开机自启在已打包的 macOS／Windows 桌面版可设置并读取系统实际结果，开发和隔离模式不注册登录项。macOS 可能需要系统批准，未签名／未公证应用的登录项可能无法生效；页面提供系统设置入口与状态刷新。Linux 使用系统的启动应用设置。版本检查仅在点击时查询本仓库的公开稳定 Release，不自动下载或安装；Star 按钮打开项目页，由用户自行操作。
+## 应用截图
 
-## 推荐流程
+以下截图来自 **1.2.7 macOS 桌面版**，使用隔离演示数据；配置写入只作用于临时目录，系统时区使用模拟状态。点击展开查看完整界面。
 
-1. 选择实际网络模式、服务方式和隐私偏好，或点击「一键配置」逐项填写。自定义 API 地址清理默认不勾选。
-2. 点击「开始检测」，默认连续检查 3 遍，只读取本机配置；公网出口与 WebRTC 需另外勾选。
-3. 点击顶部「检查通过」「需要关注」「待确认」统计入口，自动筛选对应结果、清除旧搜索与分类、展开并定位到第一项。只有一项需关注时直接看到该项证据。
-4. 查看修改预览后执行配置。13 个流程节点由上到下执行，每项首次失败后最多重试 3 次，仍失败就跳过，继续后续节点。每次写入前备份；第一节点保存完整配置快照。
-5. 配置后重新采集浏览器时区并连续三遍复检；刷新界面可接回检测或配置进度，其他本机操作完成后自动更新。服务重启后未完成任务标为中断，不自动重新写入。
-6. 在「备份恢复」保存或选择完整快照，点击「一键还原之前的配置快照」，预览后恢复文件内容、原权限、文件不存在状态、检测偏好、已记录的系统时区与 TZ。还原前另外保存当前状态，预览后文件内容、权限或时区变化会阻止还原。
-7. 在「本机配置」编辑代理、网关、NO_PROXY 或额外 CA 路径。逐项保持、设置或移除，预览后保存，工具自动记录修改前的完整快照和原文件备份。
-8. 在「项目扫描」选择本地目录，检查项目配置覆盖、MCP、TLS、凭据字段、依赖锁文件及本地 Git 提交。
+<details>
+<summary><strong>一键配置：逐项选择，先预览再执行</strong></summary>
 
-已打开的终端不会因文件修改而更新环境变量；重新打开终端和客户端后再核对实际生效配置。历史报告、偏好或配置基线已变化时，需要重新检测再预览修复。旧报告仍可阅读。一键配置也会核对文件权限和读取状态，拒绝沿用已变化的预览。
+向导依次确认网络模式、Claude 服务、隐私偏好与修改范围。系统时区可以按文章建议、当前 IP 出口或手动目标核对。
 
-## 检测与写入范围
+![一键配置向导：网络模式、目标时区与浏览器语言选择](docs/images/setup.png)
 
-31 项环境检查覆盖系统/浏览器时区、TZ、系统代理、虚拟接口、DNS、IPv6、进程与启动文件代理、npm 用户及当前查询代理、Git 用户及全局查询代理、API 地址、Claude 配置目录、隐私、CLI、TLS、代理兼容性、认证来源、自定义 CA/mTLS、公网出口与浏览器一致性。网络开启时对比历史 IP、国家、城市和网络组织。时区默认按原文台北建议核对，也支持当前出口或手动选择；系统、Node 进程和浏览器独立取证，自动时区单独读取，定位服务和手机端仍需人工确认。
+执行记录显示每个节点的结果和重试次数。配置完成后，仍需手动处理的事项集中列出，并提供设置入口与操作步骤。
 
-可修改的 7 类字段：shell/npm/Git 用户代理、shell/Claude 自定义 API 地址、Claude 隐私变量、npm TLS 校验；一键配置另含系统时区与终端 TZ 两个节点，默认勾选，可取消。支持 `.zshrc`、`.zprofile`、`.zshenv`、`.bashrc`、`.bash_profile`、`.bash_login`、`.profile`、`.npmrc`、`.gitconfig`、`.config/git/config`、`.claude/settings.json` 这 11 个配置位置。
+![一键配置执行记录：已完成节点、重试次数与原始备份入口](docs/images/workflow.png)
 
-连接编辑仅写入 `~/.claude/settings.json` 中的 `HTTPS_PROXY`、`HTTP_PROXY`、`NO_PROXY`、`ANTHROPIC_BASE_URL` 和 `NODE_EXTRA_CA_CERTS`。其他字段、Hooks、权限与凭据原值保留，JSON 排版统一为两格缩进。同名小写代理项的规范化也会列在预览中。CA 路径必须是可读、非空的本机绝对路径；不读取证书内容、不执行连通性请求。自定义 `CLAUDE_CONFIG_DIR` 时此编辑入口停用，避免写入错误位置。
+</details>
 
-项目扫描包括权限、命令沙箱、Hooks、MCP、代理、TLS 和凭据声明，只检查固定的配置与元数据文件，不执行项目脚本、Hooks、MCP 或依赖安装。只检查 dotenv/锁文件是否存在，不读取 dotenv 内容。凭据字段提示不展示值。项目源码漏洞、依赖漏洞和构建正确性仍需对应工具另外检查；本项目的工程验证见验证记录。
+<details>
+<summary><strong>备份恢复：保留修改记录与完整配置快照</strong></summary>
 
-结果分为通过、需关注、需处理、待确认、未检测。账号会话、服务地区、浏览器资料、DNS 实际出口、完整 TUN 接管、ASN 分类、网页隐私、额度与支付需要人工复核，有原文章节映射与官方入口。环境结果不推算账号状态。
+可以查看单次修改的备份，或还原一键配置前的完整快照。还原前再次核对当前文件；有后续修改时会阻止覆盖，并在还原前保存当前状态。
 
-系统/HTTP 代理、自定义网关、Bedrock、Vertex、Microsoft Foundry 与 Claude Platform on AWS 可以是正常配置，按实际偏好保留。启动文件仅静态解析直接赋值，不执行脚本；复杂函数、条件块、多行表达式与 heredoc 不自动编辑。发现自定义 `CLAUDE_CONFIG_DIR` 时，默认 Claude 文件保持原样，实际目录需另行复核。一键配置中的系统时区修改调用系统授权窗口，macOS 使用管理员账户，Windows 使用 UAC，Linux 依赖可用的 polkit 代理。终端 TZ 保存到 Zsh/Bash 启动文件与 Claude env.TZ；Windows 另保存到用户环境。已有终端与 Claude 会话需要重开。macOS 的自动时区开启且可读取时，一键配置会经系统授权尝试关闭并回读。网络客户端、Git include、托管策略和项目配置不自动改写。不清理钥匙串、Claude 会话、Skills 或 Hooks。
+![备份恢复页面：完整快照、修改记录与一键还原入口](docs/images/backups.png)
 
-配置文本严格按 UTF-8 读取，保留 BOM 与原换行。非法 UTF-8 或含 NUL 的文件会提示手动核对编码，不自动转换、不修改，并从快照排除；工具不猜测 GBK 等编码。
+</details>
 
-使用说明内提供连接、认证、权限、额度、账单、服务异常和证书、账号提示和 Remote Control，以及安装与 PATH 十类错误的排查步骤，可直接打开相关检查项或原文。常见术语随应用离线可读。没有检测报告时，入口会引导先检测。
+<details>
+<summary><strong>翻译模型：接口、模型、密钥与双向测试</strong></summary>
 
-文献库包含 69 条核对来源，环境、项目和人工复核均可打开对应依据。人工复核与文献支持双向定位。 支持摘要浏览、完整阅读，以及复制包含原文和判断边界的单条或筛选引用。
+模型配置集中在「双向翻译」导航中。测试只发送两段固定示例，不读取项目或 Claude 会话；页面明确显示原生终端的接入状态。
 
-文献页另有原文对照面板：逐项显示检测范围、修复方式、当前状态和精确跳转，并明确检测偏好与原文默认 B 路线的差异。自动覆盖不代表全部要求已经满足。
+![双向翻译页面：模型配置表单与尚未接入原生终端的状态](docs/images/translation.png)
 
-资料采用方式和适用边界见 [资料核对记录](docs/research.md)。
+</details>
 
-## 本地数据与访问
+<details>
+<summary><strong>应用设置：深色模式与常用偏好</strong></summary>
 
-默认记录目录 `~/.claude-guard/`：
+提供中英文界面、浅色／护眼／深色配色、减少动画和版本检查。语言与外观保存在本机，重新打开后仍保留。
 
-| 文件                        | 内容                                     |
-| --------------------------- | ---------------------------------------- |
-| `translation-settings.json` | 翻译服务配置与密钥密文                   |
-| `translation-key.json`      | 本机加密主密钥，不向前端返回             |
-| `app-settings.json`         | 界面语言、配色与减少动画，与检测偏好分开 |
-| `preferences.json`          | 检测偏好                                 |
-| `reports.json`              | 最近 30 次报告，配置密钥不进入报告       |
-| `backups.json`              | 字段修复前原文、校验值和修复/恢复记录    |
-| `snapshots.json`            | 配置原文、权限、缺失状态、偏好与时区状态 |
-| `manual-reviews.json`       | 人工复核勾选、确认时间和备注             |
-| `workflows.json`            | 最近配置流程状态、尝试次数和节点结果     |
+![应用设置的深色模式：界面语言、配色、动画与启动设置](docs/images/settings-dark.png)
 
-配置快照仅覆盖上述十一个用户配置位置、检测偏好及可读取的时区与 TZ 状态，不包含翻译服务配置、完整 `~/.claude` 目录、钥匙串或历史会话；原文提到的完整清理需要另外备份。
+</details>
 
-备份/快照原文可能包含凭据，保存在本机；POSIX 目录 0700、记录文件 0600，Windows 继承用户目录 ACL。界面/预览不返回这些原文。原配置权限保留，新建配置为 0600（POSIX）。
+## 检测与数据范围
 
-记录读取验证数据结构、白名单路径、权限范围和唯一目标；新快照与备份增加还原输入的完整性校验。损坏记录保留并报告具体文件，不自动覆盖为空记录。旧备份也核对原文散列。
+- **检测按实际配置与所选目标判断。** 环境检查不推算账号状态，也不保证账号安全；地区支持、登录设备、计费与账号事项需要人工核对。
+- **浏览器有独立的检测对象。** CG 内置窗口的采样只代表当前窗口。用于登录的外部 Chrome、Edge、Firefox 或 Safari，需要选择对应资料或按提供的设置指引另外核对。
+- **已有会话需要重新打开。** 修改启动文件不会更新已经打开的终端进程；系统时区、终端 TZ 与浏览器时区分别复检。
+- **数据默认保存在本机。** 记录位于 `~/.claude-guard/`；备份与快照可能包含原配置中的凭据。界面隐藏密钥，报告导出默认进一步隐藏 IP 与主机名。
+- **外部请求按操作发起。** 公网检测会连接出口查询服务；翻译测试连接你配置的模型服务；版本检查查询 GitHub。它们与本机只读检测分别开启。
+- **项目扫描检查配置与元数据。** 完整源码审计、依赖漏洞分析和构建验证需要另行使用相应工具。
 
-本机 API 检查 Host、Origin 和临时操作凭证；路径固定、命令参数固定。服务间使用带心跳的目录租约与 PID 标记互斥。Electron 启用 sandbox、contextIsolation，关闭 Node integration，限制页面导航、外链与 IPC。
+完整的写入规则、快照覆盖范围、网络访问与本机记录说明见 [检测与配置说明](docs/local-configuration.md)。
 
-公网检测访问 `https://ipinfo.io/json`、`https://api.ipify.org?format=json` 和 `stun:stun.l.google.com:19302`，对应服务会看到连接 IP，不接收配置/密钥。浏览器/WebRTC 数据按当前界面一次采样，服务端连续重复本机检查与终端网络查询；未采样的数据明确标为未检测/待确认。报告导出默认进一步隐藏 IP 与主机名。
+## 开发与文档
 
-浏览器语言在「检测偏好」或配置向导中选择目标，默认 `en-US`。`en-CN` 同为英文，但地区与 `en-US` 不同。该项是自定义扩展，原文没有要求必须改成英文；一键时区配置不会修改外部浏览器语言，页面提供 Chrome、Edge、Firefox、Safari 的官方设置指引。当前窗口的采样不能代表外部登录浏览器。
+技术栈：Vue 3、TypeScript、Vite、Electron、Node.js 与 Zod。界面、共享类型、本机服务和桌面能力分别位于 `src/`、`shared/`、`server/`、`electron/`。
 
-翻译密钥使用 AES-256-GCM 加密，主密钥单独保存在私有记录目录；这不是系统钥匙串，拥有目录读取权限的人仍可解密。已保存密钥不会返回界面，更换服务地址或协议后需重新填写。测试拒绝重定向，保留 TLS 校验，响应限制 128 KB，不自动重试收费请求。只提交固定示例，不读取项目或 Claude 会话。
+```sh
+npm run check        # 架构边界、类型与测试
+npm run format:check # 格式检查
+npm run pack         # 生成应用目录
+npm run dist         # 生成当前平台安装包
+```
 
-## 浏览器、隔离演示与 CLI
+<details>
+<summary>浏览器版、隔离演示与只读 CLI</summary>
+
+在已经运行 `npm ci` 的项目目录中：
 
 ```sh
 npm run build
 npm start
 ```
 
-浏览器访问 `http://127.0.0.1:4318`。Linux 的 `./scripts/start.sh` 也启动浏览器服务。服务只监听回环地址，Ctrl+C 退出。
+浏览器访问 `http://127.0.0.1:4318`。服务只监听回环地址，使用 Ctrl+C 退出。同一记录目录不能同时运行浏览器服务与桌面版。
 
 ```sh
-npm run demo
-npm run desktop:demo
-npm run doctor -- --json
+npm run demo            # 隔离浏览器演示，默认端口 4319
+npm run desktop:demo    # 隔离桌面演示
+npm run doctor -- --json # 只读 CLI 检测
 ```
 
-`demo` 创建专门的临时配置目录，浏览器端口 4319；`desktop:demo` 使用独立 Electron 资料目录。演示文件写入只作用于测试目录，系统时区与 TZ 使用隔离模拟；平台信息和客户端版本仍按本机读取。CLI 默认只检测，`--network` 开启终端公网查询，不修改配置。
+`demo` 在临时目录中创建示例配置，需先完成 `npm run build`。`desktop:demo` 自动构建，使用独立桌面资料目录。隔离模式不注册开机自启，系统时区与 TZ 使用模拟状态；平台信息及客户端版本仍按本机读取。CLI 加上 `--network` 可开启终端公网查询。
 
-| 运行变量      | 用途                                                 |
-| ------------- | ---------------------------------------------------- |
-| `CG_PORT`     | 浏览器服务端口，默认 4318；Electron 使用随机回环端口 |
-| `CG_HOME`     | 用户配置根目录，默认当前用户主目录，用于隔离验证     |
-| `CG_DATA_DIR` | 记录目录，默认配置根目录下 `.claude-guard`           |
-| `CG_DEMO=1`   | 标记隔离模式，应同时指定独立配置根目录               |
+| 运行变量      | 用途                                                |
+| ------------- | --------------------------------------------------- |
+| `CG_PORT`     | 浏览器服务端口，默认 4318；桌面版使用随机回环端口。 |
+| `CG_HOME`     | 配置根目录，默认当前用户主目录；可用于隔离验证。    |
+| `CG_DATA_DIR` | 记录目录，默认配置根目录下 `.claude-guard`。        |
+| `CG_DEMO=1`   | 标记隔离模式，应同时指定独立配置根目录。            |
 
-## 工程与打包
+</details>
 
-代码入口、扩展检查与样式结构见 [项目结构](docs/architecture.md)，参与开发见 [CONTRIBUTING](CONTRIBUTING.md)。
+| 文档                                          | 内容                                       |
+| --------------------------------------------- | ------------------------------------------ |
+| [项目架构](docs/architecture.md)              | 分层、代码入口、检查扩展与样式组织。       |
+| [参与开发](CONTRIBUTING.md)                   | 本地验证、提交约定与改动要求。             |
+| [检测与配置说明](docs/local-configuration.md) | 修复流程、配置范围、快照与本机数据。       |
+| [原文逐项对照](docs/article-audit.md)         | 43 项文章要求的检测、修复与人工核对映射。  |
+| [参考文献审计](docs/reference-audit.md)       | 69 条来源的采用内容与适用边界。            |
+| [时区检测说明](docs/timezone-detection.md)    | 系统、进程与浏览器时区的证据来源。         |
+| [验证记录](docs/validation.md)                | 各轮验收、实际测试与未覆盖范围。           |
+| [发布说明](docs/publishing.md)                | 多平台构建、校验值与 GitHub Release 流程。 |
 
-1.2.7 的本地产物、校验值与已验证范围见 [交付记录](docs/release-1.2.7.md)。
+安装包通过 GitHub Release 附件分发，源码仓库不提交二进制产物。`Check` 工作流验证三个系统；`Build installers` 在原生平台构建安装包并上传 Artifacts，正式 Release 由维护者发布。
 
-Vue 3 Composition API、TypeScript、Vite、Electron 与 Node 原生 HTTP，Zod 校验输入，前后端共享类型。配置使用同目录临时文件、权限恢复与原子替换，预览校验变化，异常时回退已写入文件。
-
-```sh
-npm run check # 架构边界、类型、完整测试
-npm run format:check
-npm run pack
-npm run dist
-```
-
-`pack` 生成应用目录；`dist` 按当前平台生成 macOS dmg/zip、Windows NSIS/portable 或 Linux AppImage/deb。本机打包使用当前系统与 CPU 架构的 Electron 运行时。
-
-GitHub Actions 的 `Check` 工作流在三个系统执行格式、类型、测试、构建与应用目录打包。`Build installers` 工作流可在 Actions 中手动运行，也会在推送 `v*` 标签时运行；它在原生 macOS arm64、macOS Intel、Windows x64 和 Linux x64 上分别检查、构建安装包并上传带 SHA-256 的 Artifacts，不自动发布 Release。发布步骤见 [发布说明](docs/publishing.md)。
-
-开发模式 `npm run dev`：前端端口 5173、后端 4318。依赖版本固定，使用项目 `.npm-cache`，字体本地打包。设计记录见 `docs/design.md`。
+[查看版本](https://github.com/LcodeCoder/CG-Claude/releases) · [报告问题](https://github.com/LcodeCoder/CG-Claude/issues) · [给项目一个 Star](https://github.com/LcodeCoder/CG-Claude)
