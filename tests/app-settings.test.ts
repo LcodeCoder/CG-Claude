@@ -21,7 +21,8 @@ test('appearance defaults and persistent settings do not alter diagnostic prefer
   expect(await data.storage.appSettings()).toEqual(settings)
   expect(await data.storage.preferences()).toEqual(preferences)
   const info = await fs.stat(path.join(data.ctx.dataDir, 'app-settings.json'))
-  expect(info.mode & 0o777).toBe(0o600)
+  // POSIX permission bits do not describe Windows ACLs. Persistence is checked on every OS.
+  if (process.platform !== 'win32') expect(info.mode & 0o777).toBe(0o600)
 })
 test('rejects damaged settings instead of silently overwriting them', async () => {
   await fs.writeFile(path.join(data.ctx.dataDir, 'app-settings.json'), '{ invalid')

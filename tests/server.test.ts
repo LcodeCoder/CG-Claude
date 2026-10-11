@@ -472,9 +472,27 @@ test('returns actionable JSON errors for bad media types, malformed JSON and ove
 })
 
 test('HEAD serves the same static headers without returning a response body', async () => {
-  const response = await fetch(base + '/', { method: 'HEAD' })
-  expect(response.status).toBe(200)
-  expect(response.headers.get('content-type')).toContain('text/html')
-  expect(Number(response.headers.get('content-length'))).toBeGreaterThan(0)
-  expect(await response.text()).toBe('')
+  // Static responses must not depend on a previous production build in the checkout.
+  const distDir = path.join(data.root, 'static-head')
+  const html = '<!doctype html><title>CG Claude</title><p>本机设置</p>'
+  await fs.mkdir(distDir)
+  await fs.writeFile(path.join(distDir, 'index.html'), html)
+  await app.close()
+  app = await createAppServer({ ctx: data.ctx, port: 0, dev: false, distDir })
+  base = `http://127.0.0.1:${await app.listen()}`
+  const get = await fetch(base + '/')
+  const head = await fetch(base + '/', { method: 'HEAD' })
+  expect(get.status).toBe(200)
+  expect(await get.text()).toBe(html)
+  expect(head.status).toBe(get.status)
+  expect(head.headers.get('content-type')).toContain('text/html')
+  for (const header of [
+    'content-type',
+    'content-length',
+    'cache-control',
+    'content-security-policy',
+  ])
+    expect(head.headers.get(header)).toBe(get.headers.get(header))
+  expect(Number(head.headers.get('content-length'))).toBe(Buffer.byteLength(html))
+  expect(await head.text()).toBe('')
 })
