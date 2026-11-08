@@ -184,6 +184,8 @@ if (!app.requestSingleInstanceLock()) {
   app
     .whenReady()
     .then(async () => {
+      // Finder-launched apps may not inherit LANG/LC_*; app.getLocale() is the native fallback.
+      if (!process.env.CG_SYSTEM_LOCALE) process.env.CG_SYSTEM_LOCALE = app.getLocale()
       if (process.platform === 'darwin')
         app.dock?.setIcon(
           nativeImage.createFromPath(path.join(app.getAppPath(), 'build', 'icon-mac.png')),

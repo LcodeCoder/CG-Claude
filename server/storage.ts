@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { randomUUID, randomBytes } from 'node:crypto'
 import { z } from 'zod'
-import { appSettingsSchema, defaultAppSettings } from '../shared/app-settings.js'
+import { appSettingsSchema, defaultAppSettingsForEnv } from '../shared/app-settings.js'
 import type { AppSettings } from '../shared/app-settings.js'
 import {
   preferencesSchema,
@@ -103,7 +103,11 @@ export class Storage {
     }
   }
   async appSettings(): Promise<AppSettings> {
-    return this.records('app-settings.json', appSettingsSchema, defaultAppSettings)
+    return this.records(
+      'app-settings.json',
+      appSettingsSchema,
+      defaultAppSettingsForEnv(this.ctx.env),
+    )
   }
   async saveAppSettings(value: AppSettings) {
     await this.write('app-settings.json', appSettingsSchema.parse(value))

@@ -24,6 +24,23 @@ test('appearance defaults and persistent settings do not alter diagnostic prefer
   // POSIX permission bits do not describe Windows ACLs. Persistence is checked on every OS.
   if (process.platform !== 'win32') expect(info.mode & 0o777).toBe(0o600)
 })
+test('first-run language follows the process locale and saved choices still win', async () => {
+  const chinese = await fixture({ env: { LANG: 'zh_CN.UTF-8' } })
+  const english = await fixture({ env: { LANG: 'en_US.UTF-8' } })
+  const other = await fixture({ env: { LANG: 'ja_JP.UTF-8' } })
+  try {
+    expect(await chinese.storage.appSettings()).toEqual({
+      ...defaultAppSettings,
+      language: 'zh-CN',
+    })
+    expect(await english.storage.appSettings()).toEqual(defaultAppSettings)
+    expect(await other.storage.appSettings()).toEqual(defaultAppSettings)
+    await english.storage.saveAppSettings({ ...defaultAppSettings, language: 'zh-CN' })
+    expect((await english.storage.appSettings()).language).toBe('zh-CN')
+  } finally {
+    await Promise.all([chinese.cleanup(), english.cleanup(), other.cleanup()])
+  }
+})
 test('rejects damaged settings instead of silently overwriting them', async () => {
   await fs.writeFile(path.join(data.ctx.dataDir, 'app-settings.json'), '{ invalid')
   await expect(data.storage.appSettings()).rejects.toThrow()

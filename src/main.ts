@@ -2,9 +2,13 @@ import { createApp } from 'vue'
 import '@fontsource-variable/manrope'
 import '@fontsource/jetbrains-mono/400.css'
 import App from './App.vue'
+import { translateUi, uiLanguage } from './i18n'
 import './styles/tokens.css'
 import './style.css'
 import './styles/references.css'
 import './styles/manual-review.css'
 import './styles/history.css'
+
+document.documentElement.lang = uiLanguage.value
+document.title = translateUi('CG Claude · 本地环境工作台')
 createApp(App).mount('#app')

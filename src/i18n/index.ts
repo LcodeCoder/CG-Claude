@@ -1,7 +1,14 @@
 import { ref } from 'vue'
+import { languageFromLocale } from '../../shared/ui-language'
+import type { UiLanguage } from '../../shared/ui-language'
 import { englishUi } from './en'
 
-export const uiLanguage = ref<'zh-CN' | 'en'>('zh-CN')
+function initialUiLanguage(): UiLanguage {
+  const browserLanguage = typeof navigator !== 'undefined' ? navigator.language : undefined
+  return languageFromLocale(browserLanguage) ?? 'en'
+}
+
+export const uiLanguage = ref<UiLanguage>(initialUiLanguage())
 /** Only authored interface copy is localized. Code, paths, configuration and quotations stay intact. */
 export function translateUi(text: string, values: Record<string, string | number> = {}): string {
   const phrase =

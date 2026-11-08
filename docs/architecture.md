@@ -182,7 +182,7 @@ App 负责选择记录和调用操作，ScanOptionsDialog、RepairPreviewDialog�
 
 ## 应用设置与桌面启动
 
-`shared/app-settings.ts` 定义 `zh-CN / en`、`light / eye-care / dark` 和减少动画。`app-settings.json` 采用严格校验与原子写入，设置页面仅在持久化成功后应用新值；读取或保存失败保留已确认的状态。浏览器缓存仅用于快速显示，服务记录是最终依据。界面语言不会更改系统语言、浏览器首选语言、检测目标或翻译模型的输入。
+`shared/app-settings.ts` 定义 `zh-CN / en`、`light / eye-care / dark` 和减少动画。`shared/ui-language.ts` 按 `LC_ALL`、`LANGUAGE`、`LC_MESSAGES`、`LANG` 的 POSIX locale 解析首次启动的默认界面语言：中文环境使用 `zh-CN`，其余环境（包括变量未设置）回退英文；桌面版无相关变量时以 Electron 原生系统 locale 补充。用户保存的语言始终优先。`app-settings.json` 采用严格校验与原子写入，设置页面仅在持久化成功后应用新值；读取或保存失败保留已确认的状态。浏览器缓存仅用于快速显示，服务记录是最终依据。界面语言不会更改系统语言、浏览器首选语言、检测目标或翻译模型的输入。
 
 `electron/startup.ts` 依赖注入系统读写，区分不支持、macOS 待批准、实际开启和回读未确认。开发与隔离模式不注册登录项；Windows 核对系统禁用状态。打开系统设置的 IPC 只使用固定登录项链接。密码由系统处理。macOS 签名和公证会影响登录项可靠性，未签名包不承诺自动启动成功，页面提供回读、刷新和手动入口。
 
