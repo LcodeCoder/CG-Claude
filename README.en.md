@@ -5,7 +5,7 @@
 <h1 align="center">CG Claude</h1>
 
 <p align="center">A local Claude environment checker and configuration tool</p>
-<p align="center">v1.2.7 · Electron desktop app · macOS / Windows / Linux</p>
+<p align="center">v1.2.8 · Electron desktop app · macOS / Windows / Linux</p>
 
 <p align="center">
   <a href="README.md">简体中文</a> · English ·
@@ -41,15 +41,15 @@ The home page also links to the [LC-time browser environment configuration plug-
 
 Go to [GitHub Releases](https://github.com/LcodeCoder/CG-Claude/releases), choose a published version, and download the asset that matches your system and CPU architecture. The desktop build does not require a separate Node.js installation. If no installer is available on the releases page yet, run the project from source as described below.
 
-The current version is **1.2.7**. Installer names are:
+The current version is **1.2.8**. Installer names are:
 
 | System                | Installer                               | Installation method                                       |
 | --------------------- | --------------------------------------- | --------------------------------------------------------- |
-| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`       | Open the DMG and drag the app into Applications.          |
-| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`         | Open the DMG and drag the app into Applications.          |
-| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe` | Run the installer and follow its prompts.                 |
-| Linux · x64           | `CG-Claude-1.2.7-linux-x86_64.AppImage` | Make it executable, then run it directly.                 |
-| Debian / Ubuntu · x64 | `CG-Claude-1.2.7-linux-amd64.deb`       | Use the system software installer, or install with `apt`. |
+| macOS · Apple Silicon | `CG-Claude-1.2.8-macos-arm64.dmg`       | Open the DMG and drag the app into Applications.          |
+| macOS · Intel         | `CG-Claude-1.2.8-macos-x64.dmg`         | Open the DMG and drag the app into Applications.          |
+| Windows · x64         | `CG-Claude-1.2.8-windows-x64-setup.exe` | Run the installer and follow its prompts.                 |
+| Linux · x64           | `CG-Claude-1.2.8-linux-x86_64.AppImage` | Make it executable, then run it directly.                 |
+| Debian / Ubuntu · x64 | `CG-Claude-1.2.8-linux-amd64.deb`       | Use the system software installer, or install with `apt`. |
 
 <details>
 <summary>Linux launch commands and installer verification</summary>
@@ -57,14 +57,14 @@ The current version is **1.2.7**. Installer names are:
 AppImage:
 
 ```sh
-chmod +x CG-Claude-1.2.7-linux-x86_64.AppImage
-./CG-Claude-1.2.7-linux-x86_64.AppImage
+chmod +x CG-Claude-1.2.8-linux-x86_64.AppImage
+./CG-Claude-1.2.8-linux-x86_64.AppImage
 ```
 
 Debian / Ubuntu:
 
 ```sh
-sudo apt install ./CG-Claude-1.2.7-linux-amd64.deb
+sudo apt install ./CG-Claude-1.2.8-linux-amd64.deb
 ```
 
 Download `SHA256SUMS.txt` for the same version and verify the files in the installer's directory:
@@ -76,12 +76,12 @@ shasum -a 256 -c SHA256SUMS.txt
 Windows PowerShell can calculate a single file's checksum for comparison with the manifest:
 
 ```powershell
-Get-FileHash .\CG-Claude-1.2.7-windows-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\CG-Claude-1.2.8-windows-x64-setup.exe -Algorithm SHA256
 ```
 
 </details>
 
-The macOS installers are not signed or notarized yet, and the Windows installer has no publisher signature yet. Desktop interaction on Windows and Linux has not been verified on real hardware; see the [release record](docs/release-1.2.7.md) for the verified scope.
+The macOS installers are not signed or notarized yet, and the Windows installer has no publisher signature yet. Desktop interaction on Windows and Linux has not been verified on real hardware; see the [release record](docs/release-1.2.8.md) for the verified scope.
 
 ### Run from source
 

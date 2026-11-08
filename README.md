@@ -5,7 +5,7 @@
 <h1 align="center">CG Claude</h1>
 
 <p align="center">本地 Claude 环境检测与配置工具</p>
-<p align="center">v1.2.7 · Electron 桌面应用 · macOS / Windows / Linux</p>
+<p align="center">v1.2.8 · Electron 桌面应用 · macOS / Windows / Linux</p>
 
 <p align="center">
   <a href="README.en.md">English</a> · 简体中文 ·
@@ -41,15 +41,15 @@ _实际应用界面，使用独立演示目录。截图中的配置与检测结�
 
 前往 [GitHub Releases](https://github.com/LcodeCoder/CG-Claude/releases) 选择已发布版本，下载与你的系统和 CPU 架构对应的附件。安装桌面版后，无需另外安装 Node.js。若发布页暂未提供安装包，可以先按下方「源码启动」运行。
 
-当前版本为 **1.2.7**，安装包命名如下：
+当前版本为 **1.2.8**，安装包命名如下：
 
 | 系统                  | 安装包                                  | 安装方式                                |
 | --------------------- | --------------------------------------- | --------------------------------------- |
-| macOS · Apple Silicon | `CG-Claude-1.2.7-macos-arm64.dmg`       | 打开 DMG，将应用拖入「应用程序」。      |
-| macOS · Intel         | `CG-Claude-1.2.7-macos-x64.dmg`         | 打开 DMG，将应用拖入「应用程序」。      |
-| Windows · x64         | `CG-Claude-1.2.7-windows-x64-setup.exe` | 运行安装程序，按提示完成安装。          |
-| Linux · x64           | `CG-Claude-1.2.7-linux-x86_64.AppImage` | 添加执行权限后直接运行。                |
-| Debian / Ubuntu · x64 | `CG-Claude-1.2.7-linux-amd64.deb`       | 使用系统软件安装器，或通过 `apt` 安装。 |
+| macOS · Apple Silicon | `CG-Claude-1.2.8-macos-arm64.dmg`       | 打开 DMG，将应用拖入「应用程序」。      |
+| macOS · Intel         | `CG-Claude-1.2.8-macos-x64.dmg`         | 打开 DMG，将应用拖入「应用程序」。      |
+| Windows · x64         | `CG-Claude-1.2.8-windows-x64-setup.exe` | 运行安装程序，按提示完成安装。          |
+| Linux · x64           | `CG-Claude-1.2.8-linux-x86_64.AppImage` | 添加执行权限后直接运行。                |
+| Debian / Ubuntu · x64 | `CG-Claude-1.2.8-linux-amd64.deb`       | 使用系统软件安装器，或通过 `apt` 安装。 |
 
 <details>
 <summary>Linux 启动命令与安装包校验</summary>
@@ -57,14 +57,14 @@ _实际应用界面，使用独立演示目录。截图中的配置与检测结�
 AppImage：
 
 ```sh
-chmod +x CG-Claude-1.2.7-linux-x86_64.AppImage
-./CG-Claude-1.2.7-linux-x86_64.AppImage
+chmod +x CG-Claude-1.2.8-linux-x86_64.AppImage
+./CG-Claude-1.2.8-linux-x86_64.AppImage
 ```
 
 Debian / Ubuntu：
 
 ```sh
-sudo apt install ./CG-Claude-1.2.7-linux-amd64.deb
+sudo apt install ./CG-Claude-1.2.8-linux-amd64.deb
 ```
 
 下载同一版本的 `SHA256SUMS.txt`，在安装包所在目录核对文件完整性：
@@ -76,12 +76,12 @@ shasum -a 256 -c SHA256SUMS.txt
 Windows PowerShell 可计算单个文件的校验值，与清单对照：
 
 ```powershell
-Get-FileHash .\CG-Claude-1.2.7-windows-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\CG-Claude-1.2.8-windows-x64-setup.exe -Algorithm SHA256
 ```
 
 </details>
 
-macOS 安装包尚未签名、公证，Windows 安装包尚未进行发布者签名。Windows / Linux 的桌面交互尚未实机验证，已验证范围见 [交付记录](docs/release-1.2.7.md)。
+macOS 安装包尚未签名、公证，Windows 安装包尚未进行发布者签名。Windows / Linux 的桌面交互尚未实机验证，已验证范围见 [交付记录](docs/release-1.2.8.md)。
 
 ### 源码启动
 

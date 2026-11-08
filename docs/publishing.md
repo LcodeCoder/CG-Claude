@@ -19,10 +19,10 @@
 
 ## 整理附件
 
-将同一次成功运行的四个 Artifacts 解压，把安装包合并到 `release/1.2.7/`。不要使用构建失败或不同源码提交混合的安装包；删除各自的校验文件后重新生成一份汇总：
+将同一次成功运行的四个 Artifacts 解压，把安装包合并到 `release/1.2.8/`。不要使用构建失败或不同源码提交混合的安装包；删除各自的校验文件后重新生成一份汇总：
 
 ```sh
-node scripts/release-checksums.mjs release/1.2.7
+node scripts/release-checksums.mjs release/1.2.8
 ```
 
 最终目录包含两个 DMG、一个 EXE、一个 AppImage、一个 DEB 和一个 `SHA256SUMS.txt`。不要上传解包应用、缓存、`builder-debug.yml`、`latest*.yml` 或 `*.blockmap`；当前应用没有通过这些文件执行自动更新。
@@ -36,12 +36,12 @@ shasum -a 256 -c SHA256SUMS.txt
 Windows PowerShell 可计算单个文件的校验值，与 `SHA256SUMS.txt` 对照：
 
 ```powershell
-Get-FileHash .\CG-Claude-1.2.7-windows-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\CG-Claude-1.2.8-windows-x64-setup.exe -Algorithm SHA256
 ```
 
 ## 创建 GitHub Release
 
-1. 确认 `package.json` 版本与发布标签一致，1.2.7 对应 `v1.2.7`。
+1. 确认 `package.json` 版本与发布标签一致，1.2.8 对应 `v1.2.8`。
 2. 在仓库的 Releases 创建草稿，选择本次成功构建对应的提交或标签。
 3. 附上五个安装包和 `SHA256SUMS.txt`，填写发布说明，并注明支持的 CPU 架构。
 4. 核对附件后再发布。GitHub 会自动提供该标签的源码 ZIP / tar.gz，无需另外打源码包。
