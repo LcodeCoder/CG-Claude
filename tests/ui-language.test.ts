@@ -8,13 +8,14 @@ test('selects Chinese only for Chinese POSIX or BCP 47 locales', () => {
   expect(languageFromLocale('zh')).toBe('zh-CN')
   expect(languageFromLocale('en_US.UTF-8')).toBe('en')
   expect(languageFromLocale('ja_JP.UTF-8')).toBe('en')
-  expect(languageFromLocale('C.UTF-8')).toBeUndefined()
-  expect(languageFromLocale('POSIX')).toBeUndefined()
+  expect(languageFromLocale('C.UTF-8')).toBe('en')
+  expect(languageFromLocale('POSIX')).toBe('en')
   expect(languageFromLocale('')).toBeUndefined()
 })
 
 test('resolves LC_ALL before LANGUAGE, LC_MESSAGES and LANG', () => {
   expect(detectUiLanguage({ LC_ALL: 'zh_CN.UTF-8', LANG: 'en_US.UTF-8' })).toBe('zh-CN')
+  expect(detectUiLanguage({ LC_ALL: 'C', LANG: 'zh_CN.UTF-8' })).toBe('en')
   expect(detectUiLanguage({ LC_MESSAGES: 'zh_CN.UTF-8', LANG: 'en_US.UTF-8' })).toBe('zh-CN')
   expect(detectUiLanguage({ LANG: 'zh_CN.UTF-8' })).toBe('zh-CN')
   expect(detectUiLanguage({ LANGUAGE: 'zh_CN:en_US' })).toBe('zh-CN')

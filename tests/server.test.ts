@@ -486,6 +486,7 @@ test('HEAD serves the same static headers without returning a response body', as
   expect(await get.text()).toBe(html)
   expect(head.status).toBe(get.status)
   expect(head.headers.get('content-type')).toContain('text/html')
+  expect(head.headers.get('content-security-policy')).toContain("font-src 'self' data:")
   for (const header of [
     'content-type',
     'content-length',

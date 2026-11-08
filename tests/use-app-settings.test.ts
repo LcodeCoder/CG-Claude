@@ -19,7 +19,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
-  uiLanguage.value = 'zh-CN'
+  uiLanguage.value = 'en'
 })
 
 test('loads saved locale and theme, retaining confirmed settings on a failed write', async () => {

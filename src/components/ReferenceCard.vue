@@ -41,7 +41,7 @@ const relatedManual = computed(() =>
   <article :id="'reference-' + entry.id" class="reference-card data-panel">
     <div class="reference-meta">
       <span class="source-type" :class="{ official: entry.kind === 'official' }">{{
-        referenceKindLabels[entry.kind]
+        t(referenceKindLabels[entry.kind])
       }}</span>
       <span>{{ t('核对于') }} {{ entry.checkedAt }}</span>
     </div>

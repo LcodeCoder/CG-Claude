@@ -6,7 +6,7 @@ import { translateUi, uiLanguage } from '../i18n'
 
 const cacheKey = 'cg-claude:appearance:v1'
 export function useAppSettings(token: () => string) {
-  const settings = ref<AppSettings>({ ...defaultAppSettings })
+  const settings = ref<AppSettings>({ ...defaultAppSettings, language: uiLanguage.value })
   const saving = ref(false)
   const loaded = ref(false)
   const error = ref('')

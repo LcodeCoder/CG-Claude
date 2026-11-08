@@ -6,15 +6,16 @@ export const uiLanguageSchema = z.enum(uiLanguages)
 export type UiLanguage = (typeof uiLanguages)[number]
 
 /**
- * Map a POSIX or BCP 47 locale to the interface language. `C` and `POSIX` name
- * no language at all, so they are skipped rather than treated as a choice.
+ * Map a POSIX or BCP 47 locale to the interface language. `C` and `POSIX` select
+ * the portable English locale, so they resolve to English rather than being
+ * mistaken for Chinese or silently ignored.
  */
 export function languageFromLocale(locale: string | undefined): UiLanguage | undefined {
   if (!locale) return undefined
   const value = locale.trim()
   if (!value) return undefined
   const base = value.split(/[.@]/, 1)[0]!.replaceAll('_', '-')
-  if (/^C$/i.test(base) || /^POSIX$/i.test(base)) return undefined
+  if (/^C$/i.test(base) || /^POSIX$/i.test(base)) return 'en'
   return /^zh(?:-|$)/i.test(base) ? 'zh-CN' : 'en'
 }
 

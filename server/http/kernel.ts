@@ -94,7 +94,7 @@ async function staticFile({ req, res, url, send }: RouteContext, options: HttpOp
   if (!options.dev)
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; connect-src 'self' https://api.ipify.org; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "default-src 'self'; connect-src 'self' https://api.ipify.org; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     )
   res.writeHead(200, {
     'Content-Type': mime[path.extname(file)] || 'application/octet-stream',

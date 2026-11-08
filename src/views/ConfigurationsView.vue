@@ -106,7 +106,7 @@ const groups = computed(() =>
       <div v-for="file in group.files" :key="file.id" class="config-file-row">
         <span class="file-icon" :class="{ missing: !file.exists }"><FileCode2 :size="18" /></span>
         <div class="config-file-title">
-          <strong>{{ file.label }}</strong>
+          <strong>{{ t(file.label) }}</strong>
           <button
             class="path-copy"
             :aria-label="t('复制配置路径 ') + file.path"
@@ -116,7 +116,7 @@ const groups = computed(() =>
             <span>{{ file.path }}</span
             ><Copy :size="13" />
           </button>
-          <p v-if="!file.editable" class="config-file-description">{{ file.summary }}</p>
+          <p v-if="!file.editable" class="config-file-description">{{ t(file.summary) }}</p>
         </div>
         <span
           class="file-state"
