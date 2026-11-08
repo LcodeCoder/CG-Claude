@@ -100,7 +100,7 @@ async function resetReviews() {
       <div class="manual-content">
         <span class="manual-category">{{ t(item.category) }}</span>
         <h3>{{ t(item.title) }}</h3>
-        <p>{{ item.description }}</p>
+        <p>{{ t(item.description) }}</p>
         <details class="manual-instructions">
           <summary>{{ t('配置方法与快捷入口') }}</summary>
           <ManualActionGuide
@@ -144,7 +144,7 @@ async function resetReviews() {
   <GuardDialog
     :open="Boolean(editingId)"
     :title="t('复核备注')"
-    :description="currentItem?.title"
+    :description="currentItem ? t(currentItem.title) : ''"
     :locked="busy"
     @close="editingId = undefined"
   >

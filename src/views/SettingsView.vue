@@ -109,7 +109,7 @@ const emit = defineEmits<{ save: [preferences: Preferences] }>()
         ></label
       >
       <p class="privacy-impact">
-        <Info :size="15" />{{ privacyCompatibilityNote }} {{ t('已有设置保留。') }}
+        <Info :size="15" />{{ t(privacyCompatibilityNote) }} {{ t('已有设置保留。') }}
       </p>
     </div>
     <div class="settings-footer">

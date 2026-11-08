@@ -69,7 +69,7 @@ const guide = computed(() => guides[browser.value])
           <option value="safari">Safari / macOS</option>
         </select>
         <ol>
-          <li v-for="step in guide.steps" :key="step">{{ step }}</li>
+          <li v-for="step in guide.steps" :key="step">{{ t(step) }}</li>
         </ol>
         <p>
           {{ t('目标：') }}<strong lang="en">{{ draft.expectedBrowserLanguage }}</strong

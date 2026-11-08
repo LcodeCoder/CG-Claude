@@ -2,12 +2,14 @@ import { englishWorkspace } from './en-workspace'
 import { englishLabels } from './en-labels'
 import { englishContent } from './en-content'
 import { englishDiagnostics } from './en-diagnostics'
+import { englishHelp } from './en-help'
 /** Chinese source phrases are stable lookup keys; keep translations beside application copy. */
 export const englishUi: Record<string, string> = {
   ...englishContent,
   ...englishDiagnostics,
   ...englishLabels,
   ...englishWorkspace,
+  ...englishHelp,
   'CG Claude · 本地环境工作台': 'CG Claude · Local environment',
   隐藏到菜单栏: 'Hide to menu bar',
   隐藏到托盘: 'Hide to tray',

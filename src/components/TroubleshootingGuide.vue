@@ -41,11 +41,11 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
       role="region"
       aria-labelledby="troubleshooting-title"
     >
-      <h3 id="troubleshooting-title">{{ guide.title }}</h3>
+      <h3 id="troubleshooting-title">{{ t(guide.title) }}</h3>
       <p class="troubleshooting-codes">{{ guide.codes }}</p>
-      <p class="troubleshooting-meaning">{{ guide.meaning }}</p>
+      <p class="troubleshooting-meaning">{{ t(guide.meaning) }}</p>
       <ol>
-        <li v-for="step in guide.steps" :key="step">{{ step }}</li>
+        <li v-for="step in guide.steps" :key="step">{{ t(step) }}</li>
       </ol>
       <div class="troubleshooting-actions">
         <button
@@ -54,7 +54,7 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
           class="text-link"
           @click="emit('check', check.id)"
         >
-          {{ check.label }}<ArrowUpRight :size="13" />
+          {{ t(check.label) }}<ArrowUpRight :size="13" />
         </button>
         <button v-if="guide.manual" class="text-link" @click="emit('manual', guide.manual!)">
           {{ t('打开人工复核') }}<ArrowUpRight :size="13" />
@@ -76,8 +76,8 @@ const guide = computed(() => troubleshootingGuides.find((item) => item.id === se
     <h2 id="environment-terms-title">{{ t('读懂常见术语') }}</h2>
     <dl>
       <div v-for="item in environmentTerms" :key="item.term">
-        <dt>{{ item.term }}</dt>
-        <dd>{{ item.definition }}</dd>
+        <dt>{{ t(item.term) }}</dt>
+        <dd>{{ t(item.definition) }}</dd>
       </div>
     </dl>
   </section>
