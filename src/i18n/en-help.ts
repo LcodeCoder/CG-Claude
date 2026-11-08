@@ -71,6 +71,9 @@ export const englishHelp: Record<string, string> = {
   '在 Claude Code 的 /status 查看 Login method、Login 或 Profile，核对是否采用了预期的订阅、API 或云平台来源。':
     'Check Login method, Login or Profile in Claude Code /status to confirm the expected subscription, API or cloud-platform source.',
   关闭定位服务中的设定时区: 'Turn off Setting Time Zone in Location Services',
+  手动模式需要选择一个目标时区: 'Manual mode requires a target time zone',
+  '请输入有效的 IANA 时区，例如 Asia/Taipei':
+    'Enter a valid IANA time zone, for example Asia/Taipei',
   '找不到 Claude Code 或版本探测失败': 'Claude Code not found or version check failed',
   '桌面应用与终端的 PATH 可能不同；探测失败需要结合安装方式核对。':
     'The desktop app and terminal may use different PATH values. Verify a detection failure against how Claude Code was installed.',

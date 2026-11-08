@@ -318,7 +318,7 @@ const title = computed(() =>
         >
         <div class="wizard-note">
           <TriangleAlert :size="18" />
-          <p>{{ privacyCompatibilityNote }} {{ t('已有的隐私设置会保留。') }}</p>
+          <p>{{ t(privacyCompatibilityNote) }} {{ t('已有的隐私设置会保留。') }}</p>
         </div>
       </div>
       <div v-else-if="step === 3" class="wizard-section">
@@ -396,8 +396,8 @@ const title = computed(() =>
           {{ t('目标时区：') }}<strong>{{ props.preview.timezoneTarget }}</strong>
         </p>
         <div class="setup-preferences">
-          <span>{{ routeNames[draft.routeMode] }}</span
-          ><span>{{ usageModeLabel(draft.usageMode) }}</span
+          <span>{{ t(routeNames[draft.routeMode]) }}</span
+          ><span>{{ t(usageModeLabel(draft.usageMode)) }}</span
           ><span>{{
             draft.privacy === 'minimal' ? t('关闭全部非必要流量') : t('关闭指标与错误报告')
           }}</span>
@@ -437,7 +437,7 @@ const title = computed(() =>
           <li v-for="note in props.preview.notes" :key="note">{{ note }}</li>
         </ul>
       </div>
-      <p v-if="fieldError" class="wizard-field-error" role="alert">{{ fieldError }}</p>
+      <p v-if="fieldError" class="wizard-field-error" role="alert">{{ t(fieldError) }}</p>
     </template>
     <template v-else-if="props.job">
       <div
